@@ -1,0 +1,46 @@
+# Environment
+.env
+.env.local
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+airflow_logs/
+
+# Data (không push data lên GitHub)
+data-samples/raw/
+*.csv
+*.parquet
+*.delta
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Backup files
+*.bak
+*.backup
+*~

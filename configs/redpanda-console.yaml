@@ -1,0 +1,20 @@
+redpanda:
+  kafka:
+    brokers: ["redpanda:9092"]
+
+console:
+  redpanda:
+    admin_api:
+      enabled: false   # Không cần admin API cho local dev
+  kafka:
+    enabled: true
+  enterprise: false
+
+login:
+  enabled: false   # Tắt auth cho local dev
+
+protobuf:
+  enabled: true
+
+schemaRegistry:
+  enabled: false   # Bật nếu cần

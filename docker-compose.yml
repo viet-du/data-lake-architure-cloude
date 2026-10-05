@@ -3,6 +3,7 @@ version: "3.8"
 # =============================================================
 # Data Lake Architecture - Core Stack
 # MinIO + Spark + Hive Metastore + Airflow + Metabase
+# Redpanda (Kafka-compatible) + Redpanda Console (UI)
 # =============================================================
 
 services:
@@ -187,8 +188,69 @@ services:
     volumes:
       - metabase_data:/metabase-data
 
+  # ===== Redpanda - Kafka-compatible streaming (Nhanh hơn Kafka 10x, không cần Zookeeper) =====
+  redpanda:
+    image: redpandadata/redpanda:v24.1.7
+    container_name: lake-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=redpanda:8082
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+      - --kafka-api-addr=0.0.0.0:9092
+    ports:
+      - "9092:9092"     # Kafka API
+      - "8082:8082"     # Pandaproxy (REST)
+      - "9644:9644"     # Admin API
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== Redpanda Console - Web UI quản lý topics, messages, schemas =====
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: lake-redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      CONFIG_FILEPATH: /etc/console/configs/console.yaml
+    ports:
+      - "8081:8080"   # Web UI
+    volumes:
+      - ./configs/redpanda-console.yaml:/etc/console/configs/console.yaml:ro
+
+  # ===== Kafka UI (optional, alternative to Redpanda Console) =====
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: lake-kafka-ui
+    depends_on:
+      - redpanda
+    environment:
+      KAFKA_CLUSTERS_0_NAME: redpanda-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: ""
+    ports:
+      - "8089:8080"   # Web UI
+
 volumes:
   minio_data:
   postgres_data:
   airflow_db_data:
   metabase_data:
+  redpanda_data:

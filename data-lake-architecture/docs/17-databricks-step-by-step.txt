@@ -1,0 +1,391 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║   🚀 ĐĂNG KÝ DATABRICKS COMMUNITY EDITION                   ║
+║                                                              ║
+║   ⏱️  Tổng thời gian: 5-10 phút                              ║
+║   💰 Chi phí: $0 (MIỄN PHÍ VĨNH VIỄN)                       ║
+║   💳 Credit card: KHÔNG CẦN                                  ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────┐
+│ ✅ CHECKLIST THEO DÕI                                        │
+└──────────────────────────────────────────────────────────────┘
+
+□ Bước 1: Mở trang đăng ký (30 giây)
+□ Bước 2: Điền form (1 phút)
+□ Bước 3: Verify email (1 phút)
+□ Bước 4: Login lần đầu (1 phút)
+□ Bước 5: Tạo Cluster (5 phút chờ)
+□ Bước 6: Tạo Notebook đầu tiên (2 phút)
+□ Bước 7: Chạy code Delta Lake (2 phút)
+□ Bước 8: Verify thành công ✅
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 1: MỞ TRANG ĐĂNG KÝ                                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+👉 Mở browser và truy cập:
+
+   https://www.databricks.com/
+
+   Hoặc trực tiếp:
+   https://www.databricks.com/try-databricks
+
+📋 Hướng dẫn:
+
+   1. Trang chủ Databricks hiện ra
+   2. Tìm nút "Get Started" hoặc "Try Databricks" 
+      (góc trên bên phải, màu xanh/cam)
+   3. Click vào đó
+
+   Hoặc bạn sẽ thấy 2 lựa chọn:
+      • "Try Databricks" (14-day free trial - CẦN THẺ)
+      • "Get started with Community Edition" ← ✅ CHỌN CÁI NÀY
+
+   Click vào "Get started with Community Edition" hoặc 
+   "Sign up for Community Edition"
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 2: ĐIỀN FORM                                          ║
+╚══════════════════════════════════════════════════════════════╝
+
+📋 Form hiện ra, điền các thông tin sau:
+
+   ┌────────────────────────────────────────────────────────┐
+   │  Work email:                                            │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ your-email@gmail.com                              │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │  (Gmail, Outlook, Yahoo... đều OK)                    │
+   │                                                         │
+   │  First name:                                            │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ Your Name                                          │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  Last name:                                             │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ Your Last Name                                    │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  Company:                                               │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ Personal                                          │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │  (Gõ "Personal" hoặc tên trường)                       │
+   │                                                         │
+   │  Country:                                               │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ Vietnam                                           │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  Job role:                                              │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ Data Engineer                                     │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │  (Chọn "Data Engineer" hoặc "Student")                 │
+   │                                                         │
+   │  ☑️  I agree to the terms of service and privacy policy│
+   │                                                         │
+   │           ┌──────────────────────────┐                 │
+   │           │   GET STARTED FREE →      │                 │
+   │           └──────────────────────────┘                 │
+   └────────────────────────────────────────────────────────┘
+
+   ⚠️  LƯU Ý: KHÔNG cần nhập credit card!
+   ⚠️  KHÔNG cần nhập số điện thoại!
+
+   → Click nút "GET STARTED FREE" (hoặc "Sign up")
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 3: VERIFY EMAIL                                       ║
+╚══════════════════════════════════════════════════════════════╝
+
+📧 Sau khi submit form:
+
+   1. Mở email (Gmail/Outlook/...)
+   2. Tìm email từ Databricks:
+      - Subject: "Verify your email for Databricks"
+      - Hoặc: "Welcome to Databricks"
+   3. Click link "Verify Email" trong email
+
+   Nếu không thấy:
+   → Check spam/junk folder
+   → Đợi 2-3 phút
+   → Bấm "Resend email"
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 4: LOGIN LẦN ĐẦU                                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+🌐 Sau khi verify email, bạn sẽ được redirect đến:
+
+   https://community.cloud.databricks.com/
+
+   Hoặc tự truy cập link này.
+
+   ┌────────────────────────────────────────────┐
+   │            Databricks Login                │
+   │                                            │
+   │  Email:                                    │
+   │  ┌──────────────────────────────────────┐ │
+   │  │ your-email@gmail.com                 │ │
+   │  └──────────────────────────────────────┘ │
+   │                                            │
+   │  Password:                                 │
+   │  ┌──────────────────────────────────────┐ │
+   │  │ ************                         │ │
+   │  └──────────────────────────────────────┘ │
+   │                                            │
+   │      ┌────────────────────────┐          │
+   │      │    Continue  →         │          │
+   │      └────────────────────────┘          │
+   └────────────────────────────────────────────┘
+
+   → Nhập email + password đã đăng ký
+   → Click "Continue"
+
+   🎉 Lần đầu login, Databricks sẽ:
+   - Welcome message
+   - Hỏi preferences (skip được hết)
+   - Đưa bạn vào Workspace
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 5: TẠO CLUSTER                                        ║
+╚══════════════════════════════════════════════════════════════╝
+
+🖥️ Tạo cluster (cần thiết để chạy code):
+
+   1. Left sidebar → click "Compute"
+   2. Click nút "Create Compute" (màu xanh)
+
+   ┌────────────────────────────────────────────────────────┐
+   │  Create Cluster                                         │
+   │                                                         │
+   │  Cluster name:                                          │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ data-lake-cluster                                │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  Cluster mode:                                          │
+   │  ◉ Single Node                                          │
+   │                                                         │
+   │  Runtime Version:                                       │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ 14.2 (Scala 2.12, Spark 3.5)                    │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  Node type:                                             │
+   │  ┌──────────────────────────────────────────────────┐  │
+   │  │ (để mặc định)                                   │  │
+   │  └──────────────────────────────────────────────────┘  │
+   │                                                         │
+   │  ☑️  Use Photon Acceleration                            │
+   │                                                         │
+   │  Workers: 0 (Single node - không cần)                  │
+   │                                                         │
+   │           ┌────────────────────────┐                    │
+   │           │   Create Compute  →     │                    │
+   │           └────────────────────────┘                    │
+   └────────────────────────────────────────────────────────┘
+
+   → Click "Create Compute"
+
+   ⏰ ĐỢI 3-5 PHÚT - cluster tạo xong
+
+   Status sẽ chuyển từ:
+   "Pending" → "Starting" → "Running" ✅
+
+   Khi thấy "Running" màu xanh → sẵn sàng!
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 6: TẠO NOTEBOOK ĐẦU TIÊN                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+📓 Tạo notebook mới:
+
+   1. Left sidebar → click "Workspace"
+   2. Click "Users" → click email của bạn
+   3. Click nút "..." (3 chấm) → "Create" → "Notebook"
+
+   ┌────────────────────────────────────────────┐
+   │  Create Notebook                            │
+   │                                             │
+   │  Name:                                      │
+   │  ┌──────────────────────────────────────┐ │
+   │  │ My First Notebook                    │ │
+   │  └──────────────────────────────────────┘ │
+   │                                             │
+   │  Language:                                  │
+   │  ◉ Python                                   │
+   │                                             │
+   │  Cluster:                                   │
+   │  ┌──────────────────────────────────────┐ │
+   │  │ data-lake-cluster                    │ │
+   │  └──────────────────────────────────────┘ │
+   │                                             │
+   │     ┌──────────────────────┐               │
+   │     │   Create  →          │               │
+   │     └──────────────────────┘               │
+   └────────────────────────────────────────────┘
+
+   → Click "Create"
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 7: CHẠY CODE DELTA LAKE ĐẦU TIÊN                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+⌨️ Trong cell đầu tiên của notebook, paste code này:
+
+   # Cell 1: Test Spark
+   print("Hello from Databricks! 🎉")
+   print(f"Spark version: {spark.version}")
+
+   → Click nút ▶️ (play) ở góc trên của cell
+   → Đợi vài giây
+   → Output: "Hello from Databricks!"
+
+⌨️ Tạo cell mới (click + Code):
+
+   # Cell 2: Tạo sample data
+   data = [
+       (1, "iPhone 15", "smartphone", 29990000),
+       (2, "MacBook Pro", "laptop", 49990000),
+       (3, "AirPods Pro", "headphone", 5990000),
+       (4, "iPad Air", "tablet", 15990000),
+       (5, "Apple Watch", "smartwatch", 9990000),
+   ]
+   
+   df = spark.createDataFrame(data, ["id", "name", "category", "price"])
+   display(df)
+
+   → Click ▶️
+   → Output: Bảng hiển thị 5 rows
+
+⌨️ Cell 3: Ghi Delta Lake:
+
+   # Cell 3: Ghi vào Delta Lake
+   df.write.format("delta").mode("overwrite").save("dbfs:/data/delta/products/")
+   
+   print("✅ Saved to Delta Lake!")
+
+   → Click ▶️
+   → Output: "✅ Saved to Delta Lake!"
+
+⌨️ Cell 4: Đọc lại từ Delta Lake:
+
+   # Cell 4: Đọc lại từ Delta Lake
+   df_delta = spark.read.format("delta").load("dbfs:/data/delta/products/")
+   display(df_delta)
+
+   → Click ▶️
+   → Output: Bảng hiển thị data đã lưu
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC 8: VERIFY THÀNH CÔNG ✅                                ║
+╚══════════════════════════════════════════════════════════════╝
+
+🎉 Nếu bạn thấy:
+
+   ✅ Bảng data hiển thị
+   ✅ Không có lỗi
+   ✅ Cluster status: Running
+
+   → CHÚC MỪNG! Bạn đã setup thành công Databricks!
+
+📸 Bạn đang có:
+   - 1 cluster 15GB RAM
+   - Delta Lake storage
+   - Spark 3.5
+   - 10GB DBFS storage
+   - MIỄN PHÍ VĨNH VIỄN
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  BƯỚC TIẾP THEO                                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+Sau khi setup xong, bạn có thể:
+
+1️⃣ Chạy Bronze → Silver → Gold pipeline
+   
+   Copy code từ file `docs/16-databricks-setup.md`
+   Mục 5 (Chạy ETL Pipeline)
+
+2️⃣ Upload data mẫu lên DBFS
+   
+   Data → Add Data → Upload CSV
+   Path: /data/samples/
+
+3️⃣ Tạo dashboards
+
+   SQL Editor → Query → Visualization
+
+4️⃣ Share notebooks
+
+   Click "Share" ở đầu notebook
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  ❓ NẾU GẶP LỖI                                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+🔸 Không nhận được email verify:
+   → Check spam
+   → Đợi 5-10 phút
+   → Click "Resend"
+
+🔸 Cluster tạo mãi không xong:
+   → Community Edition có thể chậm giờ cao điểm
+   → Đợi thêm 5-10 phút
+   → Nếu quá 15 phút, restart
+
+🔸 Notebook không chạy:
+   → Check cluster đang "Running"
+   → Check code syntax
+   → Xem error message ở dưới cell
+
+🔸 Lỗi "Out of Memory":
+   → Data quá lớn, dùng .limit(1000) trước
+   → Restart cluster
+
+🔸 Lỗi "Token expired":
+   → Settings → User Settings → Generate new token
+
+
+╔══════════════════════════════════════════════════════════════╗
+║  📞 HỖ TRỢ                                                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+📖 Tài liệu chi tiết: docs/16-databricks-setup.md (707 dòng)
+
+🌐 Databricks Community: https://community.cloud.databricks.com/
+📚 Documentation:        https://docs.databricks.com/
+💬 Forum:                https://community.databricks.com/
+
+🎯 Hoặc nhắn tôi:
+   - Paste lỗi
+   - Chụp màn hình
+   - Tôi sẽ giúp debug!
+
+
+═══════════════════════════════════════════════════════════════
+
+🎉 CHÚC BẠN SETUP THÀNH CÔNG!
+
+Sau khi xong, bạn sẽ có:
+- Data Lake chạy trên cloud MIỄN PHÍ
+- Delta Lake với ACID transactions
+- Spark cluster 15GB RAM
+- Không lo hết hạn, không cần thẻ tín dụng
+
+═══════════════════════════════════════════════════════════════

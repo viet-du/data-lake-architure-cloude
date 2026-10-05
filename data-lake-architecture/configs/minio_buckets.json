@@ -1,0 +1,16 @@
+{
+  "buckets": [
+    {
+      "name": "bronze",
+      "purpose": "Raw data layer (append-only, no transformation)"
+    },
+    {
+      "name": "silver",
+      "purpose": "Cleaned, validated, conformed data"
+    },
+    {
+      "name": "gold",
+      "purpose": "Curated, business-level aggregates"
+    }
+  ]
+}

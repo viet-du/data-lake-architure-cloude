@@ -1,0 +1,194 @@
+version: "3.8"
+
+# =============================================================
+# Data Lake Architecture - Core Stack
+# MinIO + Spark + Hive Metastore + Airflow + Metabase
+# =============================================================
+
+services:
+  # ===== MinIO - S3-compatible storage =====
+  minio:
+    image: minio/minio:latest
+    container_name: lake-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== MinIO Init - tạo buckets tự động =====
+  minio-init:
+    image: minio/mc:latest
+    container_name: lake-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/bronze --ignore-existing;
+      mc mb -p local/silver --ignore-existing;
+      mc mb -p local/gold --ignore-existing;
+      mc mb -p local/bronze/clickstream --ignore-existing;
+      mc mb -p local/silver/clickstream --ignore-existing;
+      mc mb -p local/gold/clickstream --ignore-existing;
+      mc mb -p local/bronze/ecommerce --ignore-existing;
+      mc mb -p local/silver/ecommerce --ignore-existing;
+      mc mb -p local/gold/ecommerce --ignore-existing;
+      mc anonymous set none local/bronze;
+      mc anonymous set none local/silver;
+      mc anonymous set none local/gold;
+      echo '✅ MinIO buckets created: bronze, silver, gold';
+      mc ls local/;
+      "
+
+  # ===== Hive Metastore (cho Spark SQL) =====
+  postgres:
+    image: postgres:13
+    container_name: lake-postgres
+    environment:
+      POSTGRES_DB: hive_metastore
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hive-metastore:
+    image: apache/hive:3.1.3
+    container_name: lake-hive-metastore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: "-Djavax.net.ssl.trustStorePassword changeit -Dsun.net.inetaddr.ttl=60"
+    ports:
+      - "9083:9083"
+    volumes:
+      - ./configs/hive-site.xml:/opt/hive/conf/hive-site.xml:ro
+    command: /opt/hive/bin/hive --service metastore
+
+  # ===== Spark Master =====
+  spark-master:
+    image: bitnami/spark:3.4
+    container_name: lake-spark-master
+    environment:
+      SPARK_MODE: master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
+      SPARK_MASTER_WEBUI_PORT: 8080
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.deploy.mode=cluster"
+    ports:
+      - "8080:8080"   # Spark UI
+      - "7077:7077"   # Spark master
+      - "4040:4040"   # Spark app UI
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./data-samples:/data-samples:ro
+      - ./configs/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+
+  # ===== Spark Worker =====
+  spark-worker:
+    image: bitnami/spark:3.4
+    container_name: lake-spark-worker
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_WORKER_CORES: 2
+    depends_on:
+      - spark-master
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./data-samples:/data-samples:ro
+
+  # ===== Airflow Postgres =====
+  airflow-db:
+    image: postgres:13
+    container_name: lake-airflow-db
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    volumes:
+      - airflow_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===== Airflow Webserver =====
+  airflow-webserver:
+    image: apache/airflow:2.7.0-python3.11
+    container_name: lake-airflow-webserver
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./airflow_dags:/opt/airflow/dags:ro
+      - ./airflow_logs:/opt/airflow/logs
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true;
+      airflow webserver
+      "
+
+  # ===== Airflow Scheduler =====
+  airflow-scheduler:
+    image: apache/airflow:2.7.0-python3.11
+    container_name: lake-airflow-scheduler
+    depends_on:
+      - airflow-db
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./airflow_dags:/opt/airflow/dags:ro
+      - ./airflow_logs:/opt/airflow/logs
+    command: airflow scheduler
+
+  # ===== Metabase - BI tool =====
+  metabase:
+    image: metabase/metabase:latest
+    container_name: lake-metabase
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: h2
+      MB_DB_FILE: /metabase-data/metabase.db
+    volumes:
+      - metabase_data:/metabase-data
+
+volumes:
+  minio_data:
+  postgres_data:
+  airflow_db_data:
+  metabase_data:

@@ -1,4 +1,4 @@
-
+<a id="top"></a>
 
 # DATA LAKEHOUSE ARCHITECTURE — END-TO-END LOCAL & CLOUD PLATFORM
 
@@ -6,60 +6,54 @@
 >
 > Technical documentation for installing, running, validating, operating, and extending a Data Lakehouse built on **MinIO + Apache Spark + Kafka/Redpanda + Delta Lake**, with a **Next.js Control Plane API** and **React/Vite Control Plane UI**. The platform supports local development, Docker-based execution, and cloud-oriented deployment workflows for **GCP / AWS / Azure**.
 
+<div align="center">
 
+![MinIO](https://img.shields.io/badge/MinIO-S3%20Compatible-0b0f19?style=for-the-badge&logo=minio&logoColor=C72E49&labelColor=0b0f19&color=C72E49)
+![Apache Spark](https://img.shields.io/badge/Apache%20Spark-Batch%20%26%20Streaming-0b0f19?style=for-the-badge&logo=apachespark&logoColor=E25A1C&labelColor=0b0f19&color=E25A1C)
+![Kafka](https://img.shields.io/badge/Kafka-Redpanda-0b0f19?style=for-the-badge&logo=apachekafka&logoColor=FFFFFF&labelColor=0b0f19&color=FFFFFF)
+![Delta Lake](https://img.shields.io/badge/Delta%20Lake-ACID%20Storage-0b0f19?style=for-the-badge&labelColor=0b0f19&color=00ADD8)
+![Airflow](https://img.shields.io/badge/Airflow-Orchestration-0b0f19?style=for-the-badge&logo=apacheairflow&logoColor=017CEE&labelColor=0b0f19&color=017CEE)
 
-MinIO
-Apache Spark
-Kafka
-Delta Lake
-Airflow
+![Next.js](https://img.shields.io/badge/Next.js-Control%20Plane%20API-0b0f19?style=for-the-badge&logo=nextdotjs&logoColor=FFFFFF&labelColor=0b0f19&color=FFFFFF)
+![React](https://img.shields.io/badge/React-Control%20Plane%20UI-0b0f19?style=for-the-badge&logo=react&logoColor=61DAFB&labelColor=0b0f19&color=61DAFB)
+![Python](https://img.shields.io/badge/Python-PySpark%20Pipeline-0b0f19?style=for-the-badge&logo=python&logoColor=FFD43B&labelColor=0b0f19&color=3776AB)
+![Docker](https://img.shields.io/badge/Docker-Local%20Infrastructure-0b0f19?style=for-the-badge&logo=docker&logoColor=2496ED&labelColor=0b0f19&color=2496ED)
 
-Next.js
-React
-Python
-Docker
+</div>
 
+<div align="center">
 
+| **3** Medallion Layers | **~108** Control Plane API Routes | **3** Airflow DAGs | **3** Cloud Targets |
+|:---:|:---:|:---:|:---:|
+| **Batch + Stream** Processing | **5** Real Crawler Sources | **2** Control Plane Apps | **1** Nx + pnpm Monorepo |
 
-
-
-
-| **3** Medallion Layers        | **~108** Control Plane API Routes | **3** Airflow DAGs       | **3** Cloud Targets      |
-| ----------------------------- | --------------------------------- | ------------------------ | ------------------------ |
-| **Batch + Stream** Processing | **5** Real Crawler Sources        | **2** Control Plane Apps | **1** Nx + pnpm Monorepo |
-
-
-
+</div>
 
 ---
-
-
 
 ## 🧭 MỤC LỤC (TABLE OF CONTENTS)
 
-
-| #                                       | Mục                             | Nội dung chính                                           |
-| --------------------------------------- | ------------------------------- | -------------------------------------------------------- |
-| [01](#01-tong-quan)                     | **Tổng quan**                   | Platform purpose · Execution model · Core features       |
-| [02](#02-kien-truc-va-data-flow)        | **Kiến trúc & Data Flow**       | Lambda · Medallion · Batch/Stream · Consumption          |
-| [03](#03-monorepo-va-project-layout)    | **Monorepo & Project Layout**   | Nx · pnpm · API · Web · Python package                   |
-| [04](#04-yeu-cau-he-thong)              | **Yêu cầu hệ thống**            | Runtime · Infrastructure · Preflight                     |
-| [05](#05-cai-dat-lan-dau)               | **Cài đặt lần đầu**             | Dependencies · Python editable install · `.env`          |
-| [06](#06-docker-infrastructure-stack)   | **Docker Infrastructure**       | MinIO · Spark · Redpanda · Airflow · Metabase · DB/Cache |
-| [07](#07-backend-control-plane-api)     | **Backend — Control Plane API** | Next.js 15 · ENV · REST routes · Health check            |
-| [08](#08-frontend-control-plane-ui)     | **Frontend — Control Plane UI** | React 19 · Vite · Routes · API integration               |
-| [09](#09-end-to-end-verification)       | **End-to-End Verification**     | Containers · API · Web · Service readiness               |
-| [10](#10-pipeline-execution)            | **Pipeline Execution**          | Batch · Clickstream · E-commerce crawler                 |
-| [11](#11-test-lint-va-quality-gates)    | **Test, Lint & Quality Gates**  | pytest · Ruff · Black · Mypy                             |
-| [12](#12-dung-reset-va-cleanup)         | **Dừng, Reset & Cleanup**       | Graceful stop · Volumes · Full reset                     |
-| [13](#13-technology-stack)              | **Technology Stack**            | Storage · Compute · Messaging · Control Plane            |
-| [14](#14-cau-truc-thu-muc-chi-tiet)     | **Cấu trúc thư mục chi tiết**   | Repository tree · Responsibilities                       |
-| [15](#15-tai-lieu-tham-khao-va-license) | **References & License**        | Internal docs · MIT License                              |
-
+| # | Mục | Nội dung chính |
+|---|---|---|
+| [01](#01-tong-quan) | **Tổng quan** | Platform purpose · Execution model · Core features |
+| [02](#02-kien-truc-va-data-flow) | **Kiến trúc & Data Flow** | Lambda · Medallion · Batch/Stream · Consumption |
+| [03](#03-monorepo-va-project-layout) | **Monorepo & Project Layout** | Nx · pnpm · API · Web · Python package |
+| [04](#04-yeu-cau-he-thong) | **Yêu cầu hệ thống** | Runtime · Infrastructure · Preflight |
+| [05](#05-cai-dat-lan-dau) | **Cài đặt lần đầu** | Dependencies · Python editable install · `.env` |
+| [06](#06-docker-infrastructure-stack) | **Docker Infrastructure** | MinIO · Spark · Redpanda · Airflow · Metabase · DB/Cache |
+| [07](#07-backend-control-plane-api) | **Backend — Control Plane API** | Next.js 15 · ENV · REST routes · Health check |
+| [08](#08-frontend-control-plane-ui) | **Frontend — Control Plane UI** | React 19 · Vite · Routes · API integration |
+| [09](#09-end-to-end-verification) | **End-to-End Verification** | Containers · API · Web · Service readiness |
+| [10](#10-pipeline-execution) | **Pipeline Execution** | Batch · Clickstream · E-commerce crawler |
+| [11](#11-test-lint-va-quality-gates) | **Test, Lint & Quality Gates** | pytest · Ruff · Black · Mypy |
+| [12](#12-dung-reset-va-cleanup) | **Dừng, Reset & Cleanup** | Graceful stop · Volumes · Full reset |
+| [13](#13-technology-stack) | **Technology Stack** | Storage · Compute · Messaging · Control Plane |
+| [14](#14-cau-truc-thu-muc-chi-tiet) | **Cấu trúc thư mục chi tiết** | Repository tree · Responsibilities |
+| [15](#15-tai-lieu-tham-khao-va-license) | **References & License** | Internal docs · MIT License |
 
 ---
 
-
+<a id="01-tong-quan"></a>
 
 ## 01. TỔNG QUAN (OVERVIEW)
 
@@ -67,23 +61,19 @@ Docker
 
 ### 1.1 Platform at a Glance
 
-
-| Thành phần                        | Vai trò                                                     |
-| --------------------------------- | ----------------------------------------------------------- |
-| **MinIO + Delta Lake**            | Storage layer, S3-compatible object storage và Delta tables |
-| **Apache Spark / PySpark**        | Batch ETL/ELT và distributed data processing                |
-| **Spark Structured Streaming**    | Real-time / near-real-time stream processing                |
-| **Kafka / Redpanda**              | Event streaming và message transport                        |
-| **Apache Airflow 2.7**            | Workflow orchestration với 3 DAGs có sẵn                    |
-| **Metabase**                      | BI dashboard / analytics consumption                        |
-| **Next.js 15**                    | Backend Control Plane API                                   |
-| **React 19 + Vite + Tailwind v3** | Frontend Control Plane UI                                   |
-| **MongoDB 6**                     | Catalog database cho backend                                |
-| **Redis 7**                       | Cache + queue                                               |
-| **Terraform**                     | Cloud-oriented infrastructure cho GCP / AWS / Azure         |
-
-
-
+| Thành phần | Vai trò |
+|---|---|
+| **MinIO + Delta Lake** | Storage layer, S3-compatible object storage và Delta tables |
+| **Apache Spark / PySpark** | Batch ETL/ELT và distributed data processing |
+| **Spark Structured Streaming** | Real-time / near-real-time stream processing |
+| **Kafka / Redpanda** | Event streaming và message transport |
+| **Apache Airflow 2.7** | Workflow orchestration với 3 DAGs có sẵn |
+| **Metabase** | BI dashboard / analytics consumption |
+| **Next.js 15** | Backend Control Plane API |
+| **React 19 + Vite + Tailwind v3** | Frontend Control Plane UI |
+| **MongoDB 6** | Catalog database cho backend |
+| **Redis 7** | Cache + queue |
+| **Terraform** | Cloud-oriented infrastructure cho GCP / AWS / Azure |
 
 ### 1.2 Tính năng chính (Core Capabilities)
 
@@ -99,27 +89,21 @@ Docker
 - ✅ **Cloud-ready** với Terraform cho GCP / AWS / Azure.
 - ✅ **Monorepo** quản lý bằng Nx + pnpm workspaces.
 
-
-
 ### 1.3 Operational Lifecycle
 
-
-| **SETUP** Dependencies      | →   | **INFRA** Docker Stack | →   | **API** Control Plane BE | →   | **WEB** Control Plane FE |
-| --------------------------- | --- | ---------------------- | --- | ------------------------ | --- | ------------------------ |
-|                             |     |                        |     |                          |     | ↓                        |
-| **PIPELINE** Batch / Stream | ←   | **VERIFY** End-to-End  | ←   | **QUALITY** Test / Lint  | ←   | **READY** Platform       |
-
+| **SETUP** Dependencies | → | **INFRA** Docker Stack | → | **API** Control Plane BE | → | **WEB** Control Plane FE |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| | | | | | | ↓ |
+| **PIPELINE** Batch / Stream | ← | **VERIFY** End-to-End | ← | **QUALITY** Test / Lint | ← | **READY** Platform |
 
 > [!IMPORTANT]
 > Tài liệu này mô tả **developer-oriented local execution flow** trước, sau đó mới chạy pipeline và các workload dữ liệu. Trình tự khuyến nghị là: **dependencies → infrastructure → backend → frontend → verification → pipeline**.
 
 ---
 
-
+<a id="02-kien-truc-va-data-flow"></a>
 
 ## 02. KIẾN TRÚC & DATA FLOW (ARCHITECTURE & DATA FLOW)
-
-
 
 ### 2.1 Lambda + Medallion Model
 
@@ -167,19 +151,13 @@ CSV / JSON / Mock / API / Tiki / GitHub / Crypto / Weather / HackerNews
                        └──────────────┘                              └──────────────┘
 ```
 
-
-
 ### 2.2 Medallion Responsibilities
 
-
-| Layer      | Vai trò                   | Nội dung theo project                                        |
-| ---------- | ------------------------- | ------------------------------------------------------------ |
-| **Bronze** | Raw ingestion             | CSV/JSON ingestors, Kafka → Bronze, append-oriented raw data |
+| Layer | Vai trò | Nội dung theo project |
+|---|---|---|
+| **Bronze** | Raw ingestion | CSV/JSON ingestors, Kafka → Bronze, append-oriented raw data |
 | **Silver** | Cleaning / Transformation | Customers, Products, Orders, streaming transforms, dedup, DQ |
-| **Gold**   | Business Aggregation      | Fact/Dim aggregators và real-time metrics                    |
-
-
-
+| **Gold** | Business Aggregation | Fact/Dim aggregators và real-time metrics |
 
 ### 2.3 Control Plane
 
@@ -201,7 +179,7 @@ Control Plane được chia thành hai application:
 
 ---
 
-
+<a id="03-monorepo-va-project-layout"></a>
 
 ## 03. MONOREPO & PROJECT LAYOUT
 
@@ -214,8 +192,6 @@ apps/
 ├── api/    # Next.js 15 Backend — Control Plane API (~108 routes) → port 3001
 └── web/    # React 19 + Vite + Tailwind v3 — Control Plane UI     → port 5173
 ```
-
-
 
 ### 3.2 Data Platform Package
 
@@ -232,49 +208,39 @@ src/lakehouse/
 └── storage/
 ```
 
-
-
 ### 3.3 Source-of-Responsibility Mapping
 
-
-| Khu vực          | Trách nhiệm chính                                            |
-| ---------------- | ------------------------------------------------------------ |
-| `apps/api/`      | Control Plane API, business logic, service integration       |
-| `apps/web/`      | Dashboard và operational UI                                  |
+| Khu vực | Trách nhiệm chính |
+|---|---|
+| `apps/api/` | Control Plane API, business logic, service integration |
+| `apps/web/` | Dashboard và operational UI |
 | `src/lakehouse/` | Batch/stream ingestion, transformation, aggregation, storage |
-| `airflow_dags/`  | Orchestration workflows                                      |
-| `tests/`         | Python unit tests                                            |
-| `scripts/`       | Start/stop/reset/dev utilities                               |
-| `configs/`       | Spark/Hive configuration                                     |
-| `terraform/`     | Cloud infrastructure                                         |
-| `docs/`          | Architecture và operation documentation                      |
-
+| `airflow_dags/` | Orchestration workflows |
+| `tests/` | Python unit tests |
+| `scripts/` | Start/stop/reset/dev utilities |
+| `configs/` | Spark/Hive configuration |
+| `terraform/` | Cloud infrastructure |
+| `docs/` | Architecture và operation documentation |
 
 > [!NOTE]
-> Trong repository hiện tại, Python package chính nằm tại `src/lakehouse/`. Các lệnh cài package ở root sử dụng `pyproject.toml` để expose package này ở chế độ development.
+> Trong repository hiện tại, Python package chính nằm tại **`src/lakehouse/`**. Các lệnh cài package ở root sử dụng `pyproject.toml` để expose package này ở chế độ development.
 
 ---
 
-
+<a id="04-yeu-cau-he-thong"></a>
 
 ## 04. YÊU CẦU HỆ THỐNG (SYSTEM REQUIREMENTS)
 
-
-
 ### 4.1 Runtime & Infrastructure Requirements
 
-
-| Tool               | Version tối thiểu | Vai trò                               |
-| ------------------ | ----------------- | ------------------------------------- |
-| **Node.js**        | ≥ 20.x            | Chạy Next.js Backend và Vite Frontend |
-| **pnpm**           | ≥ 9.x             | Package manager cho monorepo          |
-| **Python**         | ≥ 3.10            | Chạy `src/lakehouse/` pipeline        |
-| **Docker Desktop** | ≥ 4.x             | Chạy infrastructure services          |
-| **MongoDB**        | ≥ 6.x             | Backend catalog database              |
-| **Redis**          | ≥ 7.x             | Backend cache + queue                 |
-
-
-
+| Tool | Version tối thiểu | Vai trò |
+|---|---:|---|
+| **Node.js** | ≥ 20.x | Chạy Next.js Backend và Vite Frontend |
+| **pnpm** | ≥ 9.x | Package manager cho monorepo |
+| **Python** | ≥ 3.10 | Chạy `src/lakehouse/` pipeline |
+| **Docker Desktop** | ≥ 4.x | Chạy infrastructure services |
+| **MongoDB** | ≥ 6.x | Backend catalog database |
+| **Redis** | ≥ 7.x | Backend cache + queue |
 
 ### 4.2 macOS Quick Install
 
@@ -283,8 +249,6 @@ Theo setup hiện tại của project, có thể cài nhanh bằng:
 ```bash
 brew install node python@3.11 pnpm docker mongodb-community redis
 ```
-
-
 
 ### 4.3 Preflight Checklist
 
@@ -297,8 +261,6 @@ Trước khi chạy project:
 - [ ] Có quyền đọc/ghi repository.
 - [ ] Port `3001`, `5173`, `9000`, `9001`, `8080`, `8081`, `8088`, `27017`, `6379` chưa bị process khác chiếm.
 - [ ] File `.env.example` tồn tại ở repo root.
-
-
 
 ### 4.4 Quick Version Check
 
@@ -315,11 +277,9 @@ docker compose version
 
 ---
 
-
+<a id="05-cai-dat-lan-dau"></a>
 
 ## 05. CÀI ĐẶT LẦN ĐẦU (FIRST-TIME SETUP)
-
-
 
 ### 5.1 Vào Repository Root
 
@@ -328,8 +288,6 @@ Path local hiện tại trong project:
 ```bash
 cd /Users/voanhnhat-ticoder-coder/Documents/data-lake-architure-cloude
 ```
-
-
 
 ### 5.2 Cài JavaScript / TypeScript Dependencies
 
@@ -343,23 +301,17 @@ Lệnh này cài dependencies cho monorepo, bao gồm:
 - `apps/web/`
 - các workspace/package được khai báo trong `pnpm-workspace.yaml`.
 
-
-
 ### 5.3 Cài Python Package ở Development Mode
 
 ```bash
 python3 -m pip install -e ".[dev]"
 ```
 
-
-
 ### 5.4 Khởi tạo Environment File
 
 ```bash
 cp -n .env.example .env
 ```
-
-
 
 ### 5.5 Setup Verification
 
@@ -377,8 +329,6 @@ ls -la .env .env.example
 > [!IMPORTANT]
 > `cp -n` không overwrite `.env` nếu file đã tồn tại. Điều này giúp tránh ghi đè cấu hình local đang dùng.
 
-
-
 ### 5.6 First-time Setup Checklist
 
 - [ ] `pnpm install` hoàn tất không có fatal error.
@@ -389,7 +339,7 @@ ls -la .env .env.example
 
 ---
 
-
+<a id="06-docker-infrastructure-stack"></a>
 
 ## 06. DOCKER INFRASTRUCTURE STACK
 
@@ -411,15 +361,11 @@ Có ba cách tương đương theo project hiện tại.
 bash scripts/start.sh
 ```
 
-
-
 #### Cách B — Makefile
 
 ```bash
 make up
 ```
-
-
 
 #### Cách C — Docker Compose trực tiếp
 
@@ -428,37 +374,29 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
 sleep 60   # đợi service healthcheck / initialization
 ```
 
-
-
 ### 6.2 Kiểm tra Container Status
 
 ```bash
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "lake-"
 ```
 
-
-
 ### 6.3 Service Directory — URL & Port
 
-
-| Service                         | Port    | URL / Connection            | Development Credentials     |
-| ------------------------------- | ------- | --------------------------- | --------------------------- |
-| **MinIO Console**               | `9001`  | `http://localhost:9001`     | `minioadmin` / `minioadmin` |
-| **MinIO API**                   | `9000`  | `http://localhost:9000`     | Internal use                |
-| **MongoDB**                     | `27017` | `mongodb://localhost:27017` | No auth (dev)               |
-| **Redis**                       | `6379`  | `redis://localhost:6379`    | No auth (dev)               |
-| **Redpanda / Kafka**            | `9092`  | `localhost:9092`            | `PLAINTEXT`                 |
-| **Redpanda Console / Kafka UI** | `8081`  | `http://localhost:8081`     | —                           |
-| **Airflow Webserver**           | `8088`  | `http://localhost:8088`     | `admin` / `admin`           |
-| **Spark Master UI**             | `8080`  | `http://localhost:8080`     | —                           |
-| **Spark App UI**                | `4040`  | `http://localhost:4040`     | —                           |
-| **Metabase**                    | `3000`  | `http://localhost:3000`     | Tạo account lần đầu         |
-
+| Service | Port | URL / Connection | Development Credentials |
+|---|---:|---|---|
+| **MinIO Console** | `9001` | `http://localhost:9001` | `minioadmin` / `minioadmin` |
+| **MinIO API** | `9000` | `http://localhost:9000` | Internal use |
+| **MongoDB** | `27017` | `mongodb://localhost:27017` | No auth (dev) |
+| **Redis** | `6379` | `redis://localhost:6379` | No auth (dev) |
+| **Redpanda / Kafka** | `9092` | `localhost:9092` | `PLAINTEXT` |
+| **Redpanda Console / Kafka UI** | `8081` | `http://localhost:8081` | — |
+| **Airflow Webserver** | `8088` | `http://localhost:8088` | `admin` / `admin` |
+| **Spark Master UI** | `8080` | `http://localhost:8080` | — |
+| **Spark App UI** | `4040` | `http://localhost:4040` | — |
+| **Metabase** | `3000` | `http://localhost:3000` | Tạo account lần đầu |
 
 > [!CAUTION]
 > Các credential như `minioadmin/minioadmin` và `admin/admin` trong bảng trên là **development defaults của setup hiện tại**. Không tái sử dụng nguyên trạng cho môi trường public/cloud.
-
-
 
 ### 6.4 Infrastructure Readiness Checklist
 
@@ -471,7 +409,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "lake-"
 
 ---
 
-
+<a id="07-backend-control-plane-api"></a>
 
 ## 07. BACKEND — CONTROL PLANE API
 
@@ -486,8 +424,6 @@ cd /Users/voanhnhat-ticoder-coder/Documents/data-lake-architure-cloude/apps/api
 pnpm run dev
 ```
 
-
-
 ### 7.2 Expected Startup Output
 
 ```text
@@ -499,8 +435,6 @@ pnpm run dev
 ✓ Starting...
 ✓ Ready in ~2s
 ```
-
-
 
 ### 7.3 Backend Health Check
 
@@ -514,24 +448,18 @@ Nếu project expose Swagger docs:
 open http://127.0.0.1:3001/api/docs
 ```
 
-
-
 ### 7.4 Main API Endpoints
 
-
-| Method / Endpoint                 | Mục đích                         |
-| --------------------------------- | -------------------------------- |
-| `GET /api/health`                 | Health check                     |
-| `GET /api/datasets`               | Liệt kê datasets trong Medallion |
-| `GET /api/pipelines`              | Liệt kê pipeline + trạng thái    |
-| `POST /api/pipelines/:id/trigger` | Trigger pipeline                 |
-| `GET /api/jobs`                   | Lịch sử job runs                 |
-| `GET /api/data-quality`           | Data quality reports             |
-| `GET /api/lineage`                | Data lineage graph               |
-| `GET /api/catalog/tables`         | Catalog tables theo Glue-style   |
-
-
-
+| Method / Endpoint | Mục đích |
+|---|---|
+| `GET /api/health` | Health check |
+| `GET /api/datasets` | Liệt kê datasets trong Medallion |
+| `GET /api/pipelines` | Liệt kê pipeline + trạng thái |
+| `POST /api/pipelines/:id/trigger` | Trigger pipeline |
+| `GET /api/jobs` | Lịch sử job runs |
+| `GET /api/data-quality` | Data quality reports |
+| `GET /api/lineage` | Data lineage graph |
+| `GET /api/catalog/tables` | Catalog tables theo Glue-style |
 
 ### 7.5 Backend Environment Configuration
 
@@ -553,25 +481,19 @@ AIRFLOW_PASSWORD=admin
 LOG_LEVEL=info
 ```
 
-
-
 ### 7.6 Development Helper Script
 
 ```bash
 bash /Users/voanhnhat-ticoder-coder/Documents/data-lake-architure-cloude/scripts/dev-api.sh
 ```
 
-
-
 ### 7.7 Backend Troubleshooting
 
-
-| Symptom                           | Nguyên nhân được xác định trong setup hiện tại | Hướng xử lý                                   |
-| --------------------------------- | ---------------------------------------------- | --------------------------------------------- |
-| `ECONNREFUSED 127.0.0.1:27017`    | MongoDB chưa chạy                              | Start MongoDB rồi restart BE                  |
-| `/api/health` không truy cập được | BE chưa ready / process đã dừng                | Kiểm tra Terminal 1 và startup log            |
-| UI báo network error              | FE không gọi được API                          | Xác nhận Backend đang chạy ở `127.0.0.1:3001` |
-
+| Symptom | Nguyên nhân được xác định trong setup hiện tại | Hướng xử lý |
+|---|---|---|
+| `ECONNREFUSED 127.0.0.1:27017` | MongoDB chưa chạy | Start MongoDB rồi restart BE |
+| `/api/health` không truy cập được | BE chưa ready / process đã dừng | Kiểm tra Terminal 1 và startup log |
+| UI báo network error | FE không gọi được API | Xác nhận Backend đang chạy ở `127.0.0.1:3001` |
 
 Nếu MongoDB local chưa chạy:
 
@@ -581,8 +503,6 @@ mongod --config /opt/homebrew/etc/mongod.conf --fork
 
 > [!CAUTION]
 > `MINIO_SECRET_KEY`, `AIRFLOW_PASSWORD` và các credential tương tự chỉ nên tồn tại trong local environment / secret-management flow phù hợp. Không commit secret production vào source code.
-
-
 
 ### 7.8 Backend Readiness Checklist
 
@@ -594,7 +514,7 @@ mongod --config /opt/homebrew/etc/mongod.conf --fork
 
 ---
 
-
+<a id="08-frontend-control-plane-ui"></a>
 
 ## 08. FRONTEND — CONTROL PLANE UI
 
@@ -609,8 +529,6 @@ cd /Users/voanhnhat-ticoder-coder/Documents/data-lake-architure-cloude/apps/web
 pnpm run dev
 ```
 
-
-
 ### 8.2 Expected Startup Output
 
 ```text
@@ -621,32 +539,24 @@ VITE v5.x  ready in 423 ms
 ➜  press h + enter to show help
 ```
 
-
-
 ### 8.3 Truy cập Control Plane UI
 
 ```text
 http://127.0.0.1:5173/
 ```
 
-
-
 ### 8.4 Main UI Routes
 
-
-| Route        | Chức năng                            |
-| ------------ | ------------------------------------ |
-| `/`          | Dashboard tổng quan                  |
-| `/pipelines` | Danh sách + trigger pipeline         |
-| `/datasets`  | Browse Bronze / Silver / Gold tables |
-| `/jobs`      | Lịch sử job runs                     |
-| `/quality`   | Data Quality dashboard               |
-| `/lineage`   | Data lineage graph                   |
-| `/crawlers`  | Quản lý crawler: Tiki, GitHub, ...   |
-| `/settings`  | Cấu hình connection                  |
-
-
-
+| Route | Chức năng |
+|---|---|
+| `/` | Dashboard tổng quan |
+| `/pipelines` | Danh sách + trigger pipeline |
+| `/datasets` | Browse Bronze / Silver / Gold tables |
+| `/jobs` | Lịch sử job runs |
+| `/quality` | Data Quality dashboard |
+| `/lineage` | Data lineage graph |
+| `/crawlers` | Quản lý crawler: Tiki, GitHub, ... |
+| `/settings` | Cấu hình connection |
 
 ### 8.5 Frontend Environment Configuration
 
@@ -656,8 +566,6 @@ Tạo `apps/web/.env.local` hoặc sử dụng default trong `vite.config.ts`:
 VITE_API_BASE_URL=http://127.0.0.1:3001
 VITE_APP_NAME="Lakehouse Control Plane"
 ```
-
-
 
 ### 8.6 FE ↔ BE Dependency
 
@@ -677,8 +585,6 @@ http://127.0.0.1:3001
 > [!WARNING]
 > Nếu Backend chưa chạy, các trang Frontend có thể hiển thị `Network Error` hoặc `Failed to fetch`. Luôn kiểm tra Terminal 1 và `GET /api/health` trước khi debug Frontend sâu hơn.
 
-
-
 ### 8.7 Frontend Readiness Checklist
 
 - [ ] Vite dev server chạy tại `127.0.0.1:5173`.
@@ -689,7 +595,7 @@ http://127.0.0.1:3001
 
 ---
 
-
+<a id="09-end-to-end-verification"></a>
 
 ## 09. END-TO-END VERIFICATION
 
@@ -716,23 +622,17 @@ open http://localhost:8081   # Redpanda Console
 open http://localhost:8080   # Spark Master UI
 ```
 
-
-
 ### 9.2 Readiness Gate
 
-
-| Gate           | Expected                                         |
-| -------------- | ------------------------------------------------ |
+| Gate | Expected |
+|---|---|
 | **Containers** | Core infrastructure containers running / healthy |
-| **Backend**    | `/api/health` reachable without connection error |
-| **Frontend**   | HTTP response từ port `5173`                     |
-| **MinIO**      | Console accessible at `9001`                     |
-| **Airflow**    | Webserver accessible at `8088`                   |
-| **Redpanda**   | Console accessible at `8081`                     |
-| **Spark**      | Master UI accessible at `8080`                   |
-
-
-
+| **Backend** | `/api/health` reachable without connection error |
+| **Frontend** | HTTP response từ port `5173` |
+| **MinIO** | Console accessible at `9001` |
+| **Airflow** | Webserver accessible at `8088` |
+| **Redpanda** | Console accessible at `8081` |
+| **Spark** | Master UI accessible at `8080` |
 
 ### 9.3 Definition of Ready
 
@@ -749,7 +649,7 @@ Platform có thể xem là **ready for pipeline execution** khi:
 
 ---
 
-
+<a id="10-pipeline-execution"></a>
 
 ## 10. PIPELINE EXECUTION
 
@@ -766,12 +666,8 @@ make pipeline-batch      # Bronze → Silver → Gold
 
 **Flow:**
 
-
-| Mock Retail Data | →   | Bronze | →   | Silver | →   | Gold |
-| ---------------- | --- | ------ | --- | ------ | --- | ---- |
-
-
-
+| Mock Retail Data | → | Bronze | → | Silver | → | Gold |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 
 ### 10.2 Streaming Pipeline — Clickstream
 
@@ -802,16 +698,12 @@ Spark Structured Streaming
 Lakehouse Streaming Layers
 ```
 
-
-
 ### 10.3 Streaming Pipeline — E-commerce + Tiki Crawler
 
 ```bash
 make crawl-tiki            # Crawl dữ liệu thật từ Tiki.vn
 make stream-ecommerce      # Spark streaming job
 ```
-
-
 
 ### 10.4 Pipeline Execution Checklist
 
@@ -825,7 +717,7 @@ make stream-ecommerce      # Spark streaming job
 
 ---
 
-
+<a id="11-test-lint-va-quality-gates"></a>
 
 ## 11. TEST, LINT & QUALITY GATES
 
@@ -841,21 +733,15 @@ make format        # Black + ruff --fix
 make typecheck     # Mypy
 ```
 
-
-
 ### 11.2 Quality Gate Mapping
 
-
-| Command          | Mục tiêu                             |
-| ---------------- | ------------------------------------ |
-| `make test`      | Full test execution + coverage       |
-| `make test-fast` | Fast feedback không chạy coverage    |
-| `make lint`      | Python linting bằng Ruff             |
-| `make format`    | Formatting bằng Black + Ruff autofix |
-| `make typecheck` | Static typing bằng Mypy              |
-
-
-
+| Command | Mục tiêu |
+|---|---|
+| `make test` | Full test execution + coverage |
+| `make test-fast` | Fast feedback không chạy coverage |
+| `make lint` | Python linting bằng Ruff |
+| `make format` | Formatting bằng Black + Ruff autofix |
+| `make typecheck` | Static typing bằng Mypy |
 
 ### 11.3 Recommended Development Order
 
@@ -878,8 +764,6 @@ make test-fast
 make test
 ```
 
-
-
 ### 11.4 Pre-commit Checklist
 
 - [ ] Formatting hoàn tất.
@@ -891,15 +775,11 @@ make test
 
 ---
 
-
+<a id="12-dung-reset-va-cleanup"></a>
 
 ## 12. DỪNG, RESET & CLEANUP
 
-
-
 ### 12.1 Dừng Stack nhưng giữ Data / Volumes
-
-
 
 #### Script
 
@@ -907,23 +787,17 @@ make test
 bash scripts/stop.sh
 ```
 
-
-
 #### Makefile
 
 ```bash
 make down
 ```
 
-
-
 #### Docker Compose
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose-kafka.yml down
 ```
-
-
 
 ### 12.2 Dừng Backend / Frontend riêng
 
@@ -933,11 +807,7 @@ Tại terminal đang chạy dev server:
 Ctrl + C
 ```
 
-
-
 ### 12.3 Full Reset — Xóa Volumes
-
-
 
 #### Script
 
@@ -945,15 +815,11 @@ Ctrl + C
 bash scripts/reset.sh
 ```
 
-
-
 #### Makefile
 
 ```bash
 make clean
 ```
-
-
 
 #### Docker Compose
 
@@ -964,8 +830,6 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml down -v
 > [!CAUTION]
 > `down -v`, `scripts/reset.sh` hoặc `make clean` là **destructive reset** đối với Docker volumes của stack. Chỉ sử dụng khi thực sự muốn reset dữ liệu local.
 
-
-
 ### 12.4 Shutdown Checklist
 
 - [ ] Dừng producer / streaming job đang chạy.
@@ -975,48 +839,42 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml down -v
 
 ---
 
-
+<a id="13-technology-stack"></a>
 
 ## 13. TECHNOLOGY STACK
 
-
-| Layer                        | Technology                             |
-| ---------------------------- | -------------------------------------- |
-| **Storage**                  | MinIO (S3-compatible) + Delta Lake     |
-| **Compute — Batch**          | Apache Spark 3.4 + PySpark             |
-| **Compute — Stream**         | Apache Spark Structured Streaming 3.4  |
-| **Messaging**                | Apache Kafka / Redpanda                |
-| **Orchestration**            | Apache Airflow 2.7                     |
-| **BI**                       | Metabase                               |
-| **Backend — Control Plane**  | Next.js 15 + TypeScript + tRPC         |
-| **Frontend — Control Plane** | React 19 + Vite + Tailwind v3          |
-| **Catalog DB**               | MongoDB 6                              |
-| **Cache / Queue**            | Redis 7                                |
-| **Languages**                | Python 3.10+, TypeScript, SQL          |
-| **Monorepo**                 | Nx + pnpm workspaces                   |
-| **Cloud Infrastructure**     | Terraform — GCP / AWS / Azure oriented |
-
-
-
+| Layer | Technology |
+|---|---|
+| **Storage** | MinIO (S3-compatible) + Delta Lake |
+| **Compute — Batch** | Apache Spark 3.4 + PySpark |
+| **Compute — Stream** | Apache Spark Structured Streaming 3.4 |
+| **Messaging** | Apache Kafka / Redpanda |
+| **Orchestration** | Apache Airflow 2.7 |
+| **BI** | Metabase |
+| **Backend — Control Plane** | Next.js 15 + TypeScript + tRPC |
+| **Frontend — Control Plane** | React 19 + Vite + Tailwind v3 |
+| **Catalog DB** | MongoDB 6 |
+| **Cache / Queue** | Redis 7 |
+| **Languages** | Python 3.10+, TypeScript, SQL |
+| **Monorepo** | Nx + pnpm workspaces |
+| **Cloud Infrastructure** | Terraform — GCP / AWS / Azure oriented |
 
 ### 13.1 Stack by Responsibility
 
-
-| Responsibility           | Primary Components                                                           |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| **Ingestion**            | PySpark batch ingestors, Kafka/Redpanda streaming, crawlers, mock generators |
-| **Transformation**       | Spark / PySpark                                                              |
-| **Storage Format**       | Delta Lake                                                                   |
-| **Object Storage**       | MinIO                                                                        |
-| **Quality**              | Custom rules + profiling                                                     |
-| **Scheduling**           | Airflow                                                                      |
-| **Serving / Operations** | Next.js API + React UI                                                       |
-| **Analytics**            | Metabase                                                                     |
-
+| Responsibility | Primary Components |
+|---|---|
+| **Ingestion** | PySpark batch ingestors, Kafka/Redpanda streaming, crawlers, mock generators |
+| **Transformation** | Spark / PySpark |
+| **Storage Format** | Delta Lake |
+| **Object Storage** | MinIO |
+| **Quality** | Custom rules + profiling |
+| **Scheduling** | Airflow |
+| **Serving / Operations** | Next.js API + React UI |
+| **Analytics** | Metabase |
 
 ---
 
-
+<a id="14-cau-truc-thu-muc-chi-tiet"></a>
 
 ## 14. CẤU TRÚC THƯ MỤC CHI TIẾT (DETAILED REPOSITORY STRUCTURE)
 
@@ -1088,53 +946,43 @@ data-lake-architure-cloude/
 └── terraform/                        # GCP infrastructure
 ```
 
-
-
 ### 14.1 Directory Responsibility Summary
 
-
-| Directory / File      | Vai trò                             |
-| --------------------- | ----------------------------------- |
-| `apps/api/`           | Backend Control Plane               |
-| `apps/web/`           | Frontend Control Plane              |
-| `src/lakehouse/`      | Data pipeline package               |
-| `tests/`              | pytest tests                        |
-| `airflow_dags/`       | Orchestration DAGs                  |
-| `scripts/`            | Developer operations scripts        |
-| `docker-compose*.yml` | Local service topology              |
-| `pyproject.toml`      | Python build/package configuration  |
-| `package.json`        | Monorepo root package configuration |
-| `Makefile`            | CLI shortcuts                       |
-| `data-samples/`       | Mock/sample data                    |
-| `configs/`            | Spark/Hive configuration            |
-| `docs/`               | Technical documentation             |
-| `terraform/`          | Cloud infrastructure                |
-
+| Directory / File | Vai trò |
+|---|---|
+| `apps/api/` | Backend Control Plane |
+| `apps/web/` | Frontend Control Plane |
+| `src/lakehouse/` | Data pipeline package |
+| `tests/` | pytest tests |
+| `airflow_dags/` | Orchestration DAGs |
+| `scripts/` | Developer operations scripts |
+| `docker-compose*.yml` | Local service topology |
+| `pyproject.toml` | Python build/package configuration |
+| `package.json` | Monorepo root package configuration |
+| `Makefile` | CLI shortcuts |
+| `data-samples/` | Mock/sample data |
+| `configs/` | Spark/Hive configuration |
+| `docs/` | Technical documentation |
+| `terraform/` | Cloud infrastructure |
 
 ---
 
-
+<a id="15-tai-lieu-tham-khao-va-license"></a>
 
 ## 15. TÀI LIỆU THAM KHẢO & LICENSE
 
-
-
 ### 15.1 Internal Documentation
 
-
-| Tài liệu                                                                           | Nội dung               |
-| ---------------------------------------------------------------------------------- | ---------------------- |
-| `[docs/01-architecture-overview.md](docs/01-architecture-overview.md)`             | Tổng quan kiến trúc    |
-| `[docs/02-medallion-architecture.md](docs/02-medallion-architecture.md)`           | Bronze / Silver / Gold |
-| `[docs/03-etl-vs-elt.md](docs/03-etl-vs-elt.md)`                                   | ETL vs ELT             |
-| `[docs/04-data-governance.md](docs/04-data-governance.md)`                         | Data Quality, Security |
-| `[docs/05-deployment.md](docs/05-deployment.md)`                                   | Cloud deployment       |
-| `[docs/08-kafka-streaming-integration.md](docs/08-kafka-streaming-integration.md)` | Kafka integration      |
-| `[docs/09-zero-data-pipeline-setup.md](docs/09-zero-data-pipeline-setup.md)`       | Setup với mock data    |
-| `[docs/10-real-crawler-guide.md](docs/10-real-crawler-guide.md)`                   | Real crawler guide     |
-
-
-
+| Tài liệu | Nội dung |
+|---|---|
+| [`docs/01-architecture-overview.md`](docs/01-architecture-overview.md) | Tổng quan kiến trúc |
+| [`docs/02-medallion-architecture.md`](docs/02-medallion-architecture.md) | Bronze / Silver / Gold |
+| [`docs/03-etl-vs-elt.md`](docs/03-etl-vs-elt.md) | ETL vs ELT |
+| [`docs/04-data-governance.md`](docs/04-data-governance.md) | Data Quality, Security |
+| [`docs/05-deployment.md`](docs/05-deployment.md) | Cloud deployment |
+| [`docs/08-kafka-streaming-integration.md`](docs/08-kafka-streaming-integration.md) | Kafka integration |
+| [`docs/09-zero-data-pipeline-setup.md`](docs/09-zero-data-pipeline-setup.md) | Setup với mock data |
+| [`docs/10-real-crawler-guide.md`](docs/10-real-crawler-guide.md) | Real crawler guide |
 
 ### 15.2 License
 
@@ -1142,11 +990,12 @@ data-lake-architure-cloude/
 
 ---
 
-
+<div align="center">
 
 **DATA LAKEHOUSE ARCHITECTURE · LAKEHOUSE V3.0**
 
-MinIO · Delta Lake · Spark · Kafka/Redpanda · Airflow · Next.js · React · Docker · Python
+<sub>MinIO · Delta Lake · Spark · Kafka/Redpanda · Airflow · Next.js · React · Docker · Python</sub>
 
 [⬆ Back to top](#top)
 
+</div>

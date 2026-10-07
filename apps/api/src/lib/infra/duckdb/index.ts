@@ -1,0 +1,1 @@
+export { getDuckDB, closeDuckDB } from './client';

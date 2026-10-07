@@ -1,0 +1,10 @@
+@layer theme {
+  :root {
+    --motion-duration-fast: 150ms;
+    --motion-duration-base: 250ms;
+    --motion-duration-slow: 400ms;
+    --motion-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --motion-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  }
+}

@@ -1,0 +1,1 @@
+export { BronzeJobModel, type BronzeJobDoc } from './bronze-job.model';

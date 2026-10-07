@@ -1,0 +1,1 @@
+export { GoldQueriesService } from './queries.service';

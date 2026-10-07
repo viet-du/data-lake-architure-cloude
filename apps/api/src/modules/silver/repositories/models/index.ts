@@ -1,0 +1,1 @@
+export { SilverJobModel, type SilverJobDoc } from './silver-job.model';

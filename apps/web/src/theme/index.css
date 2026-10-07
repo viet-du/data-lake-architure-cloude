@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: 250 250 250;
+    --color-fg: 23 23 23;
+    --color-border: 229 229 229;
+    --color-muted: 115 115 115;
+  }
+
+  .dark {
+    --color-bg: 10 10 10;
+    --color-fg: 250 250 250;
+    --color-border: 38 38 38;
+    --color-muted: 163 163 163;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-neutral-50 text-neutral-900 antialiased;
+    font-family: theme('fontFamily.sans');
+  }
+
+  .dark body {
+    @apply bg-neutral-950 text-neutral-50;
+  }
+
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out, fill 200ms ease-out, stroke 200ms ease-out;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.400');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .dark :focus-visible {
+    outline-color: theme('colors.primary.300');
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    z-index: 100;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: theme('colors.primary.500');
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    transition: top 150ms ease-out;
+  }
+
+  .skip-link:focus {
+    top: 8px;
+  }
+}
+
+@layer components {
+  .glass-surface {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-glass;
+  }
+
+  .glass-surface-dark {
+    @apply bg-black/20 backdrop-blur-md border border-white/10 shadow-glass;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Aurora / glass-mesh background animation
+ * Used by AnimatedMeshBackground — 3 phases so blobs feel independent.
+ * Each phase uses transform+opacity only (GPU friendly, no reflow).
+ * ------------------------------------------------------------------------- */
+@keyframes aurora-1 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  33% {
+    transform: translate3d(35%, 22%, 0) scale(1.12);
+    opacity: 0.85;
+  }
+  66% {
+    transform: translate3d(-22%, 30%, 0) scale(0.92);
+    opacity: 0.6;
+  }
+}
+
+@keyframes aurora-2 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translate3d(-28%, 30%, 0) scale(0.95);
+    opacity: 0.75;
+  }
+  66% {
+    transform: translate3d(30%, -18%, 0) scale(1.08);
+    opacity: 0.55;
+  }
+}
+
+@keyframes aurora-3 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  33% {
+    transform: translate3d(20%, -25%, 0) scale(1.05);
+    opacity: 0.7;
+  }
+  66% {
+    transform: translate3d(-30%, 22%, 0) scale(0.9);
+    opacity: 0.45;
+  }
+}
+
+/* Shimmer pan — used as an extra sweep across the card on hover. */
+@keyframes shimmer-pan {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@layer utilities {
+  .animate-shimmer-pan {
+    animation: shimmer-pan 8s linear infinite;
+    background-size: 200% 100%;
+  }
+}
+
+/* Respect users who prefer reduced motion: kill all aurora loops. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-aurora-1,
+  .animate-aurora-2,
+  .animate-aurora-3,
+  .animate-shimmer-pan {
+    animation: none !important;
+  }
+}
+
+@keyframes aurora-1-light {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.75;
+  }
+  33% {
+    transform: translate3d(35%, 22%, 0) scale(1.1);
+    opacity: 0.9;
+  }
+  66% {
+    transform: translate3d(-22%, 30%, 0) scale(0.94);
+    opacity: 0.65;
+  }
+}
+
+@keyframes aurora-2-light {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  33% {
+    transform: translate3d(-28%, 30%, 0) scale(0.97);
+    opacity: 0.85;
+  }
+  66% {
+    transform: translate3d(30%, -18%, 0) scale(1.06);
+    opacity: 0.6;
+  }
+}
+
+@keyframes aurora-3-light {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translate3d(20%, -25%, 0) scale(1.04);
+    opacity: 0.75;
+  }
+  66% {
+    transform: translate3d(-30%, 22%, 0) scale(0.92);
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-aurora-1-light,
+  .animate-aurora-2-light,
+  .animate-aurora-3-light {
+    animation: none !important;
+  }
+}
+
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes route-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: route-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: route-fade-in;
+}
+
+::view-transition-old(lakehouse-page),
+::view-transition-new(lakehouse-page) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(lakehouse-page) {
+  animation-name: route-fade-out;
+}
+
+::view-transition-new(lakehouse-page) {
+  animation-name: route-fade-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(lakehouse-page),
+  ::view-transition-new(lakehouse-page) {
+    animation: none !important;
+  }
+}
+
+@property --ambient-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@property --ambient-opacity {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes ambient-rotate {
+  0% {
+    --ambient-angle: 0deg;
+  }
+  100% {
+    --ambient-angle: 360deg;
+  }
+}
+
+@keyframes ambient-pulse {
+  0%,
+  100% {
+    --ambient-opacity: 0.55;
+  }
+  50% {
+    --ambient-opacity: 0.75;
+  }
+}
+
+.ambient-conic {
+  background: conic-gradient(
+    from var(--ambient-angle) at 50% 50%,
+    var(--ambient-c1, #38bdf8) 0deg,
+    var(--ambient-c2, #a855f7) 90deg,
+    var(--ambient-c3, #ec4899) 180deg,
+    var(--ambient-c4, #38bdf8) 270deg,
+    var(--ambient-c1, #38bdf8) 360deg
+  );
+  animation: ambient-rotate 30s linear infinite,
+    ambient-pulse 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.ambient-noise {
+  background-image: var(--ambient-noise-url);
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+:root {
+  --ambient-c1: rgba(56, 189, 248, 0.35);
+  --ambient-c2: rgba(168, 85, 247, 0.3);
+  --ambient-c3: rgba(236, 72, 153, 0.25);
+  --ambient-c4: rgba(56, 189, 248, 0.3);
+}
+
+.dark {
+  --ambient-c1: rgba(56, 189, 248, 0.18);
+  --ambient-c2: rgba(168, 85, 247, 0.16);
+  --ambient-c3: rgba(236, 72, 153, 0.12);
+  --ambient-c4: rgba(56, 189, 248, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-conic {
+    animation: none !important;
+    --ambient-angle: 0deg;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ambient-conic,
+  .ambient-noise {
+    display: none !important;
+  }
+}

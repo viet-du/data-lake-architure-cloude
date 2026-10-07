@@ -1,0 +1,1 @@
+export { default as SwaggerUiClient } from './swagger-ui-client';

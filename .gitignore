@@ -1,46 +1,183 @@
-# Environment
-.env
-.env.local
-.venv/
-venv/
-env/
+# ═══════════════════════════════════════════════════════
+# CACHE & TEMP
+# ═══════════════════════════════════════════════════════
+*.log
+logs/
+.airflow_logs/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
 
-# Python
+.tmp/
+tmp/
+temp/
+.cache/
+
+
+# ═══════════════════════════════════════════════════════
+# NODE.JS / PNPM / NPM / YARN
+# ═══════════════════════════════════════════════════════
+**/node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.pnp
+.pnp.js
+
+# lockfiles — giữ lại pnpm-lock.yaml (commit), bỏ yarn.lock / package-lock.json nếu dùng pnpm
+# yarn.lock
+# package-lock.json
+
+
+# ═══════════════════════════════════════════════════════
+# BUILD OUTPUTS
+# ═══════════════════════════════════════════════════════
+dist/
+dist-serve/
+build/
+out/
+
+# apps
+apps/*/dist/
+apps/*/build/
+apps/*/out/
+apps/*/.next/
+apps/*/.vite/
+apps/*/.nuxt/
+apps/*/.tmp/
+
+# packages
+packages/*/dist/
+packages/*/build/
+packages/*/.next/
+packages/*/.vite/
+
+
+# ═══════════════════════════════════════════════════════
+# MONOREPO (Nx / Turborepo / Lerna)
+# ═══════════════════════════════════════════════════════
+.nx/
+.turbo/
+apps/*/.nx/
+packages/*/.nx/
+
+
+# ═══════════════════════════════════════════════════════
+# TYPESCRIPT & JS
+# ═══════════════════════════════════════════════════════
+*.tsbuildinfo
+*.tsbuildinfo/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+
+
+# ═══════════════════════════════════════════════════════
+# PYTHON
+# ═══════════════════════════════════════════════════════
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.pytest_cache/
+*.egg
 *.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+*.whl
 
-# Logs
-logs/
-*.log
-airflow_logs/
 
-# Data (không push data lên GitHub)
-data-samples/raw/
+# ═══════════════════════════════════════════════════════
+# TESTING & COVERAGE
+# ═══════════════════════════════════════════════════════
+coverage/
+.nyc_output/
+.playwright-report/
+playwright-report/
+test-results/
+apps/*/coverage/
+packages/*/coverage/
+
+
+# ═══════════════════════════════════════════════════════
+# ENV FILES — KHÔNG BAO GIỜ COMMIT
+# ═══════════════════════════════════════════════════════
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+.env.example
+
+
+# ═══════════════════════════════════════════════════════
+# DATA FILES (samples, uploads, lake data)
+# ═══════════════════════════════════════════════════════
+data-samples/
+data/
+data-lake/
+uploads/
 *.csv
+*.json
+*.avro
 *.parquet
-*.delta
+*.parquet.metadata/
+*.delta/
+_delta_log/
+.delta/
+.dlt/
+.bundle/
+.databricks/
 
-# Docker
-docker-compose.override.yml
 
-# IDE
-.vscode/
+# ═══════════════════════════════════════════════════════
+# IDE / EDITOR
+# ═══════════════════════════════════════════════════════
 .idea/
+.vscode/
+*.code-workspace
+.vs/
 *.swp
 *.swo
-.DS_Store
+*.sublime-workspace
+*.sublime-project
 
-# Spark
-spark-warehouse/
-metastore_db/
-derby.log
 
-# Backup files
-*.bak
-*.backup
-*~
+# ═══════════════════════════════════════════════════════
+# DOCKER
+# ═══════════════════════════════════════════════════════
+.docker/
+docker-compose.override.yml
+
+
+# ═══════════════════════════════════════════════════════
+# JUPYTER NOTEBOOKS
+# ═══════════════════════════════════════════════════════
+notebooks/.ipynb_checkpoints/
+*.ipynb
+
+
+# ═══════════════════════════════════════════════════════
+# MISC
+# ═══════════════════════════════════════════════════════
+*.local
+.vercel/
+.netlify/
+.stripe/
+.sst/

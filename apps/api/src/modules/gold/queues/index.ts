@@ -1,0 +1,1 @@
+export { GoldQueue, GOLD_QUEUE_NAME, type GoldJobPayload } from './gold.queue';

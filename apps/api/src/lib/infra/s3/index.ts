@@ -1,0 +1,1 @@
+export { getS3, closeS3 } from './client';

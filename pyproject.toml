@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lakehouse"
+description = "End-to-end Data Lake (Batch + Streaming) with Spark, Kafka, Delta Lake, MinIO"
+version = "2.0.0"
+requires-python = ">=3.10"
+authors = [{ name = "Data Engineering Team" }]
+license = { text = "MIT" }
+readme = "README.md"
+
+dependencies = [
+    "pyspark>=3.4,<3.6",
+    "delta-spark>=3.0.0",
+    "boto3>=1.34",
+    "minio>=7.2",
+    "kafka-python>=2.0",
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "python-dotenv>=1.0",
+    "pydantic>=2.5",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "fake-useragent>=1.4",
+    "great-expectations>=0.18",
+    "tenacity>=8.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.11",
+    "responses>=0.24",
+    "ruff>=0.1",
+    "black>=23.10",
+    "mypy>=1.7",
+    "ipython>=8.15",
+]
+
+[project.scripts]
+lakehouse-spark-shell = "lakehouse.core.spark:shell"
+lakehouse-pipeline-batch = "lakehouse.pipelines.batch_retail:main"
+lakehouse-pipeline-clickstream = "lakehouse.pipelines.stream_clickstream:main"
+lakehouse-pipeline-ecommerce = "lakehouse.pipelines.stream_ecommerce:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lakehouse = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --strict-markers --cov=lakehouse --cov-report=term-missing"
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+strict = false
+ignore_missing_imports = true

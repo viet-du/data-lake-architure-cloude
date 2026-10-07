@@ -1,13 +1,7 @@
 version: "3.8"
 
-# =============================================================
-# Data Lake Architecture - Core Stack
-# MinIO + Spark + Hive Metastore + Airflow + Metabase
-# Redpanda (Kafka-compatible) + Redpanda Console (UI)
-# =============================================================
 
 services:
-  # ===== MinIO - S3-compatible storage =====
   minio:
     image: minio/minio:latest
     container_name: lake-minio
@@ -26,7 +20,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # ===== MinIO Init - tạo buckets tự động =====
   minio-init:
     image: minio/mc:latest
     container_name: lake-minio-init
@@ -49,11 +42,10 @@ services:
       mc anonymous set none local/bronze;
       mc anonymous set none local/silver;
       mc anonymous set none local/gold;
-      echo '✅ MinIO buckets created: bronze, silver, gold';
+      echo ' MinIO buckets created: bronze, silver, gold';
       mc ls local/;
       "
 
-  # ===== Hive Metastore (cho Spark SQL) =====
   postgres:
     image: postgres:13
     container_name: lake-postgres
@@ -85,7 +77,6 @@ services:
       - ./configs/hive-site.xml:/opt/hive/conf/hive-site.xml:ro
     command: /opt/hive/bin/hive --service metastore
 
-  # ===== Spark Master =====
   spark-master:
     image: bitnami/spark:3.4
     container_name: lake-spark-master
@@ -100,11 +91,12 @@ services:
       - "7077:7077"   # Spark master
       - "4040:4040"   # Spark app UI
     volumes:
-      - ./scripts:/scripts:ro
+      - ./src:/app-src/src:ro
       - ./data-samples:/data-samples:ro
       - ./configs/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+    environment:
+      PYTHONPATH: /app-src/src
 
-  # ===== Spark Worker =====
   spark-worker:
     image: bitnami/spark:3.4
     container_name: lake-spark-worker
@@ -116,10 +108,11 @@ services:
     depends_on:
       - spark-master
     volumes:
-      - ./scripts:/scripts:ro
+      - ./src:/app-src/src:ro
       - ./data-samples:/data-samples:ro
+    environment:
+      PYTHONPATH: /app-src/src
 
-  # ===== Airflow Postgres =====
   airflow-db:
     image: postgres:13
     container_name: lake-airflow-db
@@ -135,7 +128,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ===== Airflow Webserver =====
   airflow-webserver:
     image: apache/airflow:2.7.0-python3.11
     container_name: lake-airflow-webserver
@@ -152,6 +144,7 @@ services:
       - "8088:8080"
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
+      - ./src:/opt/airflow/app/src:ro
       - ./airflow_logs:/opt/airflow/logs
     command: >
       bash -c "
@@ -160,7 +153,6 @@ services:
       airflow webserver
       "
 
-  # ===== Airflow Scheduler =====
   airflow-scheduler:
     image: apache/airflow:2.7.0-python3.11
     container_name: lake-airflow-scheduler
@@ -173,10 +165,10 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
+      - ./src:/opt/airflow/app/src:ro
       - ./airflow_logs:/opt/airflow/logs
     command: airflow scheduler
 
-  # ===== Metabase - BI tool =====
   metabase:
     image: metabase/metabase:latest
     container_name: lake-metabase
@@ -188,7 +180,6 @@ services:
     volumes:
       - metabase_data:/metabase-data
 
-  # ===== Redpanda - Kafka-compatible streaming (Nhanh hơn Kafka 10x, không cần Zookeeper) =====
   redpanda:
     image: redpandadata/redpanda:v24.1.7
     container_name: lake-redpanda
@@ -220,7 +211,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ===== Redpanda Console - Web UI quản lý topics, messages, schemas =====
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:latest
     container_name: lake-redpanda-console
@@ -235,7 +225,6 @@ services:
     volumes:
       - ./configs/redpanda-console.yaml:/etc/console/configs/console.yaml:ro
 
-  # ===== Kafka UI (optional, alternative to Redpanda Console) =====
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: lake-kafka-ui
@@ -248,9 +237,85 @@ services:
     ports:
       - "8089:8080"   # Web UI
 
+  mongo:
+    image: mongo:7
+    container_name: lake-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: mongoadmin
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: lake-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: lake-api
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      ENV: local
+      LOG_LEVEL: info
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECURE: "false"
+      KAFKA_BOOTSTRAP: redpanda:9092
+      KAFKA_SECURITY_PROTOCOL: PLAINTEXT
+      MONGO_URI: mongodb://mongoadmin:mongoadmin@mongo:27017
+      MONGO_DB: lakehouse_catalog
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      AIRFLOW_BASE_URL: http://airflow-webserver:8080/api/v1
+      AIRFLOW_USERNAME: admin
+      AIRFLOW_PASSWORD: admin
+      DUCKDB_MEMORY_LIMIT: 4GB
+      DUCKDB_THREADS: "4"
+      API_PORT: "3001"
+      API_RATE_LIMIT_PER_MIN: "600"
+      API_CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
+      API_SWAGGER_ENABLED: "true"
+    ports:
+      - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   minio_data:
   postgres_data:
   airflow_db_data:
   metabase_data:
   redpanda_data:
+  mongo_data:
+  redis_data:

@@ -1,0 +1,1 @@
+export { GoldJobModel, type GoldJobDoc } from './gold-job.model';

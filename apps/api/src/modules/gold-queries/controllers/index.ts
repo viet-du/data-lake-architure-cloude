@@ -1,0 +1,1 @@
+export { GoldQueriesController } from './queries.controller';

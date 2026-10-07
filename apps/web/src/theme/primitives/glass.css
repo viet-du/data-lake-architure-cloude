@@ -1,0 +1,9 @@
+@layer theme {
+  :root {
+    --glass-blur: 12px;
+    --glass-bg-light: rgba(255, 255, 255, 0.1);
+    --glass-bg-dark: rgba(0, 0, 0, 0.2);
+    --glass-border-light: rgba(255, 255, 255, 0.2);
+    --glass-border-dark: rgba(255, 255, 255, 0.1);
+  }
+}

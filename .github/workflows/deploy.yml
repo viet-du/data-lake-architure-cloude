@@ -32,7 +32,13 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build web app
-        run: cd apps/web && pnpm install --no-frozen-lockfile && pnpm build && ls -la dist/
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile
+          ./node_modules/.bin/vite build
+        working-directory: apps/web
+      - name: Check build output
+        run: ls -la apps/web/dist/
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=false

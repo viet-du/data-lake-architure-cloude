@@ -29,14 +29,15 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: |
+          rm -f pnpm-lock.yaml
+          pnpm install
 
       - name: Build web app
         run: |
-          pnpm install --no-frozen-lockfile
-          pnpm install --no-frozen-lockfile
-          npx vite build
-        working-directory: apps/web
+          ./node_modules/.bin/vite build --config apps/web/vite.config.ts
+        working-directory: .
+
       - name: Check build output
         run: ls -la apps/web/dist/
 

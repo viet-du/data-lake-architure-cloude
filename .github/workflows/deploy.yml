@@ -35,6 +35,6 @@ jobs:
         run: pnpm --filter web build
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --yes --commit-dirty=true
+        run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

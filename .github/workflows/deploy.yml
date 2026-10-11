@@ -35,7 +35,7 @@ jobs:
         run: |
           pnpm install --no-frozen-lockfile
           pnpm install --no-frozen-lockfile
-          ./node_modules/.bin/vite build
+          npx vite build
         working-directory: apps/web
       - name: Check build output
         run: ls -la apps/web/dist/

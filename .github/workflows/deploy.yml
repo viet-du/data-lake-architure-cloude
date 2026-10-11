@@ -33,12 +33,8 @@ jobs:
 
       - name: Build web app
         run: |
-          echo "=== Installing web app dependencies ==="
-          cd apps/web && pnpm install --no-frozen-lockfile
-          echo "=== Building web app ==="
-          cd apps/web && pnpm build
-          echo "=== Build output ==="
-          ls -la apps/web/dist/
+          cd apps/web && pnpm install --no-frozen-lockfile && pnpm build
+          ls -la dist/
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=false

@@ -38,4 +38,5 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: pages deploy apps/web/dist --project-name=data-lake-architecture-cloude
+          # Create project if it doesn't exist, pass --commit-dirty to suppress uncommitted changes warning
+          command: pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --yes --commit-dirty=true

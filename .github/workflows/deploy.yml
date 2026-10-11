@@ -34,9 +34,8 @@ jobs:
           pnpm install
 
       - name: Build web app
-        run: |
-          ./node_modules/.bin/vite build --config apps/web/vite.config.ts
-        working-directory: .
+        run: ./node_modules/.bin/vite build
+        working-directory: apps/web
 
       - name: Check build output
         run: ls -la apps/web/dist/

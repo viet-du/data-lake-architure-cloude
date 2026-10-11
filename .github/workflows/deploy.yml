@@ -36,15 +36,12 @@ jobs:
           echo "=== Building web app ==="
           ls -la apps/
           ls -la apps/web/
-          pnpm --filter web build
+          cd apps/web && pnpm build
           echo "=== Build output ==="
-          ls -la apps/web/dist/
+          ls -la dist/
 
       - name: Deploy to Cloudflare Pages
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-          npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=false
+        run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=false
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

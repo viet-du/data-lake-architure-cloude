@@ -34,9 +34,8 @@ jobs:
       - name: Build web app
         run: |
           echo "=== Building web app ==="
-          ls -la apps/
           ls -la apps/web/
-          cd apps/web && pnpm build
+          cd apps/web && npx vite build
           echo "=== Build output ==="
           ls -la dist/
 

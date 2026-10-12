@@ -19,7 +19,8 @@ export interface UseViewTransitionResult {
   start: StartViewTransitionFn;
 }
 
-interface DocumentWithViewTransition extends Document {
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface DocumentWithViewTransition {
   startViewTransition?: (
     cb: () => void | Promise<void>,
   ) => { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> };

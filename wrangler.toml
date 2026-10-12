@@ -1,0 +1,4 @@
+name = "data-lake-architure-cloude"
+compatibility_date = "2024-12-01"
+
+assets = { directory = "./apps/web/dist" }

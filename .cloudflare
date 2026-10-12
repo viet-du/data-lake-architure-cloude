@@ -1,0 +1,5 @@
+{
+  "build_command": "pnpm --filter web build",
+  "build_output_dir": "apps/web/dist",
+  "directory_format": "static"
+}

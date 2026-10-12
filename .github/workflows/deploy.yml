@@ -24,17 +24,13 @@ jobs:
 
       - name: Install web dependencies
         run: |
-          # Force remove any leftover node_modules from previous runs
-          rm -rf /home/runner/work/data-lake-architure-cloude/data-lake-architure-cloude/node_modules
-          rm -rf /home/runner/work/data-lake-architure-cloude/data-lake-architure-cloude/apps/web/node_modules
-          rm -rf /home/runner/work/data-lake-architure-cloude/data-lake-architure-cloude/apps/web/package-lock.json
-          # Verify the postcss config in apps/web is using local node_modules
           cd apps/web
+          rm -rf node_modules package-lock.json
           npm install --no-audit --no-fund --legacy-peer-deps
           echo "=== Verifying install ==="
-          ls node_modules/tailwindcss/package.json && echo "tailwindcss OK"
-          ls node_modules/vite/package.json && echo "vite OK"
-          ls node_modules/.bin/vite && echo "vite bin OK"
+          test -f node_modules/tailwindcss/package.json && echo "tailwindcss OK" || echo "FAIL: tailwindcss missing"
+          test -f node_modules/vite/package.json && echo "vite OK" || echo "FAIL: vite missing"
+          test -f node_modules/.bin/vite && echo "vite bin OK" || echo "FAIL: vite bin missing"
 
       - name: Build web app
         run: |

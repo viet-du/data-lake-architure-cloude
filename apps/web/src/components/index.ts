@@ -4,7 +4,6 @@ export * from './chat';
 export * from './eda';
 export * from './glass';
 export * from './home';
-export * from './logs';
 export * from './navigation';
 export * from './paper';
 export * from './pillars';

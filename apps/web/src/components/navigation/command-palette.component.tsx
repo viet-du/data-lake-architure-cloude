@@ -122,7 +122,7 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ open, onClose }) => {
                       }`}
                     >
                       <span className="truncate">{item.title}</span>
-                      <Tag variant="default" size="sm">
+                      <Tag variant="neutral" size="sm">
                         {item.hint === ROUTES.HOME ? '/' : item.hint}
                       </Tag>
                     </button>

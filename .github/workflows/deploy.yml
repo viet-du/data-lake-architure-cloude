@@ -17,33 +17,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install web dependencies
         run: |
-          rm -f pnpm-lock.yaml
-          pnpm install --config.node-linker=hoisted
-          echo "=== apps/web/node_modules ==="
-          ls apps/web/node_modules/ 2>&1 | head -10 || echo "NO node_modules in apps/web"
-          echo "=== root node_modules/.pnpm ==="
-          ls node_modules/.pnpm/ 2>&1 | head -5 || echo "NO .pnpm"
-          echo "=== check vite ==="
-          find . -name "vite.js" -path "*/bin/*" 2>/dev/null | head -5 || echo "NO vite found"
+          cd apps/web
+          npm install --no-audit --no-fund --legacy-peer-deps
+          echo "=== Checking vite ==="
+          ls node_modules/.bin/ | grep -i vite || echo "NO vite in .bin"
+          ls node_modules/vite/bin/ 2>&1 || echo "NO vite module"
 
       - name: Build web app
-        run: node node_modules/vite/bin/vite.js build
-        working-directory: apps/web
-
-      - name: Check build output
-        run: ls -la apps/web/dist/
+        run: |
+          cd apps/web
+          npx vite build
+          ls -la dist/
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy apps/web/dist --project-name=data-lake-architecture-cloude --commit-dirty=false

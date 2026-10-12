@@ -1,0 +1,257 @@
+{
+  "palette": {
+    "placeholder": "Nhập tuyến đường hoặc trang…",
+    "empty": "Không có kết quả"
+  },
+  "common": {
+    "error": "Lỗi",
+    "loading": "Đang tải…",
+    "retry": "Thử lại",
+    "cancel": "Hủy",
+    "refresh": "Làm mới",
+    "delete": "Xóa",
+    "close": "Đóng",
+    "latency": "Độ trễ"
+  },
+  "app": {
+    "name": "Data Lake",
+    "tagline": "Nền tảng Dữ liệu Hiện đại"
+  },
+  "a11y": {
+    "skipToContent": "Chuyển đến nội dung"
+  },
+  "home": {
+    "greeting": "Chào mừng trở lại",
+    "system_status": "Trạng thái Hệ thống",
+    "uptime": "Thời gian hoạt động",
+    "quick_stats": "Thống kê Nhanh",
+    "activity": "Hoạt động",
+    "no_activity": "Không có hoạt động gần đây",
+    "modules_section_title": "Mô-đun",
+    "modules_section_subtitle": "Điều hướng qua nền tảng dữ liệu của bạn",
+    "open_module": "Mở"
+  },
+  "health": {
+    "healthy": "Khỏe mạnh",
+    "degraded": "Suy giảm",
+    "unhealthy": "Không khỏe",
+    "status": "Trạng thái Sức khỏe",
+    "services": "dịch vụ",
+    "deep": "Sức khỏe Chi tiết",
+    "refresh": "Làm mới"
+  },
+  "bronze": {
+    "trigger_ingest": "Kích hoạt Nhập",
+    "search": "Tìm bảng bronze…",
+    "tables": "Bảng Bronze",
+    "jobs": "Công việc Nhập"
+  },
+  "silver": {
+    "transform": "Chuyển đổi",
+    "search": "Tìm bảng silver…",
+    "tables": "Bảng Silver",
+    "jobs": "Công việc Chuyển đổi",
+    "refresh": "Làm mới"
+  },
+  "gold": {
+    "runQuery": "Chạy Truy vấn",
+    "aggregate": "Tổng hợp",
+    "search": "Tìm bảng gold…",
+    "tables": "Bảng Gold",
+    "jobs": "Công việc",
+    "refresh": "Làm mới",
+    "queries": {
+      "categoryRevenue": "Doanh thu theo Danh mục",
+      "businessMetrics": "Chỉ số Kinh doanh",
+      "customerAnalytics": "Phân tích Khách hàng",
+      "productPerformance": "Hiệu suất Sản phẩm"
+    }
+  },
+  "kafka": {
+    "produce": "Gửi",
+    "produceTitle": "Gửi Message",
+    "produceDescription": "Gửi message đến topic {{topic}}",
+    "search": "Tìm topics…",
+    "topics": "Topics",
+    "groups": "Nhóm Consumer",
+    "delete": "Xóa",
+    "confirmDelete": "Xóa topic {{name}}?",
+    "deleted": "Topic đã xóa",
+    "produced": "Message đã gửi đến partition {{partition}} ở offset {{offset}}",
+    "noConfig": "Không có cấu hình Kafka",
+    "noLag": "Không có dữ liệu lag",
+    "noMessages": "Không có messages",
+    "noGroups": "Không có nhóm consumer",
+    "hint": {
+      "key": "Khóa message tùy chọn",
+      "value": "Nội dung message (JSON hoặc text thuần)",
+      "partition": "Partition đích (tự động nếu rỗng)",
+      "headers": "Headers tùy chọn (JSON)"
+    },
+    "producing": "Đang gửi…",
+    "error": {
+      "produce": "Gửi thất bại: {{message}}",
+      "delete": "Xóa thất bại: {{message}}"
+    }
+  },
+  "airflow": {
+    "trigger": "Kích hoạt",
+    "triggering": "Đang kích hoạt…",
+    "triggered": "DAG đã kích hoạt (run: {{runId}}…)",
+    "pause": "Tạm dừng",
+    "unpause": "Tiếp tục",
+    "paused": "DAG đã tạm dừng",
+    "unpaused": "DAG đã tiếp tục",
+    "search": "Tìm DAGs…",
+    "dags": "DAGs",
+    "error": {
+      "trigger": "Kích hoạt thất bại: {{message}}",
+      "toggle": "Chuyển đổi thất bại: {{message}}"
+    }
+  },
+  "crawler": {
+    "trigger": "Kích hoạt Crawl",
+    "triggerTitle": "Kích hoạt Crawler",
+    "triggerDescription": "Bắt đầu crawl mới cho {{name}}",
+    "running": "Đang chạy…",
+    "run": "Chạy",
+    "search": "Tìm crawlers…",
+    "jobs": "Công việc Crawler",
+    "overview": "Tổng quan",
+    "runStarted": "Crawler đã bắt đầu (run: {{runId}}…)",
+    "stop": "Dừng",
+    "noRuns": "Chưa có lần chạy nào",
+    "noPreview": "Không có preview",
+    "selectRun": "Chọn một lần chạy để preview",
+    "asyncRun": "Chạy không đồng bộ",
+    "hint": {
+      "pages": "Các URL trang (phân cách bằng dấu phẩy)",
+      "categories": "Các đường dẫn danh mục (phân cách bằng dấu phẩy)",
+      "async": "Chạy crawl ở chế độ nền"
+    },
+    "error": {
+      "run": "Chạy thất bại: {{message}}"
+    }
+  },
+  "dq": {
+    "runSuite": "Chạy Suite",
+    "running": "Đang chạy…",
+    "search": "Tìm quy tắc DQ…",
+    "rules": "Quy tắc DQ",
+    "runs": "Lần chạy DQ",
+    "runStarted": "DQ run đã bắt đầu (run: {{runId}}…)",
+    "suiteStarted": "DQ suite đã bắt đầu (run: {{runId}}…)",
+    "noRuns": "Chưa có lần chạy nào",
+    "disable": "Tắt",
+    "enable": "Bật",
+    "updated": "Quy tắc đã cập nhật",
+    "suiteTitle": "Chạy DQ Suite",
+    "suiteDescription": "Thực hiện kiểm tra chất lượng dữ liệu trên các bảng đã chọn",
+    "hint": {
+      "ruleIds": "Các ID quy tắc (phân cách bằng dấu phẩy)",
+      "tables": "Tên bảng (phân cách bằng dấu phẩy)",
+      "parallel": "Chạy kiểm tra song song"
+    },
+    "error": {
+      "run": "Run thất bại: {{message}}",
+      "suite": "Suite thất bại: {{message}}",
+      "update": "Cập nhật thất bại: {{message}}"
+    }
+  },
+  "catalog": {
+    "databases": "Databases",
+    "tables": "bảng",
+    "tables_in": "Bảng trong {{name}}",
+    "table_name": "Tên Bảng",
+    "format": "Định dạng",
+    "size": "Kích thước",
+    "rows": "Dòng",
+    "updated": "Cập nhật"
+  },
+  "schematic": {
+    "hint": "Sơ đồ pipeline dữ liệu của bạn",
+    "legend": {
+      "nodes": "Nodes",
+      "flows": "Luồng Dữ liệu"
+    }
+  },
+  "sample": {
+    "empty": "Không có dữ liệu mẫu",
+    "moreRows": "+{{count}} dòng nữa"
+  },
+  "lineage": {
+    "empty": "Không có dữ liệu lineage",
+    "upstream": "Nguồn vào",
+    "current": "Hiện tại",
+    "downstream": "Đích ra",
+    "noUpstream": "Không có bảng nguồn",
+    "noDownstream": "Không có bảng đích"
+  },
+  "ingest": {
+    "success": {
+      "json": "JSON đã nhập thành công",
+      "csv": "CSV đã nhập thành công"
+    },
+    "errors": {
+      "invalidJson": "Định dạng JSON không hợp lệ"
+    },
+    "error": {
+      "submit": "Gửi thất bại: {{message}}"
+    }
+  },
+  "transform": {
+    "success": "Transform đã gửi",
+    "title": "Chuyển đổi Bảng",
+    "description": "Áp dụng chuyển đổi lên {{table}}",
+    "submit": "Gửi",
+    "submitting": "Đang gửi…",
+    "hint": "Định nghĩa logic chuyển đổi",
+    "error": {
+      "submit": "Gửi thất bại: {{message}}"
+    }
+  },
+  "aggregate": {
+    "success": "Query tổng hợp đã gửi",
+    "title": "Tạo Tổng hợp",
+    "description": "Tổng hợp chỉ số từ {{table}}",
+    "submit": "Gửi",
+    "submitting": "Đang gửi…",
+    "hint": {
+      "groupBy": "Cột để nhóm theo",
+      "metrics": "Hàm tổng hợp"
+    },
+    "errors": {
+      "groupByRequired": "Cần ít nhất một cột nhóm",
+      "metricNameRequired": "Cần tên metric",
+      "metricRequired": "Cần ít nhất một metric",
+      "invalidOp": "Phép tính không hợp lệ: {{op}}"
+    }
+  },
+  "adhoc": {
+    "title": "Truy vấn Ad-hoc",
+    "description": "Chạy SQL query tùy chỉnh",
+    "run": "Chạy Query",
+    "running": "Đang chạy…",
+    "hint": "Nhập SQL query",
+    "result": "Kết quả",
+    "errors": {
+      "sqlRequired": "Cần SQL query"
+    }
+  },
+  "header": {
+    "search_placeholder": "Tìm bảng, topics, DAGs…"
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "catalog": "Danh mục",
+    "bronze": "Bronze",
+    "silver": "Silver",
+    "gold": "Gold",
+    "kafka": "Kafka",
+    "airflow": "Airflow",
+    "crawler": "Crawler",
+    "dq": "Chất lượng Dữ liệu",
+    "health": "Sức khỏe",
+    "schematic": "Sơ đồ"
+  }
+}

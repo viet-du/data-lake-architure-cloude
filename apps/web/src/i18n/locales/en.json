@@ -1,0 +1,257 @@
+{
+  "palette": {
+    "placeholder": "Type a route or page…",
+    "empty": "No matches"
+  },
+  "common": {
+    "error": "Error",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "refresh": "Refresh",
+    "delete": "Delete",
+    "close": "Close",
+    "latency": "Latency"
+  },
+  "app": {
+    "name": "Data Lake",
+    "tagline": "Modern Data Platform"
+  },
+  "a11y": {
+    "skipToContent": "Skip to content"
+  },
+  "home": {
+    "greeting": "Welcome back",
+    "system_status": "System Status",
+    "uptime": "Uptime",
+    "quick_stats": "Quick Stats",
+    "activity": "Activity",
+    "no_activity": "No recent activity",
+    "modules_section_title": "Modules",
+    "modules_section_subtitle": "Navigate through your data platform",
+    "open_module": "Open"
+  },
+  "health": {
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unhealthy": "Unhealthy",
+    "status": "Health Status",
+    "services": "services",
+    "deep": "Deep Health",
+    "refresh": "Refresh"
+  },
+  "bronze": {
+    "trigger_ingest": "Trigger Ingest",
+    "search": "Search bronze tables…",
+    "tables": "Bronze Tables",
+    "jobs": "Ingest Jobs"
+  },
+  "silver": {
+    "transform": "Transform",
+    "search": "Search silver tables…",
+    "tables": "Silver Tables",
+    "jobs": "Transform Jobs",
+    "refresh": "Refresh"
+  },
+  "gold": {
+    "runQuery": "Run Query",
+    "aggregate": "Aggregate",
+    "search": "Search gold tables…",
+    "tables": "Gold Tables",
+    "jobs": "Jobs",
+    "refresh": "Refresh",
+    "queries": {
+      "categoryRevenue": "Category Revenue",
+      "businessMetrics": "Business Metrics",
+      "customerAnalytics": "Customer Analytics",
+      "productPerformance": "Product Performance"
+    }
+  },
+  "kafka": {
+    "produce": "Produce",
+    "produceTitle": "Produce Message",
+    "produceDescription": "Send a message to topic {{topic}}",
+    "search": "Search topics…",
+    "topics": "Topics",
+    "groups": "Consumer Groups",
+    "delete": "Delete",
+    "confirmDelete": "Delete topic {{name}}?",
+    "deleted": "Topic deleted",
+    "produced": "Message produced to partition {{partition}} at offset {{offset}}",
+    "noConfig": "No Kafka config",
+    "noLag": "No lag data",
+    "noMessages": "No messages",
+    "noGroups": "No consumer groups",
+    "hint": {
+      "key": "Optional message key",
+      "value": "Message payload (JSON or plain text)",
+      "partition": "Target partition (auto-assign if empty)",
+      "headers": "Optional headers (JSON)"
+    },
+    "producing": "Producing…",
+    "error": {
+      "produce": "Failed to produce: {{message}}",
+      "delete": "Failed to delete: {{message}}"
+    }
+  },
+  "airflow": {
+    "trigger": "Trigger",
+    "triggering": "Triggering…",
+    "triggered": "DAG triggered (run: {{runId}}…)",
+    "pause": "Pause",
+    "unpause": "Unpause",
+    "paused": "DAG paused",
+    "unpaused": "DAG unpaused",
+    "search": "Search DAGs…",
+    "dags": "DAGs",
+    "error": {
+      "trigger": "Failed to trigger: {{message}}",
+      "toggle": "Failed to toggle: {{message}}"
+    }
+  },
+  "crawler": {
+    "trigger": "Trigger Crawl",
+    "triggerTitle": "Trigger Crawler",
+    "triggerDescription": "Start a new crawl for {{name}}",
+    "running": "Running…",
+    "run": "Run",
+    "search": "Search crawlers…",
+    "jobs": "Crawler Jobs",
+    "overview": "Overview",
+    "runStarted": "Crawler started (run: {{runId}}…)",
+    "stop": "Stop",
+    "noRuns": "No runs yet",
+    "noPreview": "No preview available",
+    "selectRun": "Select a run to preview",
+    "asyncRun": "Run asynchronously",
+    "hint": {
+      "pages": "Comma-separated page URLs",
+      "categories": "Comma-separated category paths",
+      "async": "Run crawl in background"
+    },
+    "error": {
+      "run": "Failed to run: {{message}}"
+    }
+  },
+  "dq": {
+    "runSuite": "Run Suite",
+    "running": "Running…",
+    "search": "Search DQ rules…",
+    "rules": "DQ Rules",
+    "runs": "DQ Runs",
+    "runStarted": "DQ run started (run: {{runId}}…)",
+    "suiteStarted": "DQ suite started (run: {{runId}}…)",
+    "noRuns": "No runs yet",
+    "disable": "Disable",
+    "enable": "Enable",
+    "updated": "Rule updated",
+    "suiteTitle": "Run DQ Suite",
+    "suiteDescription": "Execute data quality checks on selected tables",
+    "hint": {
+      "ruleIds": "Comma-separated rule IDs",
+      "tables": "Comma-separated table names",
+      "parallel": "Run checks in parallel"
+    },
+    "error": {
+      "run": "Run failed: {{message}}",
+      "suite": "Suite failed: {{message}}",
+      "update": "Update failed: {{message}}"
+    }
+  },
+  "catalog": {
+    "databases": "Databases",
+    "tables": "tables",
+    "tables_in": "Tables in {{name}}",
+    "table_name": "Table Name",
+    "format": "Format",
+    "size": "Size",
+    "rows": "Rows",
+    "updated": "Updated"
+  },
+  "schematic": {
+    "hint": "Schematic view of your data pipeline",
+    "legend": {
+      "nodes": "Nodes",
+      "flows": "Data Flows"
+    }
+  },
+  "sample": {
+    "empty": "No sample data",
+    "moreRows": "+{{count}} more rows"
+  },
+  "lineage": {
+    "empty": "No lineage data",
+    "upstream": "Upstream",
+    "current": "Current",
+    "downstream": "Downstream",
+    "noUpstream": "No upstream tables",
+    "noDownstream": "No downstream tables"
+  },
+  "ingest": {
+    "success": {
+      "json": "JSON ingested successfully",
+      "csv": "CSV ingested successfully"
+    },
+    "errors": {
+      "invalidJson": "Invalid JSON format"
+    },
+    "error": {
+      "submit": "Submit failed: {{message}}"
+    }
+  },
+  "transform": {
+    "success": "Transform submitted",
+    "title": "Transform Table",
+    "description": "Apply transformations to {{table}}",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "hint": "Define transformation logic",
+    "error": {
+      "submit": "Submit failed: {{message}}"
+    }
+  },
+  "aggregate": {
+    "success": "Aggregate query submitted",
+    "title": "Create Aggregate",
+    "description": "Aggregate metrics from {{table}}",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "hint": {
+      "groupBy": "Columns to group by",
+      "metrics": "Aggregate functions"
+    },
+    "errors": {
+      "groupByRequired": "At least one group-by column required",
+      "metricNameRequired": "Metric name required",
+      "metricRequired": "At least one metric required",
+      "invalidOp": "Invalid operation: {{op}}"
+    }
+  },
+  "adhoc": {
+    "title": "Ad-hoc Query",
+    "description": "Run a custom SQL query",
+    "run": "Run Query",
+    "running": "Running…",
+    "hint": "Enter SQL query",
+    "result": "Result",
+    "errors": {
+      "sqlRequired": "SQL query required"
+    }
+  },
+  "header": {
+    "search_placeholder": "Search tables, topics, DAGs…"
+  },
+  "nav": {
+    "home": "Home",
+    "catalog": "Catalog",
+    "bronze": "Bronze",
+    "silver": "Silver",
+    "gold": "Gold",
+    "kafka": "Kafka",
+    "airflow": "Airflow",
+    "crawler": "Crawler",
+    "dq": "Data Quality",
+    "health": "Health",
+    "schematic": "Schematic"
+  }
+}

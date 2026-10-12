@@ -134,7 +134,6 @@ data/
 data-lake/
 uploads/
 *.csv
-*.json
 *.avro
 *.parquet
 *.parquet.metadata/

@@ -24,11 +24,14 @@ jobs:
 
       - name: Install web dependencies
         run: |
+          rm -rf node_modules
           cd apps/web
+          rm -rf node_modules
           npm install --no-audit --no-fund --legacy-peer-deps
-          echo "=== Checking vite ==="
-          ls node_modules/.bin/ | grep -i vite || echo "NO vite in .bin"
-          ls node_modules/vite/bin/ 2>&1 || echo "NO vite module"
+          echo "=== Checking installed packages ==="
+          ls node_modules/.bin/ | grep -E "vite|tailwind" || echo "Missing"
+          echo "=== PostCSS config check ==="
+          ls node_modules/tailwindcss 2>&1 | head -3
 
       - name: Build web app
         run: |

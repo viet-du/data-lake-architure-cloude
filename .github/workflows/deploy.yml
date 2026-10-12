@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           rm -f pnpm-lock.yaml
-          pnpm install
+          pnpm install --config.node-linker=hoisted
 
       - name: Build web app
         run: node node_modules/vite/bin/vite.js build

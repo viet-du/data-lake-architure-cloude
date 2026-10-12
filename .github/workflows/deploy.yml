@@ -32,10 +32,9 @@ jobs:
         run: |
           rm -f pnpm-lock.yaml
           pnpm install
-          ls node_modules/.bin/ | head -20
 
       - name: Build web app
-        run: node ../../node_modules/vite/bin/vite.js build
+        run: node node_modules/vite/bin/vite.js build
         working-directory: apps/web
 
       - name: Check build output

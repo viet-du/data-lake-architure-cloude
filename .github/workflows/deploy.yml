@@ -32,6 +32,12 @@ jobs:
         run: |
           rm -f pnpm-lock.yaml
           pnpm install --config.node-linker=hoisted
+          echo "=== apps/web/node_modules ==="
+          ls apps/web/node_modules/ 2>&1 | head -10 || echo "NO node_modules in apps/web"
+          echo "=== root node_modules/.pnpm ==="
+          ls node_modules/.pnpm/ 2>&1 | head -5 || echo "NO .pnpm"
+          echo "=== check vite ==="
+          find . -name "vite.js" -path "*/bin/*" 2>/dev/null | head -5 || echo "NO vite found"
 
       - name: Build web app
         run: node node_modules/vite/bin/vite.js build

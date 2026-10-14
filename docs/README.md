@@ -1,31 +1,77 @@
-# Data Lake Control Plane — Documentation Index
+# Docs
 
-This directory is the canonical source of truth for the **Lakehouse Control Plane** (apps/web + apps/api) and the data platform (Spark / Kafka / Airflow / MinIO / Delta Lake).
+## Cho developer mới bắt đầu
 
-## 1. Architecture
+1. **[DEV_LINKS.md](./operations/DEV_LINKS.md)** — Bảng tất cả URL (UI/API/DB) + quick start
+2. **[architecture/ARCHITECTURE.md](./architecture/ARCHITECTURE.md)** — Diagram & luồng dữ liệu Bronze→Silver→Gold
+3. **[operations/DATA_LAYOUT.md](./operations/DATA_LAYOUT.md)** — Schema từng table + cách query
 
-| File | Purpose |
-| --- | --- |
-| [architecture/overview.md](./architecture/overview.md) | System topology, components, data flow |
-| [architecture/layers.md](./architecture/layers.md) | Frontend + Backend layered architecture |
-| [architecture/medallion.md](./architecture/medallion.md) | Bronze / Silver / Gold data model |
-| [architecture/cqrs-events.md](./architecture/cqrs-events.md) | Kafka topic catalog + event contracts |
+## Operations
 
-## 2. API Reference
+- [verify.sh](../../scripts/verify.sh) — Full integrity check (env, deps, compose, files)
+- [check_dev_links.sh](../../scripts/check_dev_links.sh) — Health check tất cả dev endpoints
+- [Makefile](../../Makefile) — `make help` để xem tất cả targets
 
-| File | Purpose |
-| --- | --- |
-| [api/endpoints.md](./api/endpoints.md) | HTTP endpoint catalog (108 routes) |
-| [api/entities.md](./api/entities.md) | TypeScript entity catalog |
-| [api/schemas.md](./api/schemas.md) | Zod validation schemas |
-| [api/openapi.json](./api/openapi.json) | Generated OpenAPI 3.1 spec (mirrors `/api/docs/openapi.json`) |
+## Cấu trúc docs
 
-## 3. Operations
+```
+docs/
+├── README.md                       # Bạn đang ở đây
+├── RULE_BASE                       # Quy tắc contribute
+├── architecture/
+│   ├── ARCHITECTURE.md             # High-level diagram + layer contracts
+│   └── ... (legacy architecture docs)
+├── operations/
+│   ├── DEV_LINKS.md                # Tất cả URLs
+│   ├── DATA_LAYOUT.md              # Schema + queries
+│   └── ... (runbooks, ops guides)
+├── api/                            # API-specific docs
+├── plan/                           # Roadmap, design proposals
+├── audit/                          # Audit reports (connection leaks, etc.)
+└── archive/                        # Legacy scripts (read-only, đã dừng dùng)
+```
 
-| File | Purpose |
-| --- | --- |
-| [operations/quickstart.md](./operations/quickstart.md) | Local development in 5 minutes |
-| [operations/docker.md](./operations/docker.md) | Docker Compose stack reference |
-| [operations/testing.md](./operations/testing.md) | Unit + integration test guide |
-| [operations/environment.md](./operations/environment.md) | Environment variables catalog |
-| [operations/ci-cd.md](./operations/ci-cd.md) | CI pipeline + quality gates |
+## Quick commands
+
+```bash
+# 1. Start toàn bộ stack
+make up
+sleep 60
+
+# 2. Health check
+bash scripts/check_dev_links.sh
+
+# 3. Integrity check
+make verify
+
+# 4. Chạy tests
+make test
+
+# 5. Browse data
+open http://localhost:9001  # MinIO console (minioadmin/minioadmin)
+```
+
+## Services đang chạy (mặc định)
+
+| Service     | URL                   | Credentials         |
+| ----------- | --------------------- | ------------------- |
+| MinIO       | http://localhost:9001 | minioadmin/minioadmin |
+| Spark       | http://localhost:8080 | -                   |
+| Kafka UI    | http://localhost:8081 | -                   |
+| Redpanda    | http://localhost:8091 | -                   |
+| Airflow     | http://localhost:8088 | admin/admin         |
+| Metabase    | http://localhost:3000 | (first-run setup)   |
+| MongoDB     | localhost:27017       | mongoadmin/mongoadmin |
+| Redis       | localhost:6379       | -                   |
+
+## Tùy chọn (opt-in)
+
+```bash
+# Start thêm API + Web UI (cần 5-10 phút build lần đầu)
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml up -d
+```
+
+| Service | URL                   |
+| ------- | --------------------- |
+| API     | http://localhost:3001 |
+| Web UI  | http://localhost:5173 |

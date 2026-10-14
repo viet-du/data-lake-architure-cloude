@@ -115,6 +115,26 @@ stream-ecommerce: ## Run e-commerce streaming pipeline via spark-submit
 		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0,io.delta:delta-spark_2.12:3.0.0 \
 		/app-src/src/lakehouse/pipelines/stream_ecommerce.py
 
+.PHONY: scheduler
+scheduler: ## Start crawl scheduler (foreground, all 11 jobs)
+	bash scripts/run_crawl_scheduler.sh
+
+.PHONY: scheduler-daemon
+scheduler-daemon: ## Start crawl scheduler (background daemon)
+	bash scripts/run_crawl_scheduler.sh --daemon
+
+.PHONY: scheduler-stop
+scheduler-stop: ## Stop background crawl scheduler
+	bash scripts/run_crawl_scheduler.sh --stop
+
+.PHONY: scheduler-list
+scheduler-list: ## List all scheduled crawl jobs
+	bash scripts/run_crawl_scheduler.sh --list
+
+.PHONY: scheduler-once
+scheduler-once: ## Run a single crawl job once (use NAME=xxx)
+	bash scripts/run_crawl_scheduler.sh --once "$${NAME:-tiki-smartphone}"
+
 .PHONY: crawl-tiki
 crawl-tiki: ## Crawl Tiki.vn (smartphone category, 5 pages)
 	$(PYTHON) -m lakehouse.sources.crawlers.tiki_crawler --category smartphone --max-pages 5

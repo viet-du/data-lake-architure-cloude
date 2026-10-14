@@ -18,9 +18,11 @@ class TikiCrawler(BaseCrawler):
     CATEGORIES = ["smartphone", "laptop", "tablet", "fashion", "beauty", "home-appliance"]
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+        # Assign topic attributes BEFORE super().__init__() because
+        # BaseCrawler.__init__ accesses self.kafka_topic during producer setup.
         self._topic_products = KafkaTopics.ECOMMERCE_PRODUCTS
         self._topic_reviews = KafkaTopics.ECOMMERCE_REVIEWS
+        super().__init__(**kwargs)
 
     @property
     def source_name(self) -> str:

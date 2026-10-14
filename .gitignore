@@ -180,3 +180,4 @@ notebooks/.ipynb_checkpoints/
 .netlify/
 .stripe/
 .sst/
+airflow_logs/

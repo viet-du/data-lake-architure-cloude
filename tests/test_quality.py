@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import os
-os.environ.setdefault('ENV', 'local')
-import pytest
+
+os.environ.setdefault("ENV", "local")
+
 
 class TestNullPercentage:
 
@@ -21,6 +23,7 @@ class TestNullPercentage:
         total = 0
         assert total == 0
 
+
 class TestUniqueCheck:
 
     def test_all_unique(self) -> None:
@@ -34,6 +37,7 @@ class TestUniqueCheck:
         total = len(values)
         distinct = len(set(values))
         assert total != distinct
+
 
 class TestValueRange:
 
@@ -49,20 +53,29 @@ class TestValueRange:
         age = 121
         assert not 0 <= age <= 120
 
+
 class TestValueInSet:
 
     def test_in_set(self) -> None:
-        allowed = {'active', 'inactive'}
-        assert 'active' in allowed
+        allowed = {"active", "inactive"}
+        assert "active" in allowed
 
     def test_not_in_set(self) -> None:
-        allowed = {'active', 'inactive'}
-        assert 'unknown' not in allowed
+        allowed = {"active", "inactive"}
+        assert "unknown" not in allowed
+
 
 class TestQualityCheckSignature:
 
     def test_functions_exist(self) -> None:
-        from lakehouse.quality.checks import check_null_percentage, check_unique, check_value_in_set, check_value_range, run_quality_suite
+        from lakehouse.quality.checks import (
+            check_null_percentage,
+            check_unique,
+            check_value_in_set,
+            check_value_range,
+            run_quality_suite,
+        )
+
         assert callable(check_null_percentage)
         assert callable(check_unique)
         assert callable(check_value_in_set)
@@ -71,6 +84,9 @@ class TestQualityCheckSignature:
 
     def test_run_quality_suite_signature(self) -> None:
         import inspect
-        sig = inspect.signature(__import__('lakehouse.quality.checks', fromlist=['run_quality_suite']).run_quality_suite)
-        assert 'df' in sig.parameters
-        assert 'rules' in sig.parameters
+
+        sig = inspect.signature(
+            __import__("lakehouse.quality.checks", fromlist=["run_quality_suite"]).run_quality_suite
+        )
+        assert "df" in sig.parameters
+        assert "rules" in sig.parameters

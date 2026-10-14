@@ -64,7 +64,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
-ignore = ["E501"]  # line length handled by formatter
+ignore = ["E501", "N812", "B027"]  # E501=line len; N812=pyspark `F`; B027=ABC cleanup empty OK
 
 [tool.black]
 line-length = 100

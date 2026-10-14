@@ -1,0 +1,2 @@
+# Placeholder so Dockerfile `COPY --from=builder /app/public ./public` succeeds
+# Next.js auto-populates this with static assets at build time

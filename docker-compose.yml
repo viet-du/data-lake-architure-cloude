@@ -161,10 +161,12 @@ services:
       AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+      PYTHONPATH: /app-src/src
     ports:
       - "8088:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
+      - ./src:/app-src/src:ro
       # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
       - ./src:/app-src/src:ro
       - ./airflow_logs:/opt/airflow/logs
@@ -185,6 +187,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
       AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      PYTHONPATH: /app-src/src
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
       # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly

@@ -11,7 +11,6 @@ Schedule:
   - GitHub trending:    every 1h
   - HackerNews top:     every 30min
   - Crypto top-50:      every 5min
-  - Weather 3 cities:   every 30min
 
 Each task produces events to Kafka topics:
   - ecommerce-products-stream
@@ -19,7 +18,6 @@ Each task produces events to Kafka topics:
   - github-trending-stream
   - hackernews-stream
   - crypto-prices-stream
-  - weather-stream
 
 Spark streaming pipelines downstream (in `streaming_dag`) consume
 these topics and write to Bronze Delta tables.
@@ -96,24 +94,9 @@ def _crawl_crypto_top50(**ctx):
     return sched.run_once("crypto-top-50")
 
 
-def _crawl_weather_hcm(**ctx):
-    sched = build_default_scheduler()
-    return sched.run_once("weather-ho-chi-minh-city")
-
-
-def _crawl_weather_hn(**ctx):
-    sched = build_default_scheduler()
-    return sched.run_once("weather-hanoi")
-
-
-def _crawl_weather_dn(**ctx):
-    sched = build_default_scheduler()
-    return sched.run_once("weather-da-nang")
-
-
 with DAG(
     dag_id="crawler_dag",
-    description="Automated multi-source data collection (Tiki, GitHub, HN, Crypto, Weather)",
+    description="Automated multi-source data collection (Tiki, GitHub, HackerNews, Crypto)",
     default_args=DEFAULT_ARGS,
     start_date=datetime(2026, 10, 1),
     schedule_interval=timedelta(hours=1),
@@ -162,22 +145,13 @@ with DAG(
         python_callable=_crawl_crypto_top50,
     )
 
-    # --- Weather (3 cities, 30min) ---
-    weather_hcm = PythonOperator(
-        task_id="crawl_weather_hcm",
-        python_callable=_crawl_weather_hcm,
-    )
-    weather_hn = PythonOperator(
-        task_id="crawl_weather_hn",
-        python_callable=_crawl_weather_hn,
-    )
-    weather_dn = PythonOperator(
-        task_id="crawl_weather_dn",
-        python_callable=_crawl_weather_dn,
-    )
+    # NOTE: Weather tasks intentionally removed.
+    # Weather is not joined with any business data in this project,
+    # so crawling it produces noise without downstream value.
+    # See: src/lakehouse/sources/scheduler.py (build_default_scheduler) for the
+    # re-add conditions (Silver/Gold layer joining weather with ecommerce).
 
     # All tasks are independent and run in parallel
     # (no upstream/downstream dependencies between different sources)
     [tiki_smartphone, tiki_laptop, tiki_fashion, tiki_beauty, tiki_home,
-     github_trending, hackernews, crypto,
-     weather_hcm, weather_hn, weather_dn]
+     github_trending, hackernews, crypto]

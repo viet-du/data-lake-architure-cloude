@@ -1,10 +1,9 @@
-version: "3.8"
-
 
 services:
   minio:
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: lake-minio
+    user: "0:0"   # Chainguard image defaults to nonroot (uid 65532); run as root so it can write /data
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -15,13 +14,15 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      # Chainguard minio image is minimal (no curl/wget/grep). Use TCP-only check.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo PING >&3 && head -c 1 <&3 && exit 0 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   minio-init:
-    image: minio/mc:latest
+    image: bitnamilegacy/minio-client:2025.7.21-debian-12-r3
     container_name: lake-minio-init
     depends_on:
       minio:
@@ -70,15 +71,25 @@ services:
     environment:
       SERVICE_NAME: metastore
       DB_DRIVER: postgres
-      SERVICE_OPTS: "-Djavax.net.ssl.trustStorePassword changeit -Dsun.net.inetaddr.ttl=60"
+      # Apache hive 3.1.3 entrypoint parses SERVICE_OPTS; pass each JVM arg as a single token
+      SERVICE_OPTS: >-
+        -Djavax.net.ssl.trustStorePassword=changeit
+        -Dsun.net.inetaddr.ttl=60
+        -Xmx1G
     ports:
       - "9083:9083"
     volumes:
       - ./configs/hive-site.xml:/opt/hive/conf/hive-site.xml:ro
     command: /opt/hive/bin/hive --service metastore
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ltn | grep -q ':9083' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   spark-master:
-    image: bitnami/spark:3.4
+    image: bitnamilegacy/spark:3.5.6-debian-12-r1
     container_name: lake-spark-master
     environment:
       SPARK_MODE: master
@@ -86,6 +97,7 @@ services:
       SPARK_MASTER_PORT: 7077
       SPARK_MASTER_WEBUI_PORT: 8080
       SPARK_DAEMON_JAVA_OPTS: "-Dspark.deploy.mode=cluster"
+      PYTHONPATH: /app-src/src
     ports:
       - "8080:8080"   # Spark UI
       - "7077:7077"   # Spark master
@@ -94,24 +106,33 @@ services:
       - ./src:/app-src/src:ro
       - ./data-samples:/data-samples:ro
       - ./configs/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
-    environment:
-      PYTHONPATH: /app-src/src
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   spark-worker:
-    image: bitnami/spark:3.4
+    image: bitnamilegacy/spark:3.5.6-debian-12-r1
     container_name: lake-spark-worker
     environment:
       SPARK_MODE: worker
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_MEMORY: 2g
       SPARK_WORKER_CORES: 2
+      PYTHONPATH: /app-src/src
     depends_on:
-      - spark-master
+      spark-master:
+        condition: service_healthy
     volumes:
       - ./src:/app-src/src:ro
       - ./data-samples:/data-samples:ro
-    environment:
-      PYTHONPATH: /app-src/src
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://spark-master:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   airflow-db:
     image: postgres:13
@@ -141,10 +162,11 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
     ports:
-      - "8088:8080"
+      - "8088:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
-      - ./src:/opt/airflow/app/src:ro
+      # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
+      - ./src:/app-src/src:ro
       - ./airflow_logs:/opt/airflow/logs
     command: >
       bash -c "
@@ -165,9 +187,16 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
-      - ./src:/opt/airflow/app/src:ro
+      # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
+      - ./src:/app-src/src:ro
       - ./airflow_logs:/opt/airflow/logs
     command: airflow scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u admin:admin http://localhost:8080/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   metabase:
     image: metabase/metabase:latest
@@ -179,6 +208,12 @@ services:
       MB_DB_FILE: /metabase-data/metabase.db
     volumes:
       - metabase_data:/metabase-data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
   redpanda:
     image: redpandadata/redpanda:v24.1.7
@@ -192,16 +227,15 @@ services:
       - --reserve-memory=0M
       - --node-id=0
       - --check=false
-      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
-      - --pandaproxy-addr=0.0.0.0:8082
-      - --advertise-pandaproxy-addr=redpanda:8082
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9192
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9192
+      - --pandaproxy-addr=0.0.0.0:8282
+      - --advertise-pandaproxy-addr=redpanda:8282
       - --rpc-addr=0.0.0.0:33145
       - --advertise-rpc-addr=redpanda:33145
-      - --kafka-api-addr=0.0.0.0:9092
     ports:
-      - "9092:9092"     # Kafka API
-      - "8082:8082"     # Pandaproxy (REST)
+      - "9192:9192"     # Kafka API
+      - "8282:8282"     # Pandaproxy (REST)
       - "9644:9644"     # Admin API
     volumes:
       - redpanda_data:/var/lib/redpanda/data
@@ -218,24 +252,35 @@ services:
       redpanda:
         condition: service_healthy
     environment:
-      KAFKA_BROKERS: redpanda:9092
+      KAFKA_BROKERS: redpanda:9192
       CONFIG_FILEPATH: /etc/console/configs/console.yaml
     ports:
-      - "8081:8080"   # Web UI
+      - "8091:8080"   # Web UI (8081 conflicts with kafka-ui in compose-kafka)
     volumes:
       - ./configs/redpanda-console.yaml:/etc/console/configs/console.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: lake-kafka-ui
     depends_on:
-      - redpanda
+      redpanda:
+        condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: redpanda-local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9192
       KAFKA_CLUSTERS_0_ZOOKEEPER: ""
     ports:
       - "8089:8080"   # Web UI
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   mongo:
     image: mongo:7
@@ -269,47 +314,8 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    container_name: lake-api
-    restart: unless-stopped
-    depends_on:
-      minio:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      redpanda:
-        condition: service_healthy
-    environment:
-      ENV: local
-      LOG_LEVEL: info
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_SECURE: "false"
-      KAFKA_BOOTSTRAP: redpanda:9092
-      KAFKA_SECURITY_PROTOCOL: PLAINTEXT
-      MONGO_URI: mongodb://mongoadmin:mongoadmin@mongo:27017
-      MONGO_DB: lakehouse_catalog
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      AIRFLOW_BASE_URL: http://airflow-webserver:8080/api/v1
-      AIRFLOW_USERNAME: admin
-      AIRFLOW_PASSWORD: admin
-      DUCKDB_MEMORY_LIMIT: 4GB
-      DUCKDB_THREADS: "4"
-      API_PORT: "3001"
-      API_RATE_LIMIT_PER_MIN: "600"
-      API_CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
-      API_SWAGGER_ENABLED: "true"
-    ports:
-      - "3001:3001"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+  # Note: api & web services are defined in docker-compose.api.yml
+  # Run together: docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml up -d
 
 volumes:
   minio_data:

@@ -31,6 +31,47 @@ services:
       - api
     restart: unless-stopped
 
+  # Airflow services duplicated from docker-compose.yml so this file
+  # can be used standalone (`docker compose -f docker-compose.api.yml up`).
+  # If merging with the main compose, these will be ignored automatically.
+  airflow-db:
+    image: postgres:13
+    container_name: lake-airflow-db-api
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    volumes:
+      - airflow_db_data_api:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    image: apache/airflow:2.7.0-python3.11
+    container_name: lake-airflow-webserver-api
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./airflow_dags:/opt/airflow/dags:ro
+      - ./src:/opt/airflow/app/src:ro
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true;
+      airflow webserver
+      "
+
   mongo:
     image: mongo:7
     container_name: lake-mongo
@@ -52,3 +93,4 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  airflow_db_data_api:

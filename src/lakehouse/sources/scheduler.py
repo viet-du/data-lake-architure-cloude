@@ -192,13 +192,11 @@ def build_default_scheduler() -> CrawlScheduler:
       - GitHub trending:               every 1h
       - HackerNews top:                every 30min
       - Crypto top-50:                 every 5min
-      - Weather (HCM/HN/DN):           every 30min
     """
     from lakehouse.sources.crawlers.tiki_crawler import TikiCrawler
     from lakehouse.sources.crawlers.github_crawler import GithubCrawler
     from lakehouse.sources.crawlers.hackernews_crawler import HackerNewsCrawler
     from lakehouse.sources.crawlers.crypto_crawler import CryptoCrawler
-    from lakehouse.sources.crawlers.weather_crawler import WeatherCrawler
 
     s = CrawlScheduler()
 
@@ -235,15 +233,11 @@ def build_default_scheduler() -> CrawlScheduler:
         kwargs={"vs_currency": "usd", "per_page": 50},
     ))
 
-    # --- Weather (3 VN cities) ---
-    for city in ("Ho Chi Minh City", "Hanoi", "Da Nang"):
-        slug = city.lower().replace(" ", "-")
-        s.add(CrawlJob(
-            name=f"weather-{slug}",
-            crawler=WeatherCrawler(rate_limit=0.5),
-            run_every_s=1800,
-            kwargs={"city": city},
-        ))
+    # NOTE: WeatherCrawler intentionally excluded from auto-schedule.
+    # Weather is not joined with any business data in this project, so
+    # crawling every 30min produces noise without downstream value.
+    # Re-add only when a Silver/Gold layer joins weather with ecommerce.
+    # See: docs/operations/DATA_LAYOUT.md
 
     return s
 

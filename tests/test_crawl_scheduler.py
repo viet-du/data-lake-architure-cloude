@@ -168,12 +168,16 @@ def test_callback_fires_on_error():
 
 
 def test_build_default_scheduler_has_all_jobs():
-    """Sanity: factory wires the 11 expected business sources."""
+    """Sanity: factory wires the 7 expected business sources.
+
+    Weather intentionally excluded — not joined with any business
+    data in this project, so crawling it produces noise.
+    """
     from lakehouse.sources.scheduler import build_default_scheduler
     s = build_default_scheduler()
     names = {j["name"] for j in s.list_jobs()}
 
-    # E-commerce (business-critical)
+    # E-commerce (business-critical, 5 Tiki categories)
     assert "tiki-smartphone" in names
     assert "tiki-laptop" in names
     assert "tiki-fashion" in names
@@ -187,7 +191,6 @@ def test_build_default_scheduler_has_all_jobs():
     # Finance
     assert "crypto-top-50" in names
 
-    # Weather (3 VN cities for retail planning)
-    assert "weather-ho-chi-minh-city" in names
-    assert "weather-hanoi" in names
-    assert "weather-da-nang" in names
+    # Weather: NOT in default schedule (no downstream join yet)
+    assert not any(n.startswith("weather-") for n in names), \
+        "Weather jobs should not be auto-scheduled"

@@ -1,0 +1,177 @@
+# ═══════════════════════════════════════════════════════════════
+# Render Blueprint — Data Lakehouse Backend Tool
+#
+# Single source of truth for cloud deployment on Render.com.
+# Triggered automatically on push to main (or via dashboard).
+#
+# Cost: $0/mo on free tier (1 Web Service + 1 Postgres free for 90 days)
+# Upgrade to Standard ($7/mo) for 24/7 uptime after free tier sleeps.
+#
+# Usage:
+#   1. Push this file to GitHub
+#   2. In Render dashboard → "New" → "Blueprint" → select this repo
+#   3. Render reads this file, creates all services + databases
+#   4. Set env vars in dashboard (do NOT commit secrets)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  # ─── Backend API (Next.js 15 control plane) ─────────────────
+  - type: web
+    name: lake-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: starter  # 0.5 vCPU, 512MB RAM, free tier (sleeps after 15min idle)
+    region: oregon  # US West, closest to Cloudflare R2
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: LOG_LEVEL
+        value: info
+      # ── Cloudflare R2 (storage, $0 egress) ────────────────
+      - key: S3_ENDPOINT
+        value: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
+      - key: S3_ACCESS_KEY
+        sync: false  # manual set in dashboard
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_USE_SSL
+        value: "true"
+      - key: S3_PATH_STYLE_ACCESS
+        value: "true"
+      - key: S3_HEALTH_BUCKET
+        value: bronze
+      # ── Render-managed Postgres (auto-injected via DATABASE_URL) ──
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lake-postgres
+          property: connectionString
+      # ── Optional services (set when provisioned) ──────────
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB
+        value: lakehouse
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: KAFKA_BOOTSTRAP
+        sync: false  # leave empty to skip Kafka validation
+      - key: KAFKA_SECURITY_PROTOCOL
+        value: PLAINTEXT
+      - key: API_PORT
+        value: "3001"
+      - key: API_CORS_ORIGINS
+        sync: false  # e.g. https://your-web.pages.dev
+      - key: AIRFLOW_BASE_URL
+        sync: false  # only if Airflow is also on Render
+
+  # ─── Batch Job: retail ETL (cron, replaces Airflow for now) ──
+  - type: cron
+    name: lake-retail-etl
+    runtime: docker
+    dockerfilePath: ./Dockerfile.spark
+    dockerContext: .
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "0 */6 * * *"  # every 6 hours
+    numInstances: 1
+    envVars:
+      - key: ENV
+        value: prod
+      - key: LOG_LEVEL
+        value: info
+      - key: SPARK_MODE
+        value: local
+      - key: SPARK_MASTER
+        value: local[*]
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_USE_SSL
+        value: "true"
+      - key: S3_PATH_STYLE_ACCESS
+        value: "true"
+
+  # ─── One-off Job: MinIO/R2 sync (every 5 min) ──────────────
+  - type: cron
+    name: lake-r2-sync
+    runtime: docker
+    dockerfilePath: ./Dockerfile.spark
+    dockerContext: .
+    plan: starter
+    region: oregon
+    branch: main
+    schedule: "*/5 * * * *"
+    numInstances: 1
+    envVars:
+      - key: ENV
+        value: prod
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET_BRONZE
+        value: bronze
+      - key: S3_BUCKET_SILVER
+        value: silver
+      - key: S3_BUCKET_GOLD
+        value: gold
+      - key: S3_BUCKET_SCRIPTS
+        value: scripts
+      - key: MINIO_ENDPOINT
+        value: http://minio:9000
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+
+# ─── Managed databases (free tier for first 90 days) ───────────
+databases:
+  - name: lake-postgres
+    plan: free  # 256MB, 97MB RAM, expires after 90 days
+    region: oregon
+    postgresMajorVersion: "16"
+    databaseName: lakehouse
+    user: lakehouse
+
+# ─── Notes ─────────────────────────────────────────────────────
+# Cost breakdown:
+#   - lake-api (web, free tier): $0 (sleeps after 15min idle, 750hr/mo cap)
+#   - lake-postgres (free tier): $0 for first 90 days, then $7/mo
+#   - lake-retail-etl (cron, free tier): $0 (1 cron job free)
+#   - lake-r2-sync (cron, free tier): $0
+#   - Cloudflare R2 storage: $0-2/mo (10GB free tier)
+#   - TOTAL: $0/mo for first 90 days, then $7/mo minimum
+#
+# Upgrades (when needed):
+#   - lake-api Standard plan ($7/mo) → 24/7 uptime, no sleep
+#   - lake-postgres Basic plan ($7/mo) → 1GB storage
+#   - lake-redis (Key Value store, $10/mo) → cache layer
+#   - Private Service for Kafka (~$7/mo) → in-cluster broker
+#
+# Migration path from Northflank:
+#   - All service names kept identical (lake-api, lake-retail-etl)
+#   - Same env var contract (S3_*, DATABASE_URL, KAFKA_BOOTSTRAP, etc.)
+#   - Same Dockerfile paths (apps/api/Dockerfile, Dockerfile.spark)
+#   - Difference: Render uses cron jobs instead of Airflow for now
+#     (simpler, no Airflow server cost). Re-add Airflow Web Service later
+#     if DAG monitoring UI is needed.

@@ -353,26 +353,49 @@ Mở **Docker Desktop** trước và chờ Docker Engine sẵn sàng, sau đó c
 cd /Users/voanhnhat-ticoder-coder/Documents/data-lake-architure-cloude
 ```
 
+Trước lần chạy Docker Compose đầu tiên, tạo file `.env` cục bộ và khóa Fernet ổn định cho Airflow:
+
+```bash
+cp .env.example .env
+printf '\nAIRFLOW_FERNET_KEY=%s\n' "$(openssl rand -base64 32 | tr '+/' '-_')" >> .env
+chmod 600 .env
+```
+
+Không commit hoặc thay khóa này sau khi Airflow đã lưu connection/variable được mã hóa.
+
 Có ba cách tương đương theo project hiện tại.
 
-#### Cách A — Script
+#### Cách A — Script (core only)
 
 ```bash
 bash scripts/start.sh
 ```
 
-#### Cách B — Makefile
+#### Cách B — Makefile (core only)
 
 ```bash
 make up
 ```
 
-#### Cách C — Docker Compose trực tiếp
+#### Cách C — Docker Compose trực tiếp (core only)
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
 sleep 60   # đợi service healthcheck / initialization
 ```
+
+#### Cách D — Core + Control Plane (API + Web UI)
+
+```bash
+make up-api
+# hoặc
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.dev-api.yml up -d
+```
+
+> Trước đây repo có `docker-compose.api.yml` đứng riêng, file này duplicate
+> lại `airflow-webserver`/`airflow-db`/`mongo`/`redis` và **không thể chạy
+> standalone** (đã verify FAIL). File đó đã được đổi tên thành
+> `docker-compose.api.yml.deprecated`; overlay mới là `docker-compose.dev-api.yml`.
 
 ### 6.2 Kiểm tra Container Status
 
@@ -388,8 +411,8 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "lake-"
 | **MinIO API** | `9000` | `http://localhost:9000` | Internal use |
 | **MongoDB** | `27017` | `mongodb://localhost:27017` | No auth (dev) |
 | **Redis** | `6379` | `redis://localhost:6379` | No auth (dev) |
-| **Redpanda / Kafka** | `9092` | `localhost:9092` | `PLAINTEXT` |
-| **Redpanda Console / Kafka UI** | `8081` | `http://localhost:8081` | — |
+| **Kafka** (Confluent, single broker) | `9092` | `localhost:9092` | `PLAINTEXT` |
+| **Kafka UI** | `8081` | `http://localhost:8081` | — |
 | **Airflow Webserver** | `8088` | `http://localhost:8088` | `admin` / `admin` |
 | **Spark Master UI** | `8080` | `http://localhost:8080` | — |
 | **Spark App UI** | `4040` | `http://localhost:4040` | — |
@@ -402,7 +425,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "lake-"
 
 - [ ] Các container chính ở trạng thái running/healthy.
 - [ ] MinIO Console mở được ở port `9001`.
-- [ ] Redpanda Console mở được ở port `8081`.
+- [ ] Kafka UI mở được ở port `8081`.
 - [ ] Airflow Webserver mở được ở port `8088`.
 - [ ] Spark Master UI mở được ở port `8080`.
 - [ ] MongoDB và Redis sẵn sàng cho Backend.
@@ -818,17 +841,12 @@ bash scripts/reset.sh
 #### Makefile
 
 ```bash
-make clean
+make reset
 ```
 
-#### Docker Compose
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose-kafka.yml down -v
-```
-
-> [!CAUTION]
-> `down -v`, `scripts/reset.sh` hoặc `make clean` là **destructive reset** đối với Docker volumes của stack. Chỉ sử dụng khi thực sự muốn reset dữ liệu local.
+> Cả hai cách trên đều hỏi xác nhận **hai lần** (gõ `yes` rồi `RESET`) trước
+> khi chạy `down -v` + xóa `data-samples/`. Alias cũ `make clean` vẫn hoạt
+> động nhưng redirect về `make reset`; dùng `make reset` trong tài liệu mới.
 
 ### 12.4 Shutdown Checklist
 
@@ -846,8 +864,8 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml down -v
 | Layer | Technology |
 |---|---|
 | **Storage** | MinIO (S3-compatible) + Delta Lake |
-| **Compute — Batch** | Apache Spark 3.4 + PySpark |
-| **Compute — Stream** | Apache Spark Structured Streaming 3.4 |
+| **Compute — Batch** | Apache Spark 3.5.6 + PySpark |
+| **Compute — Stream** | Apache Spark Structured Streaming 3.5.6 |
 | **Messaging** | Apache Kafka / Redpanda |
 | **Orchestration** | Apache Airflow 2.7 |
 | **BI** | Metabase |
@@ -980,6 +998,7 @@ data-lake-architure-cloude/
 | [`docs/03-etl-vs-elt.md`](docs/03-etl-vs-elt.md) | ETL vs ELT |
 | [`docs/04-data-governance.md`](docs/04-data-governance.md) | Data Quality, Security |
 | [`docs/05-deployment.md`](docs/05-deployment.md) | Cloud deployment |
+| [`docs/operations/E2E_RUNBOOK.md`](docs/operations/E2E_RUNBOOK.md) | End-to-end runbook (local + cloud) |
 | [`docs/08-kafka-streaming-integration.md`](docs/08-kafka-streaming-integration.md) | Kafka integration |
 | [`docs/09-zero-data-pipeline-setup.md`](docs/09-zero-data-pipeline-setup.md) | Setup với mock data |
 | [`docs/10-real-crawler-guide.md`](docs/10-real-crawler-guide.md) | Real crawler guide |

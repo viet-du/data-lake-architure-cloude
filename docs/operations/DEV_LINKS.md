@@ -1,14 +1,15 @@
 # Data Lakehouse — Dev Environment Links
 
 > **Mục đích:** Tra cứu nhanh tất cả URL cần thiết khi dev trên local (Mac ARM64 / Docker Desktop).
-> Stack chạy qua `docker compose -f docker-compose.yml -f docker-compose-kafka.yml [-f docker-compose.api.yml] up -d`
+> Core stack (PHASE 2): `docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d`
+> Opt-in Control Plane: thêm `-f docker-compose.dev-api.yml` hoặc dùng `make up-api`.
 
 ---
 
 ## Quick start (1 lệnh)
 
 ```bash
-# Start toàn bộ stack
+# Core stack (storage, spark, airflow, kafka, mongo, redis, metabase)
 make up
 
 # Đợi 60s cho healthcheck, sau đó mở các link dưới
@@ -16,9 +17,16 @@ sleep 60 && open http://localhost:9001    # MinIO Console
 ```
 
 Để có thêm API + Web UI:
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml up -d
+# Cách A — Makefile
+make up-api
+
+# Cách B — Docker Compose trực tiếp
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.dev-api.yml up -d
 ```
+
+`make down` dừng core stack nhưng **giữ nguyên volumes**. Muốn xóa hết dữ liệu, dùng `make reset` (cần gõ `yes` rồi `RESET`).
 
 ---
 
@@ -54,20 +62,27 @@ s3a://gold/         ← business-level, aggregated
   └─ daily_revenue/  (rolling aggregation)
 ```
 
+Buckets được tạo tự động bởi `lake-minio-init` (service `minio-init` trong
+`docker-compose.yml`). Nếu muốn tạo tay: `docker exec lake-minio mc mb local/<bucket>`.
+
 ---
 
-## 2. Streaming (Kafka)
+## 2. Streaming (Kafka — Confluent, single broker)
+
+Stack chỉ chạy **một** broker Kafka (Confluent CP-Kafka 7.5.0, single-node).
+Mọi code path trong `src/lakehouse/` dùng `KAFKA_BOOTSTRAP=localhost:9092`
+(xem `src/lakehouse/core/constants.py`).
+Trước PHASE 2 repo có thêm Redpanda + Redpanda Console; cả hai đã được loại
+bỏ vì không có code path nào tham chiếu `redpanda:9192`.
 
 | Service            | URL                        | Port  | Credentials             | Mục đích                       |
 | ------------------ | -------------------------- | ----- | ----------------------- | ------------------------------ |
 | **Kafka Broker** (internal) | `kafka:29092`       | 29092 | (no auth)               | Producer/Consumer trong Docker |
 | **Kafka Broker** (external) | `localhost:9092`   | 9092  | (no auth)               | Apps chạy ngoài Docker         |
 | **Kafka UI** (Confluent) | http://localhost:8081 | 8081  | -                       | Topics, consumers, messages    |
-| **Redpanda**       | `redpanda:9192`            | 9192  | (no auth)               | Kafka-compatible, lighter      |
-| **Redpanda Console** | http://localhost:8091    | 8091  | -                       | Topics, schemas, throughput    |
 | **Zookeeper**      | `zookeeper:2181`           | 2181  | -                       | Kafka coordination             |
 
-### Topics đã được tạo sẵn
+### Topics đã được tạo sẵn (bởi `kafka-init`)
 
 | Topic                          | Partitions | Source                          | Sink       |
 | ------------------------------ | ---------- | ------------------------------- | ---------- |
@@ -77,8 +92,11 @@ s3a://gold/         ← business-level, aggregated
 | `ecommerce-price-stream`       | 3          | (mock)                          | silver/ecommerce |
 | `crypto-prices-stream`         | 3          | `crypto_crawler.py`             | silver/    |
 | `github-trending-stream`       | 3          | `github_crawler.py`             | silver/    |
-| `weather-stream`               | 3          | `weather_crawler.py`            | silver/    |
 | `hackernews-stream`            | 3          | `hackernews_crawler.py`         | silver/    |
+
+> Topic `weather-stream` đã từng được liệt kê trong tài liệu này, nhưng
+> `kafka-init` không tạo. Crawler `weather_crawler.py` (nếu chạy) sẽ tự tạo
+> topic khi ghi, hoặc bạn có thể tạo tay: `docker exec lake-kafka kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic weather-stream --partitions 3 --replication-factor 1`.
 
 ---
 
@@ -87,6 +105,11 @@ s3a://gold/         ← business-level, aggregated
 | Service                | URL                        | Port  | Credentials     | Mục đích                  |
 | ---------------------- | -------------------------- | ----- | --------------- | ------------------------- |
 | **Airflow Webserver**  | http://localhost:8088      | 8088  | admin/admin     | DAGs, runs, logs          |
+
+Webserver sử dụng custom image `lake-airflow:2.7.0` (build từ
+`Dockerfile.airflow`). Cả `airflow-webserver` và `airflow-scheduler` đều đợi
+`airflow-db` ở trạng thái `service_healthy` trước khi start. Scheduler đợi
+thêm `airflow-webserver` healthy trước khi chạy task.
 
 ### DAGs có sẵn
 
@@ -98,12 +121,15 @@ s3a://gold/         ← business-level, aggregated
 
 ---
 
-## 4. Application Layer (cần `docker-compose.api.yml`)
+## 4. Application Layer (cần `docker-compose.dev-api.yml`)
 
 | Service    | URL                     | Port  | Mục đích                              |
 | ---------- | ----------------------- | ----- | ------------------------------------- |
 | **Web UI** (Vite + React) | http://localhost:5173 | 5173  | Frontend dashboard cho data lake    |
 | **API** (Next.js)        | http://localhost:3001 | 3001  | REST API: query data, trigger jobs   |
+
+`api` depends_on `mongo`, `redis`, `minio` (healthy) và `airflow-webserver`
+(healthy). `web` chỉ depends_on `api: service_started`.
 
 ### Endpoints chính (API)
 
@@ -132,7 +158,7 @@ s3a://gold/         ← business-level, aggregated
 
 ```bash
 # Container status
-docker ps --format "table {{.Names}}\t{{.Status}}"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "lake-"
 
 # MinIO buckets
 docker exec lake-minio mc ls local/
@@ -145,11 +171,39 @@ curl -s http://localhost:8080 | grep -i "alive workers" | head -1
 
 # Airflow health
 curl -fsS -u admin:admin http://localhost:8088/api/v1/health
+
+# Quick health check for all dev endpoints
+bash scripts/check_dev_links.sh
 ```
 
 ---
 
-## Lỗi thường gặp
+## 7. Cloud (R2 + Render) — see [CLOUD_R2_RENDER.md](../architecture/CLOUD_R2_RENDER.md)
+
+Local dev is the default. The cloud split (Cloudflare R2 for storage, Render for compute, Cloudflare Pages for the Web UI) is documented separately. After the cloud stack is up, fill in the URLs here for one-stop reference:
+
+| Service | Cloud URL | Where it runs |
+| --- | --- | --- |
+| **Web UI** | `https://<your-web>.pages.dev` | Cloudflare Pages |
+| **API** | `https://lake-api.onrender.com` | Render (Web Service) |
+| **Airflow** | `https://lake-airflow.onrender.com` (only if added) | Render (Web Service, optional) |
+| **R2 bucket: bronze** | `s3a://bronze` (via `<account-id>.r2.cloudflarestorage.com`) | Cloudflare R2 |
+| **R2 bucket: silver** | `s3a://silver` | Cloudflare R2 |
+| **R2 bucket: gold** | `s3a://gold` | Cloudflare R2 |
+| **R2 bucket: scripts** | `s3a://scripts` | Cloudflare R2 |
+| **Spark (batch)** | (internal only — runs in cron job `lake-retail-etl`) | Render (Cron Job, Spark local mode) |
+| **MinIO console** | (local dev only — `http://localhost:9001`) | Docker Compose |
+| **Kafka broker** | (local dev only — `localhost:9092`) | Docker Compose (only if streaming needed) |
+
+**Setup guides:**
+- R2 buckets + tokens: `docs/cloud/r2/SETUP.md`
+- Render Blueprint + services: `render.yaml` at repo root + Render dashboard
+- Service-to-host mapping: `docs/cloud/SERVICE_MAPPING.md`
+- Spark + Delta on R2: `docs/cloud/r2/SPARK_CONFIG.md`
+
+---
+
+## 8. Lỗi thường gặp
 
 ### ❌ `Connection refused: localhost:8080` (Spark)
 → Spark chưa start xong. `make up` đợi 60s, nếu vẫn fail: `docker logs lake-spark-master`.
@@ -163,5 +217,14 @@ curl -fsS -u admin:admin http://localhost:8088/api/v1/health
 ### ❌ Airflow không thấy DAGs
 → DAG folder được mount read-only vào container. Trigger reload: `docker exec lake-airflow-webserver airflow dags reserialize`.
 
-### ❌ Bitnami Spark fail Ivy trên Apple Silicon
-→ Image là linux/amd64, chạy emulation chậm. Workaround: dùng `apache/spark:3.5.6` thay thế.
+### ❌ Spark image build chậm trên Apple Silicon
+→ Nếu trước đây bạn dùng `docker-compose.spark.yml` (override với
+`apache/spark:3.5.0`), bỏ file đó đi. Default `Dockerfile.spark-runtime`
+(Bitnami `spark:3.5.6-debian-12-r1`) đã có manifest `linux/arm64` nên chạy
+native trên M-series mà không cần QEMU.
+
+### ❌ `airflow-webserver-api` lỗi "address already in use" trên 8088
+→ Bạn đang chạy cả `docker-compose.yml` lẫn `docker-compose.api.yml` cũ
+(file này đã được đổi tên thành `docker-compose.api.yml.deprecated`).
+Dùng `docker-compose.dev-api.yml` mới thay thế — file này chỉ thêm
+`api` + `web` chứ không duplicate lại Airflow.

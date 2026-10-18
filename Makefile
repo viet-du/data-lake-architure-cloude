@@ -18,7 +18,12 @@ else
 endif
 PROJECT     := lakehouse
 SRC_DIR     := src
-DOCKER_COMPOSE := docker-compose -f docker-compose.yml -f docker-compose-kafka.yml
+DOCKER_COMPOSE_CORE := docker compose -f docker-compose.yml -f docker-compose-kafka.yml
+DOCKER_COMPOSE      := $(DOCKER_COMPOSE_CORE)
+# `up` and `down` (and `logs`/`ps`) use the core stack only.
+# `up-api` and `down-api` additionally bring the Control Plane (api + web)
+# in via docker-compose.dev-api.yml. Use `make reset` for the destructive
+# path (down -v + clean mock data) — that command double-confirms.
 
 .PHONY: help
 help:
@@ -41,14 +46,24 @@ health: ## Quick health check of all dev endpoints
 	@bash scripts/check_dev_links.sh
 
 .PHONY: up
-up: ## Start Docker infrastructure stack
-	$(DOCKER_COMPOSE) up -d
+up: ## Start Docker infrastructure stack (core only)
+	$(DOCKER_COMPOSE_CORE) up -d
+	@echo "Waiting 60s for services..."
+	@sleep 60
+
+.PHONY: up-api
+up-api: ## Start core stack + Control Plane apps (api + web)
+	$(DOCKER_COMPOSE_CORE) -f docker-compose.dev-api.yml up -d
 	@echo "Waiting 60s for services..."
 	@sleep 60
 
 .PHONY: down
 down: ## Stop Docker infrastructure stack (keeps volumes)
 	$(DOCKER_COMPOSE) down
+
+.PHONY: down-api
+down-api: ## Stop core stack + Control Plane apps (keeps volumes)
+	$(DOCKER_COMPOSE) -f docker-compose.dev-api.yml down
 
 .PHONY: logs
 logs: ## Tail Docker logs
@@ -58,10 +73,12 @@ logs: ## Tail Docker logs
 ps: ## Show Docker container status
 	$(DOCKER_COMPOSE) ps
 
+.PHONY: reset
+reset: ## DESTRUCTIVE: remove all volumes + mock data (double confirm)
+	@bash scripts/reset.sh
+
 .PHONY: clean
-clean: ## Destructive reset: remove volumes + mock data
-	$(DOCKER_COMPOSE) down -v
-	rm -rf data-samples/*
+clean: reset ## Alias for `make reset` (deprecated name; prefer `make reset`)
 
 .PHONY: mock-retail
 mock-retail: ## Generate mock retail data (CSV/JSON)
@@ -74,6 +91,10 @@ mock-stream: ## Generate mock streaming data
 .PHONY: pipeline-batch
 pipeline-batch: ## Run end-to-end batch pipeline (Bronze→Silver→Gold)
 	bash scripts/run_batch_pipeline.sh --pipeline batch_retail
+
+.PHONY: verify-r2
+verify-r2: ## Verify local Spark can write/read a temporary Delta table on R2
+	$(PYTHON) scripts/verify_r2.py
 
 .PHONY: pipeline-bronze
 pipeline-bronze: ## Run bronze layer ingest only
@@ -105,14 +126,21 @@ produce-clickstream: ## Run clickstream Kafka producer
 stream-clickstream: ## Run clickstream streaming pipeline via spark-submit
 	docker exec lake-spark-master spark-submit \
 		--master spark://spark-master:7077 \
-		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0,io.delta:delta-spark_2.12:3.0.0 \
+		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6,io.delta:delta-spark_2.12:3.0.0 \
 		/app-src/src/lakehouse/pipelines/stream_clickstream.py
+
+.PHONY: aggregate-clickstream-unique
+aggregate-clickstream-unique: ## Recompute exact clickstream unique metrics as a batch
+	docker exec lake-spark-master spark-submit \
+		--master spark://spark-master:7077 \
+		--packages io.delta:delta-spark_2.12:3.0.0 \
+		/app-src/src/lakehouse/aggregate/batch/clickstream_unique_metrics_aggregator.py
 
 .PHONY: stream-ecommerce
 stream-ecommerce: ## Run e-commerce streaming pipeline via spark-submit
 	docker exec lake-spark-master spark-submit \
 		--master spark://spark-master:7077 \
-		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0,io.delta:delta-spark_2.12:3.0.0 \
+		--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6,io.delta:delta-spark_2.12:3.0.0 \
 		/app-src/src/lakehouse/pipelines/stream_ecommerce.py
 
 .PHONY: scheduler
@@ -140,10 +168,9 @@ crawl-tiki: ## Crawl Tiki.vn (smartphone category, 5 pages)
 	$(PYTHON) -m lakehouse.sources.crawlers.tiki_crawler --category smartphone --max-pages 5
 
 .PHONY: crawl-all
-crawl-all: ## Crawl all sources (GitHub, Crypto, Weather, HackerNews)
+crawl-all: ## Crawl all sources (GitHub, Crypto, HackerNews)
 	$(PYTHON) -m lakehouse.sources.crawlers.github_crawler
 	$(PYTHON) -m lakehouse.sources.crawlers.crypto_crawler
-	$(PYTHON) -m lakehouse.sources.crawlers.weather_crawler
 	$(PYTHON) -m lakehouse.sources.crawlers.hackernews_crawler
 
 .PHONY: test
@@ -184,6 +211,23 @@ verify: ## Full integrity check: lint + format + tests + docker compose
 airflow-trigger: ## Trigger the retail ELT DAG
 	docker exec lake-airflow-webserver airflow dags trigger retail_elt_dag
 
+.PHONY: databricks-bootstrap
+databricks-bootstrap: ## Bootstrap Databricks UC (catalog + 3 schemas + 4 volumes)
+	bash scripts/bootstrap_databricks.sh
+
+.PHONY: databricks-dryrun
+databricks-dryrun: ## Print resolved storage layout for current ENV (debug helper)
+	@if [ "$(ENV)" = "" ] && [ "$$ENV" = "" ]; then \
+		echo "Usage: ENV=databricks make databricks-dryrun   (or ENV=local)"; \
+		exit 1; \
+	fi
+	@if [ "$$ENV" != "" ]; then export ENV=$$ENV; fi
+	@PYTHONPATH=src $(PYTHON) -c "from lakehouse.run_on_databricks import show_storage_layout; show_storage_layout()"
+
+.PHONY: databricks-diag
+databricks-diag: ## Quick auth diagnostic against DATABRICKS_HOST (no token print)
+	bash scripts/diag_databricks.sh
+
 .PHONY: spark-shell
 spark-shell: ## Open interactive PySpark shell
 	$(PYTHON) -c "from lakehouse.core.spark import shell; shell()"
@@ -192,3 +236,19 @@ spark-shell: ## Open interactive PySpark shell
 clean-pyc: ## Remove __pycache__ and .pyc files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+.PHONY: experiment-01
+experiment-01: ## Experiment 01: schema evolution, time travel, OPTIMIZE
+	$(PYTHON) -m experiments.exp01_schema_evolution_time_travel
+
+.PHONY: experiment-02
+experiment-02: ## Experiment 02: ETL vs ELT comparison
+	$(PYTHON) -m experiments.exp02_etl_vs_elt
+
+.PHONY: experiment-03
+experiment-03: ## Experiment 03: ingest/transform/query/OPTIMIZE/partition-pruning benchmark
+	$(PYTHON) -m experiments.exp03_performance_bench
+
+.PHONY: demo
+demo: ## Local console demo: Bronze -> Silver -> Gold (no Docker, just Java + Python)
+	$(PYTHON) -m experiments.demo_local_pipeline

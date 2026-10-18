@@ -116,10 +116,10 @@ def run_batch_retail(
     )
 
     # 2. Silver
-    CustomersTransformer(spark=spark, paths=paths).run()
+    CustomersTransformer(spark=spark, paths=paths).transform()
 
     # 3. Gold
-    DimCustomersAggregator(spark=spark, paths=paths).run()
+    DimCustomersAggregator(spark=spark, paths=paths).build()
 
     # 4. Verify
     if path_mode == "volume":

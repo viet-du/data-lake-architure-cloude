@@ -58,14 +58,30 @@ https://community.cloud.databricks.com/
 
 ---
 
-## Bước 2 — Tạo Compute (cluster)
+## Bước 2 — Chọn Compute
 
-### 2.1. Vào trang Compute
+Personal CE workspace của bạn có **2 lựa chọn** — bạn có thể thấy trong trang **Compute** sidebar:
 
-1. Click **"Compute"** ở sidebar trái
-2. Click **"Create Compute"** (nút xanh dương)
+### 2A. Serverless Compute (Recommended cho CE personal workspace)
 
-### 2.2. Config cluster
+Personal CE workspace đã có sẵn **2 default serverless compute** (xem screenshot từ Compute page):
+- **Default Interactive Compute** — dùng cho notebook (recommended)
+- **Default Automated Compute** — dùng cho job tự động (workflows)
+
+**Cách dùng:**
+1. Sidebar → **Compute** → click "Serverless" tab (nếu chưa thấy thì vào Compute page trước)
+2. Thấy 2 default serverless compute sẵn có → **không cần tạo mới**
+3. Mở notebook mới → tự động attach vào **Default Interactive Compute**
+4. Code chạy luôn — không cần chờ cluster start
+
+> ✅ **Lợi ích:** Không cần chờ 5-10 phút start cluster. Tự động scale. Đủ cho demo.
+> ⚠️ **Hạn chế:** 1 session tại 1 thời điểm. Không custom Spark config.
+
+### 2B. Classic cluster (Nếu cần config Spark chi tiết)
+
+1. Sidebar → **Compute** → click **"Create Compute"** (nút xanh dương)
+
+**Config cluster:**
 
 | Setting | Giá trị |
 |---|---|
@@ -78,6 +94,19 @@ https://community.cloud.databricks.com/
 
 3. Click **"Create Compute"**
 4. Đợi ~5-10 phút để cluster start (status chuyển sang xanh lá "Running")
+5. Attach notebook vào cluster vừa tạo (chọn từ dropdown ở đầu notebook)
+
+> ✅ **Lợi ích:** Persistent, custom được Spark config, nhiều notebook attach cùng lúc.
+> ⚠️ **Hạn chế:** Phải chờ start. Tốn quota (CE giới hạn 1 cluster/workspace).
+
+### Chọn cái nào?
+
+| Use case | Chọn |
+|---|---|
+| Demo nhanh, 1-2 notebook | **Serverless** (2A) |
+| Chạy job dài, cần nhiều notebook | **Classic** (2B) |
+| Cần tune Spark (memory, executor count) | **Classic** (2B) |
+| Lần đầu dùng, muốn zero-setup | **Serverless** (2A) |
 
 ---
 

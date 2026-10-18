@@ -27,8 +27,14 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
-from pathlib import Path
+
+from lakehouse.aggregate.batch.dim_customers_aggregator import DimCustomersAggregator
+from lakehouse.core.constants import Layer
+from lakehouse.core.paths import LakePaths
+from lakehouse.storage.delta_writer import write_delta_table
+from lakehouse.transform.batch.customers_transformer import CustomersTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -76,23 +82,16 @@ def run_batch_retail(
     """
     _ensure_paths_env(path_mode)
     spark = _get_spark()
-    paths = spark._jvm if False else None  # noqa: F841  (placeholder)
-    from lakehouse.core.paths import LakePaths
-
     paths = LakePaths()
-    from lakehouse.ingest.batch.csv_ingestor import CsvIngestor
-    from lakehouse.transform.batch.customers_transformer import CustomersTransformer
-    from lakehouse.aggregate.batch.dim_customers_aggregator import (
-        DimCustomersAggregator,
-    )
-
     catalog = paths.catalog
     logger.info("Running on Databricks: catalog=%s, path_mode=%s", catalog, path_mode)
     logger.info("Bronze path: %s", paths.bronze("customers"))
     logger.info("Silver path: %s", paths.silver("customers"))
     logger.info("Gold path  : %s", paths.gold("dim_customers"))
 
-    # 1. Bronze
+    # 1. Bronze — read CSV, add metadata, write to Delta
+    from pyspark.sql import functions as F
+
     df = (
         spark.read.option("header", True)
         .option("inferSchema", True)
@@ -100,9 +99,20 @@ def run_batch_retail(
     )
     if limit:
         df = df.limit(limit)
+    df = (
+        df.withColumn("_source_file", F.lit(csv_path))
+        .withColumn("_ingestion_timestamp", F.current_timestamp())
+        .withColumn("_ingestion_date", F.date_format(F.current_timestamp(), "yyyy-MM-dd"))
+    )
     logger.info("Loaded %d rows from %s", df.count(), csv_path)
-    CsvIngestor(spark=spark, paths=paths).write_to_bronze(
-        df, layer=None, table_name="customers"
+    write_delta_table(
+        df,
+        layer=Layer.BRONZE,
+        table_name="customers",
+        paths=paths,
+        mode="overwrite",
+        partition_by=None,
+        merge_schema=True,
     )
 
     # 2. Silver
@@ -144,7 +154,7 @@ def run_stream_clickstream(
         own Confluent/Redpanda endpoint.
     """
     _ensure_paths_env(path_mode)
-    spark = _get_spark()
+    _get_spark()  # init Spark session early so any errors surface before we start threads
 
     # Make Kafka reachable from cluster. The cluster has its own Kafka
     # (databricks/open-source) reachable at localhost:9092 if you installed
@@ -161,7 +171,6 @@ def run_stream_clickstream(
         len(queries),
         duration_seconds,
     )
-    import threading
 
     def _stop_after() -> None:
         time.sleep(duration_seconds)
@@ -181,7 +190,7 @@ def run_stream_clickstream(
     logger.info("✅ stream_clickstream stopped after %ds", duration_seconds)
 
 
-def _verify_volume(paths) -> None:
+def _verify_volume(paths: LakePaths) -> None:
     """Print row counts for each layer (volume mode only)."""
     from pyspark.sql import SparkSession
 
@@ -200,11 +209,9 @@ def _verify_volume(paths) -> None:
 
 def show_storage_layout() -> None:
     """Print the resolved storage layout for the active ENV (debug helper)."""
-    from lakehouse.core.paths import LakePaths
-
-    paths = LakePaths()
     from lakehouse.core.constants import Layer
 
+    paths = LakePaths()
     print("=" * 60)
     print(f"  ENV      : {os.getenv('ENV', 'local')}")
     print(f"  Catalog  : {paths.catalog}")

@@ -14,6 +14,8 @@ class StorageEnv(str, Enum):
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"
+    R2 = "r2"  # Cloudflare R2 (S3-compatible, 0$ egress)
+    DATABRICKS = "databricks"  # Databricks Community Edition (UC Volumes)
 
 
 class KafkaTopics:
@@ -23,7 +25,6 @@ class KafkaTopics:
     ECOMMERCE_PRICES = "ecommerce-price-stream"
     GITHUB_TRENDING = "github-trending-stream"
     CRYPTO_PRICES = "crypto-prices-stream"
-    WEATHER = "weather-stream"
     HACKERNEWS = "hackernews-stream"
     TIKI_CATEGORY = "tiki-category-stream"
 
@@ -37,7 +38,12 @@ class KafkaTopics:
 
 
 DELTA_PACKAGE = "io.delta:delta-spark_2.12:3.0.0"
-KAFKA_PACKAGE = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0"
+KAFKA_PACKAGE = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6"
+HADOOP_AWS_PACKAGE = "org.apache.hadoop:hadoop-aws:3.3.4"
+AWS_JAVA_SDK_PACKAGE = "com.amazonaws:aws-java-sdk-bundle:1.12.262"
 DEFAULT_PARTITION_BY = "processing_date"
 DEFAULT_KAFKA_BOOTSTRAP = "localhost:9092"
 DEFAULT_MINIO_ENDPOINT = "localhost:9000"
+# Cloudflare R2 endpoint template: <account_id>.r2.cloudflarestorage.com
+# No default — must be set via R2_ACCOUNT_ID env var when StorageEnv.R2 is used.
+DEFAULT_R2_ENDPOINT_TEMPLATE = "{account_id}.r2.cloudflarestorage.com"

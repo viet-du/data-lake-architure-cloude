@@ -45,8 +45,8 @@ class TestKafkaTopics:
 
     def test_all_topics_contains_core_topics(self) -> None:
         all_t = KafkaTopics.all()
-        # Should contain all 8 defined topics (including CLICKSTREAM_EVENTS)
-        assert len(all_t) >= 8
+        # Should contain all 7 defined topics (including CLICKSTREAM_EVENTS)
+        assert len(all_t) >= 7
         # Verify that core topics are present
         found = [
             t
@@ -59,12 +59,11 @@ class TestKafkaTopics:
                 "ecommerce-price-stream",
                 "github-trending-stream",
                 "crypto-prices-stream",
-                "weather-stream",
                 "hackernews-stream",
                 "tiki-category-stream",
             )
         ]
-        assert len(found) >= 8, f"Expected at least 8 topics, got {found}"
+        assert len(found) >= 7, f"Expected at least 7 topics, got {found}"
 
 
 class TestStorageEnvValues:

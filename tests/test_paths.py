@@ -1,10 +1,22 @@
+from __future__ import annotations
+
+import os
+
 from lakehouse.core.constants import Layer, StorageEnv
 from lakehouse.core.paths import LakePaths
 
 
 class TestLakePaths:
-
     def setup_method(self) -> None:
+        for k in (
+            "DATABRICKS_PATH_MODE",
+            "DATABRICKS_CATALOG",
+            "DATABRICKS_BRONZE_VOLUME",
+            "DATABRICKS_SILVER_VOLUME",
+            "DATABRICKS_GOLD_VOLUME",
+            "DATABRICKS_CHECKPOINT_VOLUME",
+        ):
+            os.environ.pop(k, None)
         self.paths = LakePaths(env=StorageEnv.LOCAL)
 
     def test_bronze_path(self) -> None:
@@ -30,3 +42,26 @@ class TestLakePaths:
     def test_aws_protocol(self) -> None:
         aws_paths = LakePaths(env=StorageEnv.AWS)
         assert aws_paths.silver("crm").startswith("s3a://")
+
+
+class TestLakePathsDatabricks:
+    """Databricks Unity Catalog volume paths (default mode, recommended for CE)."""
+
+    def setup_method(self) -> None:
+        os.environ["DATABRICKS_PATH_MODE"] = "volume"
+        os.environ["DATABRICKS_CATALOG"] = "workspace"
+        self.paths = LakePaths(env=StorageEnv.DATABRICKS)
+
+    def test_databricks_volume_path(self) -> None:
+        assert (
+            self.paths.bronze("crm/customers")
+            == "/Volumes/workspace/bronze/bronze_data/crm/customers/"
+        )
+
+    def test_checkpoint_in_bronze_volume(self) -> None:
+        assert self.paths.checkpoint(
+            Layer.BRONZE, "events"
+        ) == "/Volumes/workspace/bronze/bronze_data/_checkpoints/events/"
+
+    def test_table_name_three_part(self) -> None:
+        assert self.paths.table_name(Layer.SILVER, "dim_x") == "workspace.silver.dim_x"

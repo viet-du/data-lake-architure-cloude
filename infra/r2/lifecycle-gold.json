@@ -1,0 +1,17 @@
+[
+  {
+    "id": "tier-down-to-ia-365d",
+    "enabled": true,
+    "conditions": {
+      "prefix": ""
+    },
+    "transitions": [
+      {
+        "condition": {
+          "age": 365
+        },
+        "destination": "infrequent_access"
+      }
+    ]
+  }
+]

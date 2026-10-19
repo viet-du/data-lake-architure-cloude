@@ -265,6 +265,11 @@ s3a://bronze/_checkpoints/
 aws s3 rm s3://bronze/_checkpoints/clickstream/ --recursive
 ```
 
+> ⚠️ **Delivery semantics: at-least-once, NOT exactly-once.**
+> See [`STREAMING_SEMANTICS.md`](./STREAMING_SEMANTICS.md) for the full
+> analysis of failure modes, recovery procedure, and the safe way to
+> stop/restart a streaming query.
+
 ### Spark config (configs/spark-defaults.conf)
 
 ```

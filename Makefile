@@ -20,10 +20,9 @@ PROJECT     := lakehouse
 SRC_DIR     := src
 DOCKER_COMPOSE_CORE := docker compose -f docker-compose.yml -f docker-compose-kafka.yml
 DOCKER_COMPOSE      := $(DOCKER_COMPOSE_CORE)
-# `up` and `down` (and `logs`/`ps`) use the core stack only.
-# `up-api` and `down-api` additionally bring the Control Plane (api + web)
-# in via docker-compose.dev-api.yml. Use `make reset` for the destructive
-# path (down -v + clean mock data) — that command double-confirms.
+# `up`, `down`, `logs` and `ps` use the full local infrastructure stack
+# (core + Kafka). `up-api` and `down-api` additionally manage api + web.
+# Use `make reset` for the destructive path (down -v + clean mock data).
 
 .PHONY: help
 help:
@@ -46,8 +45,8 @@ health: ## Quick health check of all dev endpoints
 	@bash scripts/check_dev_links.sh
 
 .PHONY: up
-up: ## Start Docker infrastructure stack (core only)
-	$(DOCKER_COMPOSE_CORE) up -d
+up: ## Start all local Docker tools (core + Kafka)
+	$(DOCKER_COMPOSE) up -d
 	@echo "Waiting 60s for services..."
 	@sleep 60
 
@@ -58,7 +57,7 @@ up-api: ## Start core stack + Control Plane apps (api + web)
 	@sleep 60
 
 .PHONY: down
-down: ## Stop Docker infrastructure stack (keeps volumes)
+down: ## Stop all local Docker tools (keeps volumes)
 	$(DOCKER_COMPOSE) down
 
 .PHONY: down-api

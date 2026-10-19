@@ -27,25 +27,29 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      sleep 10;
-      mc alias set local http://minio:9000 minioadmin minioadmin;
-      mc mb -p local/bronze --ignore-existing;
-      mc mb -p local/silver --ignore-existing;
-      mc mb -p local/gold --ignore-existing;
-      mc mb -p local/bronze/clickstream --ignore-existing;
-      mc mb -p local/silver/clickstream --ignore-existing;
-      mc mb -p local/gold/clickstream --ignore-existing;
-      mc mb -p local/bronze/ecommerce --ignore-existing;
-      mc mb -p local/silver/ecommerce --ignore-existing;
-      mc mb -p local/gold/ecommerce --ignore-existing;
-      mc anonymous set none local/bronze;
-      mc anonymous set none local/silver;
-      mc anonymous set none local/gold;
-      echo ' MinIO buckets created: bronze, silver, gold';
-      mc ls local/;
-      "
+    # NOTE: keep $b and $sub out of reach of Compose's own variable
+    # interpolation — use $${b} / $${sub} so they are expanded by `sh -c`
+    # at run time, not by the host shell at compose time.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 10
+        mc alias set local http://minio:9000 minioadmin minioadmin
+        for b in bronze silver gold; do
+          mc mb --ignore-existing "local/$${b}" || true
+        done
+        for sub in crm erp; do
+          for layer in bronze silver gold; do
+            mc mb --ignore-existing "local/$${layer}/$${sub}" || true
+          done
+        done
+        for ns in clickstream ecommerce; do
+          for layer in bronze silver gold; do
+            mc mb --ignore-existing "local/$${layer}/$${ns}" || true
+          done
+        done
+        echo ' MinIO buckets created:'
+        mc ls local/
 
   postgres:
     image: postgres:13
@@ -62,41 +66,35 @@ services:
       timeout: 5s
       retries: 5
 
-  hive-metastore:
-    image: apache/hive:3.1.3
-    container_name: lake-hive-metastore
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      SERVICE_NAME: metastore
-      DB_DRIVER: postgres
-      # Apache hive 3.1.3 entrypoint parses SERVICE_OPTS; pass each JVM arg as a single token
-      SERVICE_OPTS: >-
-        -Djavax.net.ssl.trustStorePassword=changeit
-        -Dsun.net.inetaddr.ttl=60
-        -Xmx1G
-    ports:
-      - "9083:9083"
-    volumes:
-      - ./configs/hive-site.xml:/opt/hive/conf/hive-site.xml:ro
-    command: /opt/hive/bin/hive --service metastore
-    healthcheck:
-      test: ["CMD-SHELL", "ss -ltn | grep -q ':9083' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+  # Hive Metastore (apache/hive:3.1.3) was removed in PHASE 2.
+  # Delta Lake uses its own _delta_log/ transaction log for the catalog,
+  # and no code path in src/lakehouse/ queries the metastore. The previous
+  # setup also broke on every `make down + up` because the upstream
+  # entrypoint re-runs `schematool -initSchema` unconditionally and the
+  # preserved Postgres volume landed in `BUCKETING_COLS already exists`.
+  # If you later need a real catalog (Glue / Unity Catalog / Polaris),
+  # add it as a separate opt-in profile; do not bring this back here.
 
   spark-master:
-    image: bitnamilegacy/spark:3.5.6-debian-12-r1
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-runtime
+    image: lake-spark:3.5.6
     container_name: lake-spark-master
+    env_file:
+      - .env
     environment:
       SPARK_MODE: master
+      SPARK_MASTER: "spark://spark-master:7077"
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: 7077
       SPARK_MASTER_WEBUI_PORT: 8080
       SPARK_DAEMON_JAVA_OPTS: "-Dspark.deploy.mode=cluster"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_SECURE: "false"
+      KAFKA_BOOTSTRAP: "kafka:29092"
       PYTHONPATH: /app-src/src
     ports:
       - "8080:8080"   # Spark UI
@@ -114,13 +112,24 @@ services:
       start_period: 60s
 
   spark-worker:
-    image: bitnamilegacy/spark:3.5.6-debian-12-r1
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-runtime
+    image: lake-spark:3.5.6
     container_name: lake-spark-worker
+    env_file:
+      - .env
     environment:
       SPARK_MODE: worker
+      SPARK_MASTER: "spark://spark-master:7077"
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_MEMORY: 2g
       SPARK_WORKER_CORES: 2
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_SECURE: "false"
+      KAFKA_BOOTSTRAP: "kafka:29092"
       PYTHONPATH: /app-src/src
     depends_on:
       spark-master:
@@ -150,52 +159,117 @@ services:
       retries: 5
 
   airflow-webserver:
-    image: apache/airflow:2.7.0-python3.11
+    # Custom image with lakehouse Python deps pre-installed.
+    # Build with:  docker build -f Dockerfile.airflow -t lake-airflow:2.7.0 .
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: lake-airflow:2.7.0
     container_name: lake-airflow-webserver
     depends_on:
       airflow-db:
         condition: service_healthy
+      # Wait until the webserver's own port is up (Airflow is ready to serve)
+      # rather than just "container started", which finishes long before
+      # `airflow db init` and gunicorn are ready.
+    healthcheck:
+      # We use the API root (which returns 302/200 redirect to the login
+      # page) plus a `db check` round-trip — this proves Airflow is up
+      # without creating a cyclic dependency on the scheduler (whose
+      # heartbeat is part of /api/v1/health, but the scheduler is in turn
+      # depends_on the webserver being healthy).
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS -o /dev/null -w "%{http_code}" http://localhost:8080/ | grep -qE '^(200|301|302)$' &&
+          airflow db check >/dev/null 2>&1 || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
-      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+      JAVA_HOME: /opt/java/openjdk
       PYTHONPATH: /app-src/src
+      # Inside the compose network, MinIO is reachable as `minio:9000` (not
+      # localhost:9000). The csv_ingestor task runs a local SparkSession in
+      # the webserver container, so its s3a endpoint must resolve on the
+      # compose network.
+      # Note: when S3_ENDPOINT is set in .env (Cloudflare R2), the lakehouse
+      # package reads S3_* and ignores MINIO_* — the values below are just
+      # safe defaults that are overridden by env_file when R2 is active.
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      DATA_SAMPLES_DIR: /data-samples
     ports:
       - "8088:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
       - ./src:/app-src/src:ro
-      # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
-      - ./src:/app-src/src:ro
+      # Mount data-samples at /data-samples so retail_generator / csv_ingestor
+      # can find CSVs regardless of which directory the BashOperator runs in.
+      - ./data-samples:/data-samples
       - ./airflow_logs:/opt/airflow/logs
+      # Mount Docker socket so DAG tasks can call `docker exec lake-spark-master spark-submit ...`
+      # Note: `/usr/bin/docker` is already present in the base image, so we only need the socket.
+      - /var/run/docker.sock:/var/run/docker.sock
     command: >
       bash -c "
       airflow db init &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true;
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin;
       airflow webserver
       "
 
   airflow-scheduler:
-    image: apache/airflow:2.7.0-python3.11
+    # Custom image with lakehouse Python deps pre-installed.
+    # Build with:  docker build -f Dockerfile.airflow -t lake-airflow:2.7.0 .
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    image: lake-airflow:2.7.0
     container_name: lake-airflow-scheduler
     depends_on:
-      - airflow-db
+      airflow-db:
+        condition: service_healthy
+      airflow-webserver:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
-      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      JAVA_HOME: /opt/java/openjdk
       PYTHONPATH: /app-src/src
+      # Same MinIO/Delta endpoint wiring as the webserver — the scheduler
+      # is the one that *runs* task instances on LocalExecutor, so any
+      # task that creates a local SparkSession (bronze_ingest) needs this.
+      # When S3_ENDPOINT is set in .env, the lakehouse package switches to R2.
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      DATA_SAMPLES_DIR: /data-samples
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
-      # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
+      # Mount source at /app-src/src; Spark entry-point scripts use this path.
       - ./src:/app-src/src:ro
+      # data-samples mount (see comment on webserver service)
+      - ./data-samples:/data-samples
       - ./airflow_logs:/opt/airflow/logs
+      # Mount Docker socket so DAG tasks can call `docker exec lake-spark-master spark-submit ...`
+      # Note: `/usr/bin/docker` is already present in the base image, so we only need the socket.
+      - /var/run/docker.sock:/var/run/docker.sock
     command: airflow scheduler
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -u admin:admin http://localhost:8080/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --local"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -217,73 +291,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-
-  redpanda:
-    image: redpandadata/redpanda:v24.1.7
-    container_name: lake-redpanda
-    command:
-      - redpanda
-      - start
-      - --overprovisioned
-      - --smp=1
-      - --memory=1G
-      - --reserve-memory=0M
-      - --node-id=0
-      - --check=false
-      - --kafka-addr=PLAINTEXT://0.0.0.0:9192
-      - --advertise-kafka-addr=PLAINTEXT://redpanda:9192
-      - --pandaproxy-addr=0.0.0.0:8282
-      - --advertise-pandaproxy-addr=redpanda:8282
-      - --rpc-addr=0.0.0.0:33145
-      - --advertise-rpc-addr=redpanda:33145
-    ports:
-      - "9192:9192"     # Kafka API
-      - "8282:8282"     # Pandaproxy (REST)
-      - "9644:9644"     # Admin API
-    volumes:
-      - redpanda_data:/var/lib/redpanda/data
-    healthcheck:
-      test: ["CMD", "rpk", "cluster", "health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redpanda-console:
-    image: docker.redpanda.com/redpandadata/console:latest
-    container_name: lake-redpanda-console
-    depends_on:
-      redpanda:
-        condition: service_healthy
-    environment:
-      KAFKA_BROKERS: redpanda:9192
-      CONFIG_FILEPATH: /etc/console/configs/console.yaml
-    ports:
-      - "8091:8080"   # Web UI (8081 conflicts with kafka-ui in compose-kafka)
-    volumes:
-      - ./configs/redpanda-console.yaml:/etc/console/configs/console.yaml:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: lake-kafka-ui
-    depends_on:
-      redpanda:
-        condition: service_healthy
-    environment:
-      KAFKA_CLUSTERS_0_NAME: redpanda-local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9192
-      KAFKA_CLUSTERS_0_ZOOKEEPER: ""
-    ports:
-      - "8089:8080"   # Web UI
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   mongo:
     image: mongo:7
@@ -317,14 +324,14 @@ services:
       timeout: 5s
       retries: 5
 
-  # Note: api & web services are defined in docker-compose.api.yml
-  # Run together: docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml up -d
+  # Opt-in app layer is defined in docker-compose.dev-api.yml
+  # Core stack:  docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
+  # Core + apps: docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.dev-api.yml up -d
 
 volumes:
   minio_data:
   postgres_data:
   airflow_db_data:
   metabase_data:
-  redpanda_data:
   mongo_data:
   redis_data:

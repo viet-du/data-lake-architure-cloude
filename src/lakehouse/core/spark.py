@@ -137,7 +137,10 @@ def get_spark_session(
         if get_storage_env() == StorageEnv.DATABRICKS:
             active = SparkSession.getActiveSession()
             if active is not None:
-                logger.info(" Using active Databricks session: %s", active.sparkContext.appName)
+                # NOTE: avoid .sparkContext and .appName here — serverless
+                # compute raises JVM_ATTRIBUTE_NOT_SUPPORTED (sparkContext) or
+                # AttributeError (appName not exposed). We just log the id.
+                logger.info(" Using active Databricks session (id=%s)", id(active))
                 _SPARK_SESSION = active
                 return _SPARK_SESSION
             # Fallback: no active session (e.g. running on a serverless job

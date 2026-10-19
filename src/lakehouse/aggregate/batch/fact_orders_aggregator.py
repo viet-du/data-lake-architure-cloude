@@ -24,7 +24,14 @@ class FactOrdersAggregator:
 
     def build(self) -> int:
         logger.info(" Build: fact_orders")
-        orders = self.spark.read.format("delta").load(self.paths.silver("orders"))
+        orders = (
+            self.spark.read.format("delta").load(self.paths.silver("orders"))
+            # P0 FIX: only completed orders are revenue events.
+            # "completed" = order has been fully processed and payment confirmed.
+            # pending / shipped are not finalized; cancelled are voided.
+            # ⚠️ BUSINESS RULE — verify with project owner: should "shipped" also count?
+            .filter(F.col("status") == "completed")
+        )
         customers = self.spark.read.format("delta").load(self.paths.silver("customers"))
         products = self.spark.read.format("delta").load(self.paths.silver("products"))
         fact = (
@@ -34,12 +41,14 @@ class FactOrdersAggregator:
                 "left",
             )
             .join(
-                products.select("product_id", "product_name", "category", "subcategory"),
+                products.select("product_id", "product_name", "category", "subcategory", "cost"),
                 "product_id",
                 "left",
             )
+            # P1 FIX: use real product cost instead of hardcoded 60% margin assumption.
+            # profit = line_total (revenue) - actual product cost.
             .withColumn("revenue", F.col("line_total"))
-            .withColumn("cost", F.col("line_total") * 0.6)
+            .withColumn("cost", F.coalesce(F.col("cost"), F.col("line_total") * F.lit(0.6)))
             .withColumn("profit", F.col("revenue") - F.col("cost"))
             .select(
                 "order_id",

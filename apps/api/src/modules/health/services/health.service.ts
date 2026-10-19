@@ -76,14 +76,23 @@ async function checkMinio(deep: boolean): Promise<TServiceStatus> {
   }
   const r = await timed(async () => {
     const s3 = getS3();
-    const cmd = new HeadBucketCommand({ Bucket: 'lakehouse' });
+    const cmd = new HeadBucketCommand({ Bucket: env.S3_HEALTH_BUCKET });
     return s3.send(cmd);
   });
   if ('error' in r) {
     const name = (r.error as { name?: string }).name ?? 'Unknown';
-    return { status: 'down', latencyMs: r.latencyMs, message: `MinIO error: ${name}`, details: r.error };
+    return {
+      status: 'down',
+      latencyMs: r.latencyMs,
+      message: `Object storage error: ${name}`,
+      details: r.error,
+    };
   }
-  return { status: 'up', latencyMs: r.latencyMs, details: { bucket: 'lakehouse' } };
+  return {
+    status: 'up',
+    latencyMs: r.latencyMs,
+    details: { bucket: env.S3_HEALTH_BUCKET },
+  };
 }
 
 async function checkKafka(deep: boolean): Promise<TServiceStatus> {

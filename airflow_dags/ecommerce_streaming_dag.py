@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 
+from lakehouse.core.constants import DELTA_PACKAGE, KAFKA_PACKAGE
+
 default_args = {
     "owner": "data-engineering",
     "depends_on_past": False,
@@ -25,11 +27,15 @@ with DAG(
     stream_pipeline = BashOperator(
         task_id="run_ecommerce_pipeline",
         bash_command=(
-            "docker exec lake-spark-master spark-submit "
+            "docker exec "
+            "-e KAFKA_BOOTSTRAP=kafka:29092 "
+            "-e MINIO_ENDPOINT=minio:9000 "
+            "-e AWS_ACCESS_KEY_ID=minioadmin "
+            "-e AWS_SECRET_ACCESS_KEY=minioadmin "
+            "lake-spark-master spark-submit "
             "--master spark://spark-master:7077 "
-            "--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.0,"
-            "io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/pipelines/stream_ecommerce.py"
+            f"--packages {KAFKA_PACKAGE},{DELTA_PACKAGE} "
+            "/app-src/src/lakehouse/pipelines/stream_ecommerce.py"
         ),
         execution_timeout=timedelta(hours=2),
     )

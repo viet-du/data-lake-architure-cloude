@@ -1,0 +1,9 @@
+step,table,row_count,file_count,total_bytes,history,cols_count,id1_price,file_count_delta,bytes_delta
+v0,/Users/mac/Documents/data-lake-architecture/_experiments_workspace/exp01/products_delta,5,2,1899,,,,,
+v1_schema_evolved,/Users/mac/Documents/data-lake-architecture/_experiments_workspace/exp01/products_delta,10,4,4306,,,,,
+v2_after_update,/Users/mac/Documents/data-lake-architecture/_experiments_workspace/exp01/products_delta,10,4,4537,,,,,
+history_versions,,,,,3,,,,
+v0_time_travel_verified,,,,,,3,100.0,,
+before_optimize,,,4,4537,,,,,
+after_optimize,,,1,1358,,,,,
+delta_after_optimize,,,,,,,,-3,-3179

@@ -64,7 +64,7 @@ class ClickstreamIngestor:
             paths=self.paths,
             output_mode="append",
             partition_by=None,
-            trigger_available_now=True,
+            trigger_available_now=False,
         )
 
     def run(self) -> StreamingQuery:

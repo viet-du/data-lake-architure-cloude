@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import subprocess
-
 import pytest
 
 from lakehouse.core.constants import StorageEnv
@@ -10,16 +8,29 @@ from lakehouse.pipelines.base import BatchPipeline, StreamingPipeline
 
 
 def _has_spark() -> bool:
-    """Return True if Java/Spark is available (used by tests that need a JVM)."""
+    """Return True if Java/Spark is available and can initialise a JVM.
+
+    We don't just check for the ``java`` binary — that passes even when
+    a sandbox blocks ``InetAddress.lookupAllHostAddr`` at runtime.
+    Instead we try to start a minimal PySpark session and bail fast.
+    """
     try:
-        result = subprocess.run(
-            ["java", "-version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+        import os
+
+        # Force IPv4 so the JVM does not call getaddrinfo(..., AF_INET6)
+        # which is blocked in Cursor sandbox environments.
+        os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
+        os.environ.setdefault("java.net.preferIPv4Stack", "true")
+
+        from pyspark import SparkConf, SparkContext
+
+        conf = SparkConf().setAppName("spark-availability-check").setMaster(
+            "local[*]"
         )
-        return result.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
+        sc = SparkContext(conf=conf)
+        sc.stop()
+        return True
+    except Exception:
         return False
 
 

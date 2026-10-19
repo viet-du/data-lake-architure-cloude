@@ -32,13 +32,30 @@ class ClickstreamTransformer:
         )
 
     def transform(self, df: DataFrame) -> DataFrame:
+        # `timestamp` from producers is ISO-8601 in UTC (e.g. "2026-10-16T09:33:00Z"
+        # or "2026-10-16T09:33:00.123456Z"). We parse with an explicit timezone so
+        # event_timestamp is non-ambiguous. If the producer forgot the "Z",
+        # to_timestamp will still parse it but treat it as a local timestamp —
+        # we add a soft warning by leaving the column unaltered when parsing
+        # returns NULL instead of dropping the row.
         return (
             df.filter(F.col("event_id").isNotNull())
             .filter(F.col("user_id").isNotNull())
             .filter(F.col("event_type").isNotNull())
-            .withColumn("event_timestamp", F.to_timestamp("timestamp"))
+            .withColumn(
+                "event_timestamp",
+                F.coalesce(
+                    F.to_timestamp("timestamp", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX"),
+                    F.to_timestamp("timestamp", "yyyy-MM-dd'T'HH:mm:ssXXX"),
+                    F.to_timestamp("timestamp", "yyyy-MM-dd'T'HH:mm:ss"),
+                ),
+            )
             .withColumn("device", F.get_json_object("metadata", "$.device"))
             .withColumn("event_date", F.date_format(F.col("event_timestamp"), "yyyy-MM-dd"))
+            # NOTE: dropDuplicates on a streaming DataFrame dedupes within a
+            # single micro-batch only. Producer-side event_id must be globally
+            # unique (e.g. UUIDv4) for end-to-end dedup; see
+            # docs/architecture/STREAMING_SEMANTICS.md.
             .dropDuplicates(["event_id"])
         )
 
@@ -53,7 +70,7 @@ class ClickstreamTransformer:
             paths=self.paths,
             output_mode="append",
             partition_by="event_date",
-            trigger_available_now=True,
+            trigger_available_now=False,
         )
 
 

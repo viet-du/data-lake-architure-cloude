@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import os
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -42,7 +43,7 @@ class RetailMockGenerator:
     def __init__(
         self,
         *,
-        output_dir: str | Path = "data-samples",
+        output_dir: str | Path | None = None,
         num_customers: int = 200,
         num_products: int = 50,
         num_orders: int = 1000,
@@ -50,6 +51,18 @@ class RetailMockGenerator:
     ) -> None:
         random.seed(seed)
         self.seed = seed
+        # Resolve output_dir to an absolute path. We honor DATA_SAMPLES_DIR env
+        # var if set (used by docker-compose to point at /data-samples) and
+        # otherwise default to the absolute location of data-samples next to
+        # the project root. We never use a bare relative path because the
+        # BashOperator in the DAG runs from /opt/airflow, where "data-samples"
+        # is not visible and is not writable as the airflow user.
+        if output_dir is None:
+            output_dir = os.environ.get("DATA_SAMPLES_DIR")
+        if output_dir is None:
+            # <repo>/data-samples — works when the repo is mounted at /app-src
+            # (i.e. the airflow container with ./src:/app-src/src:ro).
+            output_dir = str(Path(__file__).resolve().parents[4] / "data-samples")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.num_customers = num_customers

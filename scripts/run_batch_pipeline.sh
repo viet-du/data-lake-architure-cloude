@@ -6,15 +6,12 @@
 # inside the lake-spark-master container.
 #
 # Why this wrapper exists:
-#   - `apache/spark:3.5.0` is built standalone, not via bitnami, so we need
-#     to set PYTHONPATH, HOME, Ivy cache dir explicitly
-#   - We pre-include hadoop-aws and aws-java-sdk-bundle for S3A support
-#     (apache/spark image ships without Hadoop client libraries)
-#   - delta-spark pip package is installed in custom image lake-spark:3.5.0
-#     (built from Dockerfile.spark) so configure_spark_with_delta_pip works
+#   - The active image is based on Bitnami Spark 3.5.6; `spark-submit` is on
+#     PATH (the deprecated Dockerfile.spark image used /opt/spark/bin).
+#   - The wrapper sets a writable HOME and Ivy cache for package resolution.
 #
 # Prerequisites:
-#   - Stack running: docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.spark.yml up -d
+#   - Stack running: make up
 #   - lake-spark-master healthy
 #   - MinIO has buckets: bronze, silver, gold (auto-created by lake-minio-init)
 #   - Source data present: data-samples/crm/customers.csv, data-samples/erp/*.csv, data-samples/erp/*.json
@@ -57,12 +54,12 @@ esac
 
 # Common spark-submit config:
 #   - 3 packages: delta-spark, hadoop-aws, aws-java-sdk-bundle (S3A support)
-#   - Ivy cache in /tmp/.ivy2 (writable in apache/spark image)
-#   - PYSPARK_PYTHON=python3 (use container's python3.8)
+#   - Ivy cache in /tmp/.ivy2 (writable in the Spark container)
+#   - PYSPARK_PYTHON=python3 (the image PATH selects lakehouse-venv)
 PACKAGES="io.delta:delta-spark_2.12:3.0.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
 
 SPARK_CMD=(
-    /opt/spark/bin/spark-submit
+    spark-submit
     --master "$MASTER_URL"
     --packages "$PACKAGES"
     --conf "spark.jars.ivy=/tmp/.ivy2"
@@ -73,7 +70,7 @@ SPARK_CMD=(
 if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "DRY RUN — would execute in container $SPARK_CONTAINER:"
     printf '  export HOME=/tmp\n'
-    printf '  export PYTHONPATH=/app-src/src:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip\n'
+    printf '  export PYTHONPATH=/app-src/src\n'
     printf '  export PYSPARK_PYTHON=python3\n'
     printf '  '
     printf '%q ' "${SPARK_CMD[@]}"
@@ -90,7 +87,8 @@ echo "════════════════════════�
 
 docker exec \
     -e HOME=/tmp \
-    -e PYTHONPATH=/app-src/src:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip \
+    -e DATA_SAMPLES_DIR=/data-samples \
+    -e PYTHONPATH=/app-src/src \
     -e PYSPARK_PYTHON=python3 \
     "$SPARK_CONTAINER" \
     "${SPARK_CMD[@]}"

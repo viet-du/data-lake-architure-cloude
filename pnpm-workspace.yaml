@@ -2,4 +2,15 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  msgpackr-extract: true
+  unrs-resolver: true
   esbuild: true
+  "@duckdb/node-bindings-darwin-arm64": true
+  "@duckdb/node-api": true
+  "@img/sharp-libvips-darwin-arm64": true
+  "@next/swc-darwin-arm64": true
+  "@scarf/scarf": true
+  "@tree-sitter-grammars/tree-sitter-yaml": true
+  core-js-pure: true
+  tree-sitter-json: true
+  tree-sitter: true

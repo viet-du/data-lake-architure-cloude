@@ -2,7 +2,6 @@ export const CRAWLER_NAMES = [
   'tiki',
   'github',
   'crypto',
-  'weather',
   'hackernews',
 ] as const;
 export type CrawlerName = (typeof CRAWLER_NAMES)[number];

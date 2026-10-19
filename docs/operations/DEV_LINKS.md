@@ -28,6 +28,16 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compo
 
 `make down` dừng core stack nhưng **giữ nguyên volumes**. Muốn xóa hết dữ liệu, dùng `make reset` (cần gõ `yes` rồi `RESET`).
 
+## Storage backend — MinIO (default) hoặc Cloudflare R2 (cloud)
+
+| Backend | URL truy cập | Khi nào dùng | Setup |
+|---|---|---|---|
+| **MinIO** (local Docker) | http://localhost:9001 | Dev offline, demo nội bộ | Default (chạy được ngay) |
+| **Cloudflare R2** (cloud) | https://dash.cloudflare.com → R2 | Portfolio, share link, persistent data | [`R2_SETUP.md`](./R2_SETUP.md) |
+| **Databricks CE** (lakehouse) | https://community.cloud.databricks.com/ | Demo ấn tượng, native Delta, notebook UI | [`DATABRICKS_SETUP.md`](./DATABRICKS_SETUP.md) |
+
+**Switch backend**: chỉ cần sửa `.env` (set/unset `S3_ENDPOINT`), không cần đổi code.
+
 ---
 
 ## 1. Storage & Query
@@ -178,28 +188,47 @@ bash scripts/check_dev_links.sh
 
 ---
 
-## 7. Cloud (R2 + Render) — see [CLOUD_R2_RENDER.md](../architecture/CLOUD_R2_RENDER.md)
+## 7. Local Docker runtime
 
-Local dev is the default. The cloud split (Cloudflare R2 for storage, Render for compute, Cloudflare Pages for the Web UI) is documented separately. After the cloud stack is up, fill in the URLs here for one-stop reference:
+Local Docker Compose is the runtime for all tools. Cloudflare R2 is optional storage only; Spark, Airflow, Kafka, API and Web run on this Mac.
 
 | Service | Cloud URL | Where it runs |
 | --- | --- | --- |
 | **Web UI** | `https://<your-web>.pages.dev` | Cloudflare Pages |
-| **API** | `https://lake-api.onrender.com` | Render (Web Service) |
-| **Airflow** | `https://lake-airflow.onrender.com` (only if added) | Render (Web Service, optional) |
+| **API** | `http://localhost:3001` | Docker Compose (`lake-api`) |
+| **Airflow** | `http://localhost:8088` | Docker Compose (`lake-airflow-webserver`) |
 | **R2 bucket: bronze** | `s3a://bronze` (via `<account-id>.r2.cloudflarestorage.com`) | Cloudflare R2 |
 | **R2 bucket: silver** | `s3a://silver` | Cloudflare R2 |
 | **R2 bucket: gold** | `s3a://gold` | Cloudflare R2 |
 | **R2 bucket: scripts** | `s3a://scripts` | Cloudflare R2 |
-| **Spark (batch)** | (internal only — runs in cron job `lake-retail-etl`) | Render (Cron Job, Spark local mode) |
+| **Spark (batch)** | `http://localhost:8080` | Docker Compose (`lake-spark-master`) |
 | **MinIO console** | (local dev only — `http://localhost:9001`) | Docker Compose |
 | **Kafka broker** | (local dev only — `localhost:9092`) | Docker Compose (only if streaming needed) |
 
-**Setup guides:**
+**Setup guides (chọn 1 tùy nhu cầu):**
+
+- **Local tools + R2 cloud storage** (khuyến nghị cho portfolio): [`R2_SETUP.md`](./R2_SETUP.md) — tools chạy trên Mac, data trên R2
+- Local tools + optional R2 storage: [`R2_SETUP.md`](./R2_SETUP.md)
 - R2 buckets + tokens: `docs/cloud/r2/SETUP.md`
-- Render Blueprint + services: `render.yaml` at repo root + Render dashboard
-- Service-to-host mapping: `docs/cloud/SERVICE_MAPPING.md`
+- Local service mapping: `docs/cloud/SERVICE_MAPPING.md`
 - Spark + Delta on R2: `docs/cloud/r2/SPARK_CONFIG.md`
+
+**Quick switch MinIO ↔ R2:**
+
+```bash
+# Switch sang R2 (đã có S3_ENDPOINT trong .env)
+sed -i '' 's/^#S3_ENDPOINT=/S3_ENDPOINT=/' .env
+sed -i '' 's/^MINIO_ENDPOINT=/#MINIO_ENDPOINT=/' .env
+make down && make up
+
+# Switch về MinIO
+sed -i '' 's/^S3_ENDPOINT=/#S3_ENDPOINT=/' .env
+sed -i '' 's/^#MINIO_ENDPOINT=/MINIO_ENDPOINT=/' .env
+make down && make up
+
+# Test kết nối R2
+./scripts/test_r2_connection.sh
+```
 
 ---
 

@@ -83,9 +83,9 @@ The R2 token is the credential that Spark, the API, and the MinIO sync job will 
 
 You will need these in three places:
 
-1. **Render dashboard env vars** (per-service, encrypted at rest)
-2. **GitHub Actions secrets** (for cron crawlers)
-3. **Local `.env`** for development
+1. **Local `.env`** (git-ignored, for Docker Compose services)
+2. **Password manager** (backup for the R2 token)
+3. **CI secrets** only if a future local/CI job needs R2 access
 
 The values are:
 
@@ -220,7 +220,7 @@ aws --endpoint-url https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com \
 wrangler r2 object delete bronze/r2-test.txt
 ```
 
-If all 5 steps work, R2 is ready for Render to use.
+If all 5 steps work, R2 is ready for the local Docker Compose stack to use.
 
 ---
 
@@ -251,7 +251,7 @@ If all 5 steps work, R2 is ready for Render to use.
 R2 has no "stop writing at 100GB" toggle. To enforce a hard cap, you need one of:
 
 - A daily Cloudflare Worker that lists bucket sizes and emails you if >threshold
-- A Render cron job that does the same check
+- A local scheduled job or CI task that does the same check
 - Trust + a budget alert + manual intervention
 
 For a demo, trust + budget alert is fine.

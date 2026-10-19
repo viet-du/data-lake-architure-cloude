@@ -4,13 +4,27 @@ const EnvSchema = z.object({
   ENV: z.enum(['local', 'dev', 'staging', 'prod']).default('local'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
-  MINIO_ENDPOINT: z.string().min(1),
-  MINIO_ACCESS_KEY: z.string().min(1),
-  MINIO_SECRET_KEY: z.string().min(1),
+  S3_ENDPOINT: z.string().min(1).optional(),
+  S3_ACCESS_KEY: z.string().min(1).optional(),
+  S3_SECRET_KEY: z.string().min(1).optional(),
+  S3_REGION: z.string().min(1).optional(),
+  S3_PATH_STYLE_ACCESS: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .optional(),
+  S3_HEALTH_BUCKET: z.string().min(1).default('bronze'),
+  S3_USE_SSL: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .optional(),
+
+  MINIO_ENDPOINT: z.string().min(1).optional(),
+  MINIO_ACCESS_KEY: z.string().min(1).optional(),
+  MINIO_SECRET_KEY: z.string().min(1).optional(),
   MINIO_SECURE: z
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
-    .default('false'),
+    .optional(),
 
   KAFKA_BOOTSTRAP: z.string().min(1),
   KAFKA_SECURITY_PROTOCOL: z.string().default('PLAINTEXT'),
@@ -47,6 +61,55 @@ const EnvSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
     .default('false'),
+}).superRefine((value, ctx) => {
+  const r2EndpointConfigured = Boolean(value.S3_ENDPOINT);
+  const requiredStorageValues = [
+    ['S3_ENDPOINT', value.S3_ENDPOINT ?? value.MINIO_ENDPOINT],
+    [
+      'S3_ACCESS_KEY',
+      r2EndpointConfigured ? value.S3_ACCESS_KEY : value.MINIO_ACCESS_KEY,
+    ],
+    [
+      'S3_SECRET_KEY',
+      r2EndpointConfigured ? value.S3_SECRET_KEY : value.MINIO_SECRET_KEY,
+    ],
+  ] as const;
+
+  for (const [name, resolved] of requiredStorageValues) {
+    if (!resolved) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [name],
+        message: `Set ${name} (or its MINIO_* compatibility variable)`,
+      });
+    }
+  }
+}).transform((value) => {
+  const configuredEndpoint = value.S3_ENDPOINT ?? value.MINIO_ENDPOINT ?? '';
+  const endpointHasScheme = /^https?:\/\//i.test(configuredEndpoint);
+  const endpointUsesSsl = /^https:\/\//i.test(configuredEndpoint);
+  const useSsl = endpointHasScheme
+    ? endpointUsesSsl
+    : (value.S3_USE_SSL ?? value.MINIO_SECURE ?? false);
+  const endpoint = endpointHasScheme
+    ? configuredEndpoint
+    : `${useSsl ? 'https' : 'http'}://${configuredEndpoint}`;
+
+  return {
+    ...value,
+    S3_ENDPOINT: endpoint,
+    S3_ACCESS_KEY: value.S3_ACCESS_KEY ?? value.MINIO_ACCESS_KEY ?? '',
+    S3_SECRET_KEY: value.S3_SECRET_KEY ?? value.MINIO_SECRET_KEY ?? '',
+    S3_REGION:
+      value.S3_REGION ?? (value.S3_ENDPOINT ? 'auto' : 'us-east-1'),
+    S3_PATH_STYLE_ACCESS: value.S3_PATH_STYLE_ACCESS ?? true,
+    S3_HEALTH_BUCKET: value.S3_HEALTH_BUCKET,
+    S3_USE_SSL: useSsl,
+    MINIO_ENDPOINT: endpoint,
+    MINIO_ACCESS_KEY: value.S3_ACCESS_KEY ?? value.MINIO_ACCESS_KEY ?? '',
+    MINIO_SECRET_KEY: value.S3_SECRET_KEY ?? value.MINIO_SECRET_KEY ?? '',
+    MINIO_SECURE: useSsl,
+  };
 });
 
 const parsed = EnvSchema.safeParse(process.env);

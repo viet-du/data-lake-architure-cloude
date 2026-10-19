@@ -3,7 +3,7 @@
 Mirrors newly-written MinIO objects to R2 (the durable cold tier).
 Spark writes batch output to R2 directly (via S3A); this sync handles
 the streaming checkpoint + any in-cluster MinIO state that needs to
-survive a Render redeploy.
+survive a local container restart.
 
 Usage:
     # One-shot sync
@@ -214,7 +214,7 @@ def get_env_required(key: str) -> str:
     if not val:
         raise RuntimeError(
             f"Required env var {key!r} is not set. "
-            "Set it in the Render dashboard env vars (see docs/cloud/r2/SETUP.md §5)."
+            "Set it in the local git-ignored `.env` file (see docs/cloud/r2/SETUP.md §5)."
         )
     return val
 

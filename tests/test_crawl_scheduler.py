@@ -167,30 +167,38 @@ def test_callback_fires_on_error():
     assert isinstance(args[2], ValueError)
 
 
-def test_build_default_scheduler_has_all_jobs():
+def test_build_default_scheduler_has_all_jobs(monkeypatch):
     """Sanity: factory wires the 7 expected business sources.
 
-    Weather intentionally excluded — not joined with any business
-    data in this project, so crawling it produces noise.
+    KafkaProducer is mocked so this test does NOT require a live Kafka
+    broker. It only verifies the scheduler factory assembles the correct
+    crawler instances and job names.
     """
-    from lakehouse.sources.scheduler import build_default_scheduler
-    s = build_default_scheduler()
-    names = {j["name"] for j in s.list_jobs()}
+    from unittest.mock import MagicMock, patch
 
-    # E-commerce (business-critical, 5 Tiki categories)
-    assert "tiki-smartphone" in names
-    assert "tiki-laptop" in names
-    assert "tiki-fashion" in names
-    assert "tiki-beauty" in names
-    assert "tiki-home-appliance" in names
+    # Block KafkaProducer from connecting to any broker during test.
+    # This lets the test run in CI / sandbox / laptop-without-Kafka.
+    monkeypatch.setenv("KAFKA_BOOTSTRAP", "localhost:9092")
+    with patch("lakehouse.sources.crawlers.base.KafkaProducer") as mock_producer:
+        mock_producer.return_value = MagicMock()
+        from lakehouse.sources.scheduler import build_default_scheduler
+        s = build_default_scheduler()
+        names = {j["name"] for j in s.list_jobs()}
 
-    # Trending / dev signals
-    assert "github-trending" in names
-    assert "hackernews-top" in names
+        # E-commerce (business-critical, 5 Tiki categories)
+        assert "tiki-smartphone" in names
+        assert "tiki-laptop" in names
+        assert "tiki-fashion" in names
+        assert "tiki-beauty" in names
+        assert "tiki-home-appliance" in names
 
-    # Finance
-    assert "crypto-top-50" in names
+        # Trending / dev signals
+        assert "github-trending" in names
+        assert "hackernews-top" in names
 
-    # Weather: NOT in default schedule (no downstream join yet)
-    assert not any(n.startswith("weather-") for n in names), \
-        "Weather jobs should not be auto-scheduled"
+        # Finance
+        assert "crypto-top-50" in names
+
+        # Weather: NOT in default schedule (no downstream join yet)
+        assert not any(n.startswith("weather-") for n in names), \
+            "Weather jobs should not be auto-scheduled"

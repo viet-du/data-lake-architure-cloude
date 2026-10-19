@@ -30,8 +30,6 @@ class ClickstreamMetricsAggregator:
             .groupBy(F.window(F.col("event_timestamp"), "5 minutes"))
             .agg(
                 F.count("*").alias("page_views"),
-                F.countDistinct("user_id").alias("unique_users"),
-                F.countDistinct("session_id").alias("unique_sessions"),
             )
         )
         top_pages = (
@@ -49,6 +47,7 @@ class ClickstreamMetricsAggregator:
                 paths=self.paths,
                 output_mode="append",
                 partition_by=None,
+                trigger_available_now=False,
             )
         )
         queries.append(
@@ -59,6 +58,7 @@ class ClickstreamMetricsAggregator:
                 paths=self.paths,
                 output_mode="append",
                 partition_by=None,
+                trigger_available_now=False,
             )
         )
         return queries

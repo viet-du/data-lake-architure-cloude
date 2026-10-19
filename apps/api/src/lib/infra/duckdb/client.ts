@@ -1,5 +1,5 @@
 import { DuckDBInstance } from '@duckdb/node-api';
-import { env, MINIO_DEFAULT_REGION } from '@/config';
+import { env } from '@/config';
 import { logger } from '@/lib/logger';
 
 const globalForDuck = globalThis as unknown as { _duckdbInit?: Promise<DuckDBInstance> | null };
@@ -18,23 +18,22 @@ export async function getDuckDB(): Promise<DuckDBInstance> {
     await conn.run('INSTALL httpfs; LOAD httpfs;');
     await conn.run('INSTALL delta; LOAD delta;');
 
-    const endpointUrl = env.MINIO_SECURE
-      ? `https://${env.MINIO_ENDPOINT}`
-      : `http://${env.MINIO_ENDPOINT}`;
+    const endpointUrl = new URL(env.S3_ENDPOINT);
+    const escapeLiteral = (value: string) => value.replaceAll("'", "''");
 
     await conn.run(`
-      CREATE SECRET minio_secret (
+      CREATE SECRET object_storage_secret (
         TYPE s3,
-        KEY_ID '${env.MINIO_ACCESS_KEY}',
-        SECRET '${env.MINIO_SECRET_KEY}',
-        REGION '${MINIO_DEFAULT_REGION}',
-        ENDPOINT '${endpointUrl}',
-        USE_SSL ${env.MINIO_SECURE},
-        URL_STYLE 'path'
+        KEY_ID '${escapeLiteral(env.S3_ACCESS_KEY)}',
+        SECRET '${escapeLiteral(env.S3_SECRET_KEY)}',
+        REGION '${escapeLiteral(env.S3_REGION)}',
+        ENDPOINT '${escapeLiteral(endpointUrl.host)}',
+        USE_SSL ${env.S3_USE_SSL},
+        URL_STYLE '${env.S3_PATH_STYLE_ACCESS ? 'path' : 'vhost'}'
       );
     `);
 
-    logger.info({ endpoint: endpointUrl }, 'DuckDB initialized with MinIO secret');
+    logger.info({ endpoint: endpointUrl.origin }, 'DuckDB initialized with S3-compatible storage');
     return instance;
   })().catch((err) => {
     initPromise = null;

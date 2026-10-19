@@ -1,0 +1,17 @@
+[
+  {
+    "id": "tier-down-to-ia-90d",
+    "enabled": true,
+    "conditions": {
+      "prefix": ""
+    },
+    "transitions": [
+      {
+        "condition": {
+          "age": 90
+        },
+        "destination": "infrequent_access"
+      }
+    ]
+  }
+]

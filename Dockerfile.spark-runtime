@@ -1,0 +1,92 @@
+FROM bitnamilegacy/spark:3.5.6-debian-12-r1
+
+# Why this exists:
+#   The lakehouse package's transform/aggregate modules import dotenv, boto3,
+#   delta-spark, kafka-python, etc. — none of which the bitnami spark base
+#   image ships. We install the full pyproject dependency set in this image
+#   so that `docker exec lake-spark-master spark-submit <lakehouse-script>`
+#   can resolve the imports on the driver and on the executor.
+#
+# Why not the airflow webserver: the spark-master uses an external spark
+# driver (spark-submit), so it cannot share python packages with the
+# airflow image. It needs its own copy of the lakehouse dependency tree.
+
+USER root
+
+# bitnami images ship with python3 already. Install pip + venv support so we
+# can use a clean virtualenv. (apt repositories on the bitnami/debian-12
+# base are healthy so this is the preferred path.)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3-pip \
+        python3-venv \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-bundle the delta-spark JARs into the Spark jars dir. spark-submit's
+# --packages fetches from Maven Central at runtime, which is fragile
+# (transient network failures, sandbox proxy limits). By dropping the JARs
+# directly into /opt/bitnami/spark/jars/ we avoid the download path
+# entirely and also make container startup deterministic.
+#
+# Versioning: delta-spark 3.0.0 depends on delta-storage 3.0.0 and
+# antlr4-runtime 4.9.3. We pin all three to avoid surprise upgrades.
+ENV DELTA_VERSION=3.0.0 \
+    DELTA_SPARK_JAR=delta-spark_2.12-3.0.0.jar \
+    DELTA_STORAGE_JAR=delta-storage-3.0.0.jar \
+    ANTLR_JAR=antlr4-runtime-4.9.3.jar
+
+RUN set -eux; \
+    cd /opt/bitnami/spark/jars; \
+    for pair in \
+        "io/delta/delta-spark_2.12/3.0.0/delta-spark_2.12-3.0.0.jar" \
+        "io/delta/delta-storage/3.0.0/delta-storage-3.0.0.jar" \
+        "org/antlr/antlr4-runtime/4.9.3/antlr4-runtime-4.9.3.jar"; do \
+        fname=$(basename "$pair"); \
+        echo "Downloading $fname..."; \
+        curl -fsSL -o "$fname" \
+            "https://repo1.maven.org/maven2/${pair}"; \
+    done; \
+    ls -la delta-* antlr*
+
+# Create a virtualenv owned by the spark user (uid 1001) and install the
+# lakehouse dependency set there. Using a venv avoids touching the system
+# python and makes the install path predictable.
+#
+# Python 3.12 note: pyspark 3.5.6 has no Python 3.12 wheel, so we pin 3.5.9
+# which builds from sdist (slower install but works on py3.12). 4.x is
+# avoided because delta-spark 3.0.0 requires pyspark<3.5 in metadata.
+RUN python3 -m venv /opt/lakehouse-venv \
+    && /opt/lakehouse-venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/lakehouse-venv/bin/pip install --no-cache-dir \
+        "pyspark==3.5.9" \
+        "delta-spark==3.0.0" \
+        "kafka-python>=2.0" \
+        "boto3>=1.34" \
+        "minio>=7.2" \
+        "pandas>=2.0" \
+        "pyarrow>=14" \
+        "python-dotenv>=1.0" \
+        "pydantic>=1.10,<3" \
+        "requests>=2.31" \
+        "beautifulsoup4>=4.12" \
+        "fake-useragent>=1.4" \
+        "tenacity>=8.2" \
+    && chown -R 1001:0 /opt/lakehouse-venv \
+    && /opt/lakehouse-venv/bin/python -c "import pyspark, delta, dotenv, boto3; print('deps OK')"
+
+# Make the venv the default python for spark-submit workers by adjusting
+# PATH and PYTHONPATH. Spark's pyspark worker reads PYTHONPATH to know which
+# python to launch, so we point it at our venv site-packages.
+ENV PATH="/opt/lakehouse-venv/bin:${PATH}" \
+    PYTHONPATH="/app-src/src:/opt/lakehouse-venv/lib/python3.11/site-packages:${PYTHONPATH}"
+
+# Set up the non-root spark user (matches the airflow image convention;
+# bitnami's image ships with a 'spark' user, but we ensure uid 1001 exists
+# for the volume mount permissions).
+RUN if ! grep -qE '^[^:]+:[^:]*:1001:' /etc/passwd; then \
+        printf 'spark:x:1001:0:Spark runtime user:/opt/bitnami/spark:/bin/bash\n' >> /etc/passwd; \
+    fi; \
+    mkdir -p /tmp/spark-events; \
+    chown 1001:0 /tmp/spark-events
+USER 1001:0

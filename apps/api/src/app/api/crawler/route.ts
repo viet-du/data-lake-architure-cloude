@@ -16,7 +16,7 @@ export const GET = withRequestId(withErrorHandler(handleGet));
  * /api/crawler:
  *   get:
  *     tags: [Crawler]
- *     summary: List all crawlers (tiki, github, crypto, weather, hackernews)
+ *     summary: List all crawlers (tiki, github, crypto, hackernews)
  *     responses:
  *       200: { description: List of crawlers }
  */

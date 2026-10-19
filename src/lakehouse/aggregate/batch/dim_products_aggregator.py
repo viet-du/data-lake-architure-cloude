@@ -25,7 +25,11 @@ class DimProductsAggregator:
     def build(self) -> int:
         logger.info(" Build: dim_products")
         products = self.spark.read.format("delta").load(self.paths.silver("products"))
-        orders = self.spark.read.format("delta").load(self.paths.silver("orders"))
+        orders = (
+            self.spark.read.format("delta").load(self.paths.silver("orders"))
+            # Only completed orders count toward revenue metrics.
+            .filter(F.col("status") == "completed")
+        )
         product_metrics = orders.groupBy("product_id").agg(
             F.countDistinct("order_id").alias("total_orders"),
             F.sum("quantity").alias("total_quantity_sold"),

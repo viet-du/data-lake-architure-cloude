@@ -1,0 +1,7 @@
+step,wall_time_sec,file_count,total_bytes,q1_top5_revenue_sec,q2_q1_range_count,q2_q1_range_sec,q3_single_day_count,q3_single_day_sec,q1_top5_first_row,optimize_time_sec,files_before,files_after,bytes_before,bytes_after,files_delta,single_partition_day,single_partition_rows,single_partition_sec,full_scan_rows,full_scan_sec,speedup_x
+ingest,5.173,1,36609,,,,,,,,,,,,,,,,,,
+transform,6.458,340,1160768,,,,,,,,,,,,,,,,,,
+aggregate,1.806,4,9618,,,,,,,,,,,,,,,,,,
+queries,,,,0.0665,84,0.1027,1,0.0357,"{'order_date': datetime.date(2025, 12, 25), 'order_count': 6, 'revenue': 14041.18, 'distinct_customers': 6}",,,,,,,,,,,,
+optimize,,,,,,,,,,1.686,4,1,9618,5058,-3,,,,,,
+partition_pruning,,,,,,,,,,,,,,,,2025-11-23,1,0.3416,1000,0.2197,0.64

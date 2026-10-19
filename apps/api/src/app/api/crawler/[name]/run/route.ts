@@ -27,7 +27,7 @@ export const POST = withRequestId(withErrorHandler(handlePost));
  *       - in: path
  *         name: name
  *         required: true
- *         schema: { type: string, enum: [tiki, github, crypto, weather, hackernews] }
+ *         schema: { type: string, enum: [tiki, github, crypto, hackernews] }
  *     requestBody:
  *       content:
  *         application/json:

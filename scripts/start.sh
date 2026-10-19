@@ -4,14 +4,19 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${GREEN} Starting Data Lake infrastructure...${NC}"
+echo -e "${GREEN} Starting Data Lake core infrastructure...${NC}"
 
-docker-compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
+# Core stack: MinIO + Spark + Airflow + Metabase + Mongo + Redis + Kafka.
+# For the Control Plane (api + web), use `make up-api` or run with the
+# dev-api overlay:
+#   docker compose -f docker-compose.yml -f docker-compose-kafka.yml \
+#                  -f docker-compose.dev-api.yml up -d
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
 
 echo -e "${YELLOW}⏳ Waiting 60s for services to be healthy...${NC}"
 sleep 60
 
-echo -e "${GREEN} Infrastructure started!${NC}"
+echo -e "${GREEN} Core infrastructure started!${NC}"
 echo
 echo " UIs:"
 echo "  - MinIO:      http://localhost:9001 (minioadmin/minioadmin)"

@@ -30,13 +30,12 @@ SERVICES=(
     "storage|minio-api|localhost:9000|/minio/health/live|http|critical|MinIO S3 API"
     "storage|minio-console|localhost:9001|/|http|critical|MinIO Web Console"
     "storage|spark-master|localhost:8080|/|http|critical|Spark Master UI"
-    # Streaming
+    # Streaming (Confluent Kafka, defined in docker-compose-kafka.yml)
     "streaming|kafka-broker|localhost:9092||tcp|info|Kafka broker (port only)"
-    "streaming|kafka-ui|localhost:8081|/|http|critical|Confluent Kafka UI"
-    "streaming|redpanda-console|localhost:8091|/|http|critical|Redpanda Console"
+    "streaming|kafka-ui|localhost:8081|/|http|critical|Kafka UI (Confluent)"
     # Orchestration
     "orchestration|airflow|localhost:8088|/api/v1/health|http|critical|Airflow webserver"
-    # App layer (opt-in: docker compose -f docker-compose.api.yml up -d)
+    # App layer (opt-in: make up-api)
     "app|api|localhost:3001|/api/health|http|optional|Next.js API"
     "app|web|localhost:5173|/|http|optional|React Web UI"
     # Auxiliary

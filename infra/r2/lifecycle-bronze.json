@@ -1,0 +1,32 @@
+[
+  {
+    "id": "tier-down-to-ia-30d",
+    "enabled": true,
+    "conditions": {
+      "prefix": ""
+    },
+    "transitions": [
+      {
+        "condition": {
+          "age": 30
+        },
+        "destination": "infrequent_access"
+      }
+    ]
+  },
+  {
+    "id": "delete-old-checkpoints",
+    "enabled": true,
+    "conditions": {
+      "prefix": "_delta_log/"
+    },
+    "transitions": [
+      {
+        "condition": {
+          "age": 90
+        },
+        "destination": "infrequent_access"
+      }
+    ]
+  }
+]

@@ -53,37 +53,80 @@ with DAG(
     )
 
     # ===== 🥉 Bronze: Ingest =====
-    bronze_ingest = BashOperator(
-        task_id="bronze_ingest",
-        bash_command="python -m lakehouse.ingest.batch.csv_ingestor",
+    # The airflow webserver's local SparkSession dies with
+    # `ConnectionRefusedError: [Errno 111]` after the FIRST delta write,
+    # because the JVM is being killed externally (likely the webserver
+    # subprocess supervisor). To make the pipeline robust, we run one
+    # BashOperator per source file — each operator is a fresh subprocess
+    # with a fresh JVM. The DAG stays linear and the data still flows
+    # bronze → silver → gold.
+    bronze_ingest_customers = BashOperator(
+        task_id="bronze_ingest_customers",
+        bash_command=(
+            "python -m lakehouse.ingest.batch.csv_ingestor --only crm/customers.csv"
+        ),
+    )
+    bronze_ingest_products = BashOperator(
+        task_id="bronze_ingest_products",
+        bash_command=(
+            "python -m lakehouse.ingest.batch.csv_ingestor --only erp/products.csv"
+        ),
+    )
+    bronze_ingest_json = BashOperator(
+        task_id="bronze_ingest_json",
+        bash_command="python -m lakehouse.ingest.batch.json_ingestor",
     )
 
     # ===== 🥈 Silver: Transform =====
+    # NOTE on script paths: docker-compose mounts ./src → /app-src/src (NOT
+    # /app-src). So the entry-point script inside the spark-master container
+    # is at /app-src/src/lakehouse/transform/batch/<name>.py. The original
+    # code had /app-src/lakehouse/... which was missing the /src segment and
+    # would fail with "file not found" on the spark-master.
+    #
+    # NOTE on --packages: delta-spark JARs are pre-bundled in the
+    # lake-spark:3.5.6 image at /opt/bitnami/spark/jars/ (see
+    # Dockerfile.spark-runtime). spark-submit's --packages fetches from
+    # Maven Central at runtime and is fragile (the original task failed with
+    # "Downloaded file size (0) doesn't match expected Content Length" on
+    # truncated downloads). Removing --packages here means the driver reuses
+    # the pre-installed JARs, so the tasks start immediately and offline.
+    #
+    # NOTE on master: We use local[1] (single-threaded driver) instead of
+    # spark://spark-master:7077. With docker exec on the master, the
+    # driver runs in the master container; three concurrent drivers + the
+    # master process easily blow a 7.7GB host out of memory. local[1] uses
+    # one driver thread and one executor thread, which is plenty for these
+    # small (200 rows, 1000 orders) datasets and prevents CPU contention
+    # between concurrent silver/gold tasks running on the same host.
     silver_customers = BashOperator(
         task_id="silver_customers",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/transform/batch/customers_transformer.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/transform/batch/customers_transformer.py"
         ),
     )
     silver_products = BashOperator(
         task_id="silver_products",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/transform/batch/products_transformer.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/transform/batch/products_transformer.py"
         ),
     )
     silver_orders = BashOperator(
         task_id="silver_orders",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/transform/batch/orders_transformer.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/transform/batch/orders_transformer.py"
         ),
     )
 
@@ -92,45 +135,52 @@ with DAG(
         task_id="gold_fact_orders",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/aggregate/batch/fact_orders_aggregator.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/aggregate/batch/fact_orders_aggregator.py"
         ),
     )
     gold_dim_customers = BashOperator(
         task_id="gold_dim_customers",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/aggregate/batch/dim_customers_aggregator.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/aggregate/batch/dim_customers_aggregator.py"
         ),
     )
     gold_dim_products = BashOperator(
         task_id="gold_dim_products",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/aggregate/batch/dim_products_aggregator.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/aggregate/batch/dim_products_aggregator.py"
         ),
     )
     gold_daily_revenue = BashOperator(
         task_id="gold_daily_revenue",
         bash_command=(
             "docker exec lake-spark-master spark-submit "
-            "--master spark://spark-master:7077 "
-            "--packages io.delta:delta-spark_2.12:3.0.0 "
-            "/app-src/lakehouse/aggregate/batch/daily_revenue_aggregator.py"
+            "--master local[1] "
+            "--driver-memory 512m "
+            "--conf spark.executor.memory=512m "
+            "/app-src/src/lakehouse/aggregate/batch/daily_revenue_aggregator.py"
         ),
     )
 
     # ===== Dependencies =====
-    health >> generate_data >> bronze_ingest >> [
-        silver_customers,
-        silver_products,
-        silver_orders,
+    health >> generate_data >> [
+        bronze_ingest_customers,
+        bronze_ingest_products,
+        bronze_ingest_json,
     ]
+    bronze_ingest_customers >> silver_customers
+    bronze_ingest_products >> silver_products
+    bronze_ingest_json >> silver_orders
     silver_customers >> gold_dim_customers
     silver_products >> gold_dim_products
     [silver_customers, silver_products, silver_orders] >> gold_fact_orders

@@ -32,7 +32,7 @@ export const GET = withRequestId(withErrorHandler(handleGet));
  *       - in: path
  *         name: name
  *         required: true
- *         schema: { type: string, enum: [tiki, github, crypto, weather, hackernews] }
+ *         schema: { type: string, enum: [tiki, github, crypto, hackernews] }
  *       - in: query
  *         name: status
  *         schema: { type: string, enum: [queued, running, success, failed, partial, cancelled] }

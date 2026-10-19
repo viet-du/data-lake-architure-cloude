@@ -1,5 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { env, MINIO_DEFAULT_REGION } from '@/config';
+import { env } from '@/config';
 import { logger } from '@/lib/logger';
 
 const globalForS3 = globalThis as unknown as { _s3Client?: S3Client | null };
@@ -9,18 +9,18 @@ export function getS3(): S3Client {
   if (client) return client;
 
   client = new S3Client({
-    region: MINIO_DEFAULT_REGION,
-    endpoint: env.MINIO_SECURE ? `https://${env.MINIO_ENDPOINT}` : `http://${env.MINIO_ENDPOINT}`,
-    forcePathStyle: true,
+    region: env.S3_REGION,
+    endpoint: env.S3_ENDPOINT,
+    forcePathStyle: env.S3_PATH_STYLE_ACCESS,
     credentials: {
-      accessKeyId: env.MINIO_ACCESS_KEY,
-      secretAccessKey: env.MINIO_SECRET_KEY,
+      accessKeyId: env.S3_ACCESS_KEY,
+      secretAccessKey: env.S3_SECRET_KEY,
     },
   });
 
   logger.info(
-    { endpoint: env.MINIO_ENDPOINT, secure: env.MINIO_SECURE },
-    'S3 client (MinIO) initialized',
+    { endpoint: env.S3_ENDPOINT, secure: env.S3_USE_SSL },
+    'S3-compatible storage client initialized',
   );
   globalForS3._s3Client = client;
   return client;

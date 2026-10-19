@@ -11,6 +11,16 @@ services:
       KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=*"
     ports:
       - "2181:2181"
+    volumes:
+      # Zookeeper is the source of truth for Kafka cluster ID. Without a
+      # persistent volume here, every `docker compose down + up` regenerates
+      # a new cluster ID in ZK while the kafka data volume keeps the old
+      # ID in meta.properties, causing
+      # `InconsistentClusterIdException` on next Kafka startup.
+      # Versioned volumes start a consistent cluster after the previous
+      # broker/controller metadata diverged. Legacy volumes are left untouched.
+      - zookeeper_data_v2:/var/lib/zookeeper/data
+      - zookeeper_log_v2:/var/lib/zookeeper/log
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
       interval: 10s
@@ -41,7 +51,7 @@ services:
       KAFKA_DEFAULT_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 3
     volumes:
-      - kafka_data:/var/lib/kafka/data
+      - kafka_data_v2:/var/lib/kafka/data
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list || exit 1"]
       interval: 30s
@@ -52,7 +62,8 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: lake-kafka-ui
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - "8081:8080"
     environment:
@@ -60,6 +71,11 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
       DYNAMIC_CONFIG_ENABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   kafka-init:
     image: confluentinc/cp-kafka:7.5.0
@@ -75,11 +91,12 @@ services:
       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic ecommerce-price-stream --partitions 3 --replication-factor 1;
       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic crypto-prices-stream --partitions 3 --replication-factor 1;
       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic github-trending-stream --partitions 3 --replication-factor 1;
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic weather-stream --partitions 3 --replication-factor 1;
       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic hackernews-stream --partitions 3 --replication-factor 1;
       echo ' Kafka topics created';
       kafka-topics --bootstrap-server kafka:29092 --list;
       "
 
 volumes:
-  kafka_data:
+  kafka_data_v2:
+  zookeeper_data_v2:
+  zookeeper_log_v2:

@@ -43,9 +43,9 @@ spark.delta.logStore.class                org.apache.spark.sql.delta.storage.S3S
 
 ---
 
-## 2. Full `spark-defaults.conf` for the Render `lake-retail-etl` cron job
+## 2. Full `spark-defaults.conf` for the local Docker Spark runtime
 
-This file is baked into the `Dockerfile.spark` image at `/opt/bitnami/spark/conf/spark-defaults.conf` (or wherever your Spark image expects it). The placeholders are resolved by Render at runtime via environment variables in `render.yaml`.
+This file is baked into the Spark image and mounted by Docker Compose. R2 values, when enabled, are supplied through the local git-ignored `.env` file.
 
 ```hocon
 # ─── S3A / R2 (storage layer) ───────────────────────────────────

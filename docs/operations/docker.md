@@ -6,7 +6,7 @@
 | --- | --- |
 | `docker-compose.yml` | Core data platform (MinIO, Redpanda, Airflow, Metabase) |
 | `docker-compose-kafka.yml` | Kafka-only overlay (used in CI) |
-| `docker-compose.api.yml` | API + Web overlay (adds the Control Plane on top of `docker-compose.yml`) |
+| `docker-compose.dev-api.yml` | API + Web overlay (adds the Control Plane on top of `docker-compose.yml` + Kafka) |
 
 ## Stack
 
@@ -27,8 +27,11 @@
 ## Common Commands
 
 ```bash
-# Start everything
-docker compose -f docker-compose.yml -f docker-compose.api.yml up -d
+# Start core tools: MinIO, Spark, Airflow, Kafka, Metabase, Mongo, Redis
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml up -d
+
+# Start core tools plus local API and Web
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.dev-api.yml up -d
 
 # Tail logs
 docker compose logs -f redpanda

@@ -27,20 +27,20 @@ if ! docker ps --format '{{.Names}}' | grep -q '^lake-kafka$'; then
     exit 1
 fi
 
-# Use lake-kafka container's kafka-console-producer (avoids needing pika locally)
-docker exec lake-kafka bash -c "
-    apt-get install -y python3 2>/dev/null || true
-"
-
-# We use the host .venv Python with kafka-python to produce
+# We use the host .venv Python with kafka-python to produce.
+# KAFKA_BOOTSTRAP env (defaults to localhost:9092 for dev convenience;
+# override to kafka:29092 if running inside the docker network).
 .venv/bin/python -c "
 import json
+import os
 import time
 import sys
+from datetime import datetime, timezone
 from kafka import KafkaProducer
 
+bootstrap = os.environ.get('KAFKA_BOOTSTRAP', 'localhost:9092')
 producer = KafkaProducer(
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers=bootstrap.split(','),
     value_serializer=lambda v: json.dumps(v).encode('utf-8'),
 )
 
@@ -57,11 +57,10 @@ for i in range(count):
             'event_id': f'e_{int(time.time()*1000)}_{i}',
             'user_id': f'u_{i % 50}',
             'event_type': ['page_view', 'click', 'scroll'][i % 3],
-            'url': f'/products/item-{i % 100}',
-            'referrer': 'https://google.com',
-            'user_agent': 'Mozilla/5.0',
-            'timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'page_url': f'/products/item-{i % 100}',
             'session_id': f's_{i // 10}',
+            'metadata': json.dumps({'device': 'mobile', 'referrer': 'https://google.com'}),
+            'timestamp': datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z'),
         }
     else:
         msg = {

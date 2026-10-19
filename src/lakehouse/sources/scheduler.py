@@ -4,8 +4,9 @@ import logging
 import signal
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from lakehouse.sources.crawlers.base import BaseCrawler
 
@@ -193,10 +194,10 @@ def build_default_scheduler() -> CrawlScheduler:
       - HackerNews top:                every 30min
       - Crypto top-50:                 every 5min
     """
-    from lakehouse.sources.crawlers.tiki_crawler import TikiCrawler
+    from lakehouse.sources.crawlers.crypto_crawler import CryptoCrawler
     from lakehouse.sources.crawlers.github_crawler import GithubCrawler
     from lakehouse.sources.crawlers.hackernews_crawler import HackerNewsCrawler
-    from lakehouse.sources.crawlers.crypto_crawler import CryptoCrawler
+    from lakehouse.sources.crawlers.tiki_crawler import TikiCrawler
 
     s = CrawlScheduler()
 
@@ -233,11 +234,10 @@ def build_default_scheduler() -> CrawlScheduler:
         kwargs={"vs_currency": "usd", "per_page": 50},
     ))
 
-    # NOTE: WeatherCrawler intentionally excluded from auto-schedule.
-    # Weather is not joined with any business data in this project, so
-    # crawling every 30min produces noise without downstream value.
-    # Re-add only when a Silver/Gold layer joins weather with ecommerce.
-    # See: docs/operations/DATA_LAYOUT.md
+    # NOTE: OpenWeather was removed on 2026-10-14. Weather is not joined with
+    # any business data in this project, so crawling it produces noise without
+    # downstream value. Re-add only when a Silver/Gold layer joins weather
+    # with ecommerce. See: docs/operations/DATA_LAYOUT.md
 
     return s
 

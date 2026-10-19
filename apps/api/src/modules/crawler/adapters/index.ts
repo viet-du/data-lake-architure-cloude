@@ -3,7 +3,6 @@ export {
   tikiCrawler,
   githubCrawler,
   cryptoCrawler,
-  weatherCrawler,
   hackerNewsCrawler,
   ALL_CRAWLERS,
 } from './registry';

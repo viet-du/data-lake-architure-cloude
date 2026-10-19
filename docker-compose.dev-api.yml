@@ -1,0 +1,62 @@
+# ============================================================================
+# docker-compose.dev-api.yml
+# ----------------------------------------------------------------------------
+# Opt-in overlay for the Control Plane apps (Next.js API + React/Vite web).
+# Adds ONLY api and web on top of `docker-compose.yml + docker-compose-kafka.yml`.
+# It does NOT redefine Airflow, MinIO, Spark, Mongo or Redis — those come from
+# the core files and are referenced by service name.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose-kafka.yml \
+#                  -f docker-compose.dev-api.yml up -d
+# ============================================================================
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: lake-api
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+      - apps/api/.env.local
+    environment:
+      # Inside the compose network, services resolve by service name.
+      # We deliberately do NOT read these from apps/api/.env.local, which
+      # uses 127.0.0.1 (host) for local dev. Override here for the
+      # in-container BE so its clients can reach the rest of the stack.
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio:9000
+      KAFKA_BOOTSTRAP: kafka:29092
+      AIRFLOW_BASE_URL: http://airflow-webserver:8080/api/v1
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      airflow-webserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: lake-web
+    ports:
+      - "5173:5173"
+    environment:
+      # The container serves via nginx on 5173, but the Vite build was
+      # done with this base URL. Update VITE_API_BASE_URL in apps/web
+      # before `pnpm --filter @lakehouse/web build` if you need a
+      # different host.
+      VITE_API_BASE_URL: http://localhost:3001
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped

@@ -43,8 +43,12 @@ echo "═══ 3. Docker compose validation ═══"
 docker compose -f docker-compose.yml -f docker-compose-kafka.yml config --quiet 2>&1 \
   && ok "compose (main + kafka) valid" || fail "compose main+kafka invalid"
 
-docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml config --quiet 2>&1 \
-  && ok "compose (all 3 files) valid" || fail "compose (all 3) invalid"
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.dev-api.yml config --quiet 2>&1 \
+  && ok "compose (main + kafka + dev-api) valid" || fail "compose dev-api overlay invalid"
+
+if [ -f docker-compose.api.yml ]; then
+  fail "legacy docker-compose.api.yml present — use docker-compose.dev-api.yml instead"
+fi
 
 echo ""
 echo "═══ 4. Required files ═══"

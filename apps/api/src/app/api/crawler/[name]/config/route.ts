@@ -34,7 +34,7 @@ export const PUT = withRequestId(withErrorHandler(handlePut));
  *       - in: path
  *         name: name
  *         required: true
- *         schema: { type: string, enum: [tiki, github, crypto, weather, hackernews] }
+ *         schema: { type: string, enum: [tiki, github, crypto, hackernews] }
  *     responses:
  *       200: { description: Config }
  *   put:
@@ -44,7 +44,7 @@ export const PUT = withRequestId(withErrorHandler(handlePut));
  *       - in: path
  *         name: name
  *         required: true
- *         schema: { type: string, enum: [tiki, github, crypto, weather, hackernews] }
+ *         schema: { type: string, enum: [tiki, github, crypto, hackernews] }
  *     requestBody:
  *       content:
  *         application/json:

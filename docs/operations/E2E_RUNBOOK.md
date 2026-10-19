@@ -168,31 +168,39 @@ Output mẫu:
 
 ## 7. Streaming demo (optional)
 
-### Produce events vào Kafka
+### Run the streaming pipeline and produce events
 
 ```bash
-# 100 clickstream events, rate 10/s
-make produce-clickstream
-
-# Hoặc custom
-bash scripts/produce_kafka.sh clickstream-events 500 50
-bash scripts/produce_kafka.sh ecommerce-products-stream 200 20
+# Terminal A: start Spark first (it reads new events from Kafka)
+make stream-clickstream
 ```
 
-Verify messages đã vào topic:
+In a second terminal, send clickstream events:
 ```bash
-docker exec lake-kafka kafka-run-class kafka.tools.GetOffsetShell \
-  --broker-list kafka:29092 --topic clickstream-events
-# → clickstream-events:0:100  (100 messages)
+make produce-clickstream
+# Or customize: bash scripts/produce_kafka.sh clickstream-events 500 50
 ```
 
 Xem trên UI: http://localhost:8081 → Topics → clickstream-events → Messages
-
-### Run streaming pipeline
+Run this after Silver has processed events to compute exact unique counts:
 
 ```bash
-# Read từ Kafka → Bronze Delta (streaming)
-bash scripts/run_batch_pipeline.sh --pipeline stream_clickstream
+make aggregate-clickstream-unique
+```
+
+This writes `gold/clickstream/unique_metrics_5min`; it is an exact batch
+snapshot, not a realtime metric.
+
+The local Kafka stack uses versioned Kafka/Zookeeper volumes to avoid stale
+cluster metadata. Older named volumes are retained and are not automatically
+reconnected; do not run `docker compose down -v` unless you intend to delete
+all persisted Kafka and lakehouse data.
+
+> ⚠️ **Delivery semantics: at-least-once** (not exactly-once). Each streaming
+> query has its own checkpoint under `s3a://<layer>/<table>/_checkpoints/`.
+> Before deleting or resetting any checkpoint, see
+> [`STREAMING_SEMANTICS.md`](../architecture/STREAMING_SEMANTICS.md) §2 and §4
+> for what is safe vs. destructive.
 
 # Hoặc thủ công
 docker exec lake-spark-master bash -c '

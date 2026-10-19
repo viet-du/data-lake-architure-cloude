@@ -4,6 +4,30 @@
 
 ---
 
+## Storage backend
+
+Data ở mọi layer (`bronze/`, `silver/`, `gold/`) có thể chạy trên **3 backend**:
+
+| Backend | Khi nào dùng | Cách bật | Chi phí |
+|---|---|---|---|
+| **MinIO** (local Docker) | Dev offline, demo nội bộ | Default trong `.env.example` | $0 (volume Docker) |
+| **Cloudflare R2** (S3 cloud) | Portfolio, share link, persistent | Set `S3_ENDPOINT` trong `.env` | $0 với free tier (10GB) |
+| **Databricks Community** (lakehouse) | Demo ấn tượng, notebook UI, native Delta | Set `ENV=databricks` trong `.env` | $0 (15GB free) |
+
+**Switch backend** chỉ bằng cách sửa `.env` — **không cần đổi code**.
+
+Chi tiết setup:
+- MinIO: mặc định, không cần config
+- R2: [`R2_SETUP.md`](./R2_SETUP.md)
+- Databricks: [`DATABRICKS_SETUP.md`](./DATABRICKS_SETUP.md)
+
+URL pattern giống nhau cho cả 2 backend:
+- `s3a://bronze/crm/customers/` → bucket `bronze`, key `crm/customers/`
+- `s3a://silver/erp/orders/` → bucket `silver`, key `erp/orders/`
+- `s3a://gold/crm/fact_orders/` → bucket `gold`, key `crm/fact_orders/`
+
+---
+
 ## Bronze layer (raw, append-only)
 
 ### `s3a://bronze/crm/`

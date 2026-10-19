@@ -1,0 +1,4 @@
+source_sha256,step,source_rows,silver_rows,gold_rows,bronze_files,bronze_bytes,silver_files,silver_bytes,gold_files,gold_bytes,silver_transform_load_sec,silver_write_sec,gold_sec,gold_write_sec,total_sec,total_files,total_bytes,bronze_sec,total_sec_delta,total_bytes_delta,total_files_delta,gold_mismatch_rows
+f20236b5d522e7787042ae8e25a3362365f8c5bf88729b7ab03fe28064056966,etl,1000,1000,340,0,0,340,459260,1,5061,10.212,10.118,2.073,2.048,12.285,341,464321,,,,,
+f20236b5d522e7787042ae8e25a3362365f8c5bf88729b7ab03fe28064056966,elt,1000,1000,340,1,35920,340,459260,1,5061,6.392,6.37,1.449,1.419,8.947,342,500241,1.105,,,,
+,elt_minus_etl,,,,,,,,,,,,,,,,,,-3.338,35920,1,0

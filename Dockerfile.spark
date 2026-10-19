@@ -1,15 +1,18 @@
 # ============================================================================
-# Dockerfile.spark
+# Dockerfile.spark  (DEPRECATED — kept for reference only)
 # ----------------------------------------------------------------------------
-# Custom Apache Spark image with lakehouse Python dependencies
-# Built from: apache/spark:3.5.0 (has native ARM64 support, Python 3.8)
+# This image was used by `docker-compose.spark.yml` to override the Bitnami
+# Spark base. PHASE 2 removes that override because:
+#   - The default `Dockerfile.spark-runtime` (Bitnami spark:3.5.6) ships
+#     multi-arch manifests including linux/arm64, so Apple Silicon does
+#     NOT need emulation.
+#   - This image, built from `apache/spark:3.5.0`, has only the amd64
+#     manifest on Docker Hub for the 3.5.0 tag, so on Apple Silicon it
+#     would run under QEMU emulation (slower than the Bitnami default).
 #
-# Note: apache/spark:3.5.0 ships with Python 3.8. Delta 3.0 requires
-# Python >= 3.9 for the pip_utils.configure_spark_with_delta_pip() helper
-# that the lakehouse package uses. We work around this by installing
-# the delta-spark pip package and using its config directly.
-#
-# Build:    docker build -f Dockerfile.spark -t lake-spark:3.5.0 .
+# Do not reference this file from docker-compose. You may still build it
+# manually with `docker build -f Dockerfile.spark -t lake-spark:3.5.0 .`
+# if you specifically need the apache/spark base.
 # ============================================================================
 
 FROM apache/spark:3.5.0

@@ -1,0 +1,115 @@
+# ============================================================================
+# Dockerfile.airflow
+# ----------------------------------------------------------------------------
+# Custom Apache Airflow image with lakehouse Python dependencies pre-installed.
+#
+# Built from: apache/airflow:2.7.0-python3.11
+#
+# Why this exists:
+#   The lakehouse package's crawlers/transforms use modules that aren't in
+#   the airflow base image (kafka-python, delta-spark, boto3, etc.).
+#   Pre-baking them avoids ~90s of `pip install` at every container boot,
+#   and means `docker compose up` is idempotent (no surprise re-installs).
+#
+# pydantic note: Airflow 2.7 pins pydantic<2.0. We pin pydantic<2.0 here too.
+#   The lakehouse package code does not import pydantic directly, so this is
+#   safe. The constraint `pydantic>=1.10,<3` in pyproject.toml accepts both.
+#
+# Build:    docker build -f Dockerfile.airflow -t lake-airflow:2.7.0 .
+# ============================================================================
+
+FROM apache/airflow:2.7.0-python3.11
+
+# Switch to root to install OS-level dependencies (Java + procps + curl).
+# Airflow base image is Debian-based; we need a JRE for PySpark's JAVA_GATEWAY
+# (bronze_ingest creates a local SparkSession which spawns a JVM) and the
+# `docker` CLI (used by silver/gold BashOperators to exec spark-submit on
+# lake-spark-master).
+# Install OpenJDK 17 from Eclipse Temurin (static archive). We do NOT use
+# apt-get for two reasons:
+#   1. The airflow base image's /etc/apt/sources.list.d contains repos
+#      (msodbcsql, postgres-pgdg) that 404 in this build sandbox.
+#   2. The debian bullseye-security pool is missing a number of arm64
+#      packages (libnss3, libxml2, openjdk-17-jre-headless itself).
+# Temurin provides prebuilt JDK tarballs that work offline and pin a known
+# SHA256, so the build is reproducible.
+USER root
+
+ENV JAVA_VERSION=17.0.10+7 \
+    JAVA_HOME=/opt/java/openjdk \
+    JAVA_SHA256=6e4201abfb3b020c1fb899b7ac063083c271250bf081f3aa7e63d91291a90b74
+RUN set -eux; \
+    mkdir -p "$JAVA_HOME"; \
+    curl -fsSL -o /tmp/jdk.tar.gz \
+        "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-${JAVA_VERSION}/OpenJDK17U-jdk_aarch64_linux_hotspot_${JAVA_VERSION//+/_}.tar.gz"; \
+    echo "${JAVA_SHA256}  /tmp/jdk.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/jdk.tar.gz --strip-components=1 -C "$JAVA_HOME"; \
+    rm /tmp/jdk.tar.gz; \
+    ln -sf "$JAVA_HOME/bin/java" /usr/local/bin/java; \
+    ln -sf "$JAVA_HOME/bin/javac" /usr/local/bin/javac; \
+    java -version
+
+# Install the hadoop-aws + delta-spark JARs that the airflow image needs
+# for Spark jobs that read/write to S3A (MinIO). PySpark alone is not
+# enough — the Hadoop FileSystem implementation classes are loaded from
+# /home/airflow/.local/lib/python3.11/site-packages/pyspark/jars, but the
+# apache/airflow:2.7.0-python3.11 base image only ships a minimal Hadoop
+# set; it lacks:
+#   - hadoop-aws-*.jar   (provides org.apache.hadoop.fs.s3a.S3AFileSystem)
+#   - aws-java-sdk-*.jar (S3 client used by hadoop-aws)
+#   - delta-spark_2.12-*.jar / delta-storage-*.jar / antlr4-runtime-*.jar
+# We drop the JARs directly into the pyspark jars dir so Spark picks them
+# up without --packages and without the fragile Maven Central download.
+USER root
+
+ENV DELTA_VERSION=3.0.0 \
+    HADOOP_VERSION=3.3.4
+
+RUN set -eux; \
+    PYSPARK_JARS="/home/airflow/.local/lib/python3.11/site-packages/pyspark/jars"; \
+    mkdir -p "$PYSPARK_JARS"; \
+    for pair in \
+        "io/delta/delta-spark_2.12/3.0.0/delta-spark_2.12-3.0.0.jar" \
+        "io/delta/delta-storage/3.0.0/delta-storage-3.0.0.jar" \
+        "org/antlr/antlr4-runtime/4.9.3/antlr4-runtime-4.9.3.jar" \
+        "org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" \
+        "com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar"; do \
+        fname=$(basename "$pair"); \
+        echo "  Downloading $fname..."; \
+        curl -fsSL -o "$PYSPARK_JARS/$fname" \
+            "https://repo1.maven.org/maven2/${pair}"; \
+    done; \
+        chown -R airflow:0 "$PYSPARK_JARS"; \
+    ls -la "$PYSPARK_JARS" | grep -E "(delta|hadoop-aws|aws-java-sdk|antlr4)"; \
+    chown -R airflow:0 /home/airflow/.local
+
+# Switch back to airflow user for pip installs and runtime.
+USER airflow
+
+# Lakehouse runtime dependencies (mirrors pyproject.toml `dependencies`).
+# We pin pydantic<2.0 here to match airflow's pin and avoid import-time
+# errors in airflow's pydantic v1 models.
+RUN pip install --no-cache-dir --upgrade pip
+# We deliberately do NOT pin `pyspark` here. delta-spark==3.0.0 requires
+# `pyspark<3.5` and Python 3.11 wheels for pyspark 3.4.x don't exist on
+# PyPI, so pip will pick 3.5.x. Airflow 2.7 doesn't bundle pyspark, so
+# this is the only way to get a working Python 3.11 + delta-spark 3.0
+# combo in this image.
+# `numpy<2` keeps the C ABI compatible with pandas 2.x binaries
+# (otherwise: "ValueError: numpy.dtype size changed, may indicate
+# binary incompatibility").
+RUN pip install --no-cache-dir \
+        "delta-spark==3.0.0" \
+        "kafka-python==2.0.2" \
+        "boto3>=1.34" \
+        "minio>=7.2" \
+        "pandas>=2.0" \
+        "numpy<2" \
+        "pyarrow>=14" \
+        "python-dotenv>=1.0" \
+        "pydantic>=1.10,<2" \
+        "requests>=2.31" \
+        "beautifulsoup4>=4.12" \
+        "fake-useragent>=1.4" \
+        "great-expectations>=0.18" \
+        "tenacity>=8.2"

@@ -10,7 +10,7 @@ export interface SchematicLegendProps {
 export function SchematicLegend({ activeKind, onSelect }: SchematicLegendProps) {
   const { t } = useTranslation();
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-4 flex max-w-[60%] flex-col gap-3">
+    <div className="pointer-events-auto absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] max-h-[45%] overflow-y-auto sm:max-w-[60%] flex-col gap-3">
       <LegendNodes activeKind={activeKind} onSelect={onSelect} />
       <LegendLinks />
     </div>
@@ -25,7 +25,7 @@ export function SchematicLegend({ activeKind, onSelect }: SchematicLegendProps) 
         <div className="mt-2 flex flex-wrap gap-1.5">
           {PIPELINE_NODES.map((node) => (
             <NodePill
-              key={node.kind}
+              key={t(node.labelKey)}
               node={node}
               active={a === node.kind}
               onClick={() => s(node.kind)}
@@ -61,6 +61,7 @@ function NodePill({
   active: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -72,15 +73,17 @@ function NodePill({
       }`}
     >
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: node.color }} />
-      {node.kind}
+      {t(node.labelKey)}
     </button>
   );
 }
 
 function LinkPill({ link }: { link: PipelineLink }) {
+  const { t } = useTranslation();
+  const label = (kind: EPipelineNodeKind) => t(PIPELINE_NODES.find((node) => node.kind === kind)?.labelKey ?? 'schematic.storage');
   return (
     <span className="rounded-md border border-white/5 bg-white/5 px-2 py-1 text-[10px] text-neutral-300">
-      {link.from} → {link.to}
+      {label(link.from)} → {label(link.to)}
     </span>
   );
 }

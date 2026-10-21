@@ -1,4 +1,5 @@
-import { useTranslation } from 'react-i18next';
+import { i18n } from '@/i18n';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useHealthQuery,
   useDeepHealthQuery,
@@ -17,6 +18,7 @@ import { cn } from '@/theme';
 import type { EHealthStatus } from '@/types/commons';
 
 const STATUS_VARIANT: Readonly<Record<EHealthStatus, 'success' | 'warning' | 'error'>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
@@ -37,7 +39,7 @@ function StatusBanner() {
     return <ScreenError error={statusQuery.error} onRetry={() => void statusQuery.refetch()} compact />;
   }
   if (status === null || status === undefined) {
-    return <EmptyState compact title="No status" />;
+    return <EmptyState compact title={i18n.t('labels.no_status')} />;
   }
   return (
     <div
@@ -58,16 +60,16 @@ function StatusBanner() {
           )}
         />
         <div>
-          <p className="text-xs uppercase tracking-wider text-neutral-500">{t('screens.health.status')}</p>
+          <p className="text-xs uppercase tracking-wider text-neutral-500">{t('home.system_status')}</p>
           <p className="text-xl font-bold capitalize text-neutral-900 dark:text-neutral-50">
-            {status.status}
+            {t(`health.${status.status}`)}
           </p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-[10px] text-neutral-500">
-        <span>Uptime: {Math.floor(status.uptime / 3600)}h {Math.floor((status.uptime % 3600) / 60)}m</span>
-        <span>v{status.version}</span>
-        <span>{status.services.length} services</span>
+        <span>{t('home.uptime')}: {Math.floor(status.uptime / 3600)}h {Math.floor((status.uptime % 3600) / 60)}m</span>
+        {status.version ? <span>v{status.version}</span> : null}
+        <span>{status.services.length} {t('health.services')}</span>
       </div>
     </div>
   );
@@ -75,13 +77,13 @@ function StatusBanner() {
 
 function ServicesGrid() {
   const { t } = useTranslation();
-  const healthQuery = useHealthQuery();
+  const healthQuery = useDeepHealthQuery();
   if (healthQuery.isLoading) return <ScreenLoading rows={6} variant="grid" />;
   if (healthQuery.isError) {
     return <ScreenError error={healthQuery.error} onRetry={() => void healthQuery.refetch()} compact />;
   }
   const items = healthQuery.data?.services ?? [];
-  if (items.length === 0) return <EmptyState compact title="No services" />;
+  if (items.length === 0) return <EmptyState compact title={i18n.t('labels.no_services')} />;
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((svc) => {
@@ -97,7 +99,7 @@ function ServicesGrid() {
               </span>
               {variant !== undefined ? (
                 <Tag size="sm" variant={variant} dot>
-                  {svc.status}
+                  {t(`health.${svc.status}`)}
                 </Tag>
               ) : null}
             </div>
@@ -116,23 +118,13 @@ function ServicesGrid() {
 }
 
 function DependenciesList() {
+  const { t } = useTranslation();
   const deepQuery = useDeepHealthQuery();
   if (deepQuery.isLoading) return <ScreenLoading rows={4} />;
   if (deepQuery.isError) {
     return <ScreenError error={deepQuery.error} onRetry={() => void deepQuery.refetch()} compact />;
   }
-  const deps = deepQuery.data?.dependencies;
-  if (deps === undefined) {
-    return <EmptyState compact title="No dependencies" />;
-  }
-  const items: ReadonlyArray<{ name: string; status: EHealthStatus }> = [
-    { name: 'MinIO', status: deps.minio },
-    { name: 'Kafka', status: deps.kafka },
-    { name: 'MongoDB', status: deps.mongodb },
-    { name: 'Redis', status: deps.redis },
-    { name: 'Spark', status: deps.spark },
-    { name: 'Delta Lake', status: deps.deltaLake },
-  ];
+  const items = deepQuery.data?.services ?? [];
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((dep) => {
@@ -155,47 +147,12 @@ function DependenciesList() {
             </div>
             {variant !== undefined ? (
               <Tag size="sm" variant={variant}>
-                {dep.status}
+                {t(`health.${dep.status}`)}
               </Tag>
             ) : null}
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function SystemStats() {
-  const deepQuery = useDeepHealthQuery();
-  if (deepQuery.isLoading) return <ScreenLoading rows={1} />;
-  const sys = deepQuery.data?.system;
-  if (sys === undefined) return null;
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">CPU</p>
-        <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
-          {sys.cpuPercent.toFixed(0)}%
-        </p>
-      </div>
-      <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Memory</p>
-        <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
-          {sys.memoryPercent.toFixed(0)}%
-        </p>
-      </div>
-      <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Disk</p>
-        <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
-          {sys.diskPercent.toFixed(0)}%
-        </p>
-      </div>
-      <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Network</p>
-        <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
-          {((sys.networkIn + sys.networkOut) / 1024 / 1024).toFixed(1)}MB
-        </p>
-      </div>
     </div>
   );
 }
@@ -212,15 +169,15 @@ function DeepHealth() {
   return (
     <div className="space-y-2 text-xs text-neutral-700 dark:text-neutral-300">
       <p>
-        <span className="text-[10px] uppercase tracking-wider text-neutral-500">Up</span> ·{' '}
+        <span className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.up" /></span> ·{' '}
         {Math.floor(d.uptime / 3600)}h {Math.floor((d.uptime % 3600) / 60)}m
       </p>
       <p>
-        <span className="text-[10px] uppercase tracking-wider text-neutral-500">Version</span> ·{' '}
-        v{d.version}
+        <span className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.version" /></span> ·{' '}
+        {d.version ?? '—'}
       </p>
       <p>
-        <span className="text-[10px] uppercase tracking-wider text-neutral-500">Last check</span> ·{' '}
+        <span className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.last_check" /></span> ·{' '}
         {new Date(d.timestamp).toLocaleString()}
       </p>
       <p>
@@ -233,6 +190,8 @@ function DeepHealth() {
 
 export function HealthView() {
   const { t } = useTranslation();
+  const health = useHealthQuery();
+  const deep = useDeepHealthQuery();
   return (
     <ErrorBoundary>
       <div className="flex h-full flex-col gap-4">
@@ -243,13 +202,12 @@ export function HealthView() {
           descriptionKey="screens.health.description"
           accent="health"
           actions={
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => { void health.refetch(); void deep.refetch(); }}>
               {t('common.refresh')}
             </Button>
           }
         />
         <StatusBanner />
-        <SystemStats />
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-3">
           <ScreenSection
             title={t('screens.health.services')}

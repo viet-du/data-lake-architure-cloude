@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -33,7 +33,8 @@ export interface CrawlerJobDetailProps {
 
 type DetailTab = 'overview' | 'config' | 'preview' | 'runs' | 'kafka';
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined): string {
+  if (n === undefined) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -46,6 +47,7 @@ function formatDuration(ms: number | undefined): string {
 }
 
 const STATUS_VARIANT: Readonly<Record<ECrawlerStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'>> = {
+  unknown: 'neutral',
   running: 'info',
   paused: 'warning',
   idle: 'neutral',
@@ -60,7 +62,7 @@ export function CrawlerJobDetail({ name, onClose }: CrawlerJobDetailProps) {
 
   const jobQuery = useCrawlerJobQuery(name ?? '');
   const configQuery = useCrawlerJobConfigQuery(name ?? '');
-  const previewQuery = useCrawlerJobPreviewQuery(name ?? '', 30);
+  const previewQuery = useCrawlerJobPreviewQuery(name ?? '', 20, { enabled: name !== null && tab === 'preview' });
   const runsQuery = useCrawlerJobRunsQuery(name ?? '', { limit: 20 });
   const runItemsQuery = useCrawlerJobRunItemsQuery(name ?? '', selectedRunId ?? '', 30);
   const kafkaQuery = useCrawlerJobKafkaTopicQuery(name ?? '');
@@ -121,37 +123,37 @@ export function CrawlerJobDetail({ name, onClose }: CrawlerJobDetailProps) {
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="config">Config</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="runs">Runs</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="config"><Trans i18nKey="labels.config" /></TabsTrigger>
+              <TabsTrigger value="preview"><Trans i18nKey="labels.preview" /></TabsTrigger>
+              <TabsTrigger value="runs"><Trans i18nKey="labels.runs" /></TabsTrigger>
               <TabsTrigger value="kafka">Kafka</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Pages</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.pages" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatNumber(jobQuery.data.pagesScraped)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-500">Collected</p>
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.collected" /></p>
                   <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">
                     {formatNumber(jobQuery.data.recordsCollected)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-red-500">Failed</p>
+                  <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.failed" /></p>
                   <p className="mt-1 text-lg font-bold text-red-600 dark:text-red-400">
                     {formatNumber(jobQuery.data.recordsFailed)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Started</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.started" /></p>
                   <p className="mt-1 text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    {new Date(jobQuery.data.startedAt).toLocaleString()}
+                    {jobQuery.data.startedAt ? new Date(jobQuery.data.startedAt).toLocaleString() : '—'}
                   </p>
                 </div>
               </div>
@@ -169,32 +171,32 @@ export function CrawlerJobDetail({ name, onClose }: CrawlerJobDetailProps) {
               ) : configQuery.data === undefined ? null : (
                 <div className="flex flex-col gap-2 text-xs">
                   <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-neutral-500">Base URL</p>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.base_url" /></p>
                     <p className="mt-1 font-mono text-xs text-neutral-300 break-all">
-                      {configQuery.data.baseUrl}
+                      {configQuery.data.baseUrl ?? '—'}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Rate</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.rate" /></p>
                       <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
                         {configQuery.data.ratePerMinute}/min
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Workers</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.workers" /></p>
                       <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
                         {configQuery.data.maxWorkers}
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Timeout</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.timeout" /></p>
                       <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
                         {formatDuration(configQuery.data.timeoutSec * 1000)}
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Retries</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.retries" /></p>
                       <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
                         {configQuery.data.retries}
                       </p>
@@ -302,7 +304,7 @@ export function CrawlerJobDetail({ name, onClose }: CrawlerJobDetailProps) {
                     </p>
                   </div>
                   <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-neutral-500">Messages</p>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.messages" /></p>
                     <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                       {formatNumber(kafkaQuery.data.messageCount)}
                     </p>

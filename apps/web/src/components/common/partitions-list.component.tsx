@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { useTranslation } from 'react-i18next';
 import { Tag, EmptyState, ScreenLoading, ScreenError, Button } from '@/components';
 
@@ -41,7 +42,7 @@ export function PartitionsList({
     return <ScreenError error={error ?? new Error('Unknown error')} onRetry={onRetry} compact />;
   }
   if (partitions.length === 0) {
-    return <EmptyState compact title="No partitions" />;
+    return <EmptyState compact title={i18n.t('labels.no_partitions')} />;
   }
   return (
     <div className="flex flex-col gap-2">

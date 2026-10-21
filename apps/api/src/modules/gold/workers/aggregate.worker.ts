@@ -1,3 +1,4 @@
+import { REDIS_KEY_PREFIX } from '@/config';
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
 import { GoldJobRepository } from '../repositories';
@@ -65,7 +66,7 @@ export const GoldAggregateWorker = {
           throw err;
         }
       },
-      { connection: getQueueConnection(), concurrency: 2 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 2 },
     );
   },
 };

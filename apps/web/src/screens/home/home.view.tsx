@@ -12,51 +12,31 @@ import { ErrorBoundary, EmptyState } from '@/components';
 import type { HomeModuleItem } from '@/components/home';
 
 const FALLBACK_STATS: HomeAggregatedStats = {
-  totalTables: 0,
-  runningJobs: 0,
-  activeTopics: 0,
-  activeDAGs: 0,
-  records24h: 0,
-  qualityScore: 0,
-  totalLag: 0,
-  uptimeSeconds: 0,
-  systemStatus: 'healthy',
+  totalTables: null,
+  runningJobs: null,
+  activeTopics: null,
+  activeDAGs: null,
+  records24h: null,
+  qualityScore: null,
+  totalLag: null,
+  uptimeSeconds: null,
+  systemStatus: 'unknown',
+  partial: true,
 };
 
 function resolveModuleMetrics(
   modules: ReadonlyArray<HomeModuleItem>,
   stats: typeof FALLBACK_STATS,
-  hasError: boolean,
 ): ReadonlyArray<HomeModuleItem> {
-  return modules.map((mod) => {
-    let metric = '—';
-    switch (mod.key) {
-      case 'catalog':
-        metric = String(stats.totalTables);
-        break;
-      case 'bronze':
-      case 'silver':
-      case 'gold':
-        metric = String(stats.records24h);
-        break;
-      case 'kafka':
-        metric = String(stats.activeTopics);
-        break;
-      case 'crawler':
-        metric = String(stats.runningJobs);
-        break;
-      case 'airflow':
-        metric = String(stats.activeDAGs);
-        break;
-      case 'dq':
-        metric = `${stats.qualityScore}%`;
-        break;
-      case 'health':
-        metric = hasError ? '—' : 'OK';
-        break;
-    }
-    return { ...mod, metric };
-  });
+  return modules.map((mod) => ({
+    ...mod,
+    status: mod.key === 'health' ? stats.systemStatus : 'unknown',
+    metricLabelKey: ['bronze', 'silver', 'gold'].includes(mod.key) ? 'home.stats.total_tables' : mod.metricLabelKey,
+    metric: mod.key === 'bronze' || mod.key === 'silver' || mod.key === 'gold' ? String(stats.layerTables?.[mod.key] ?? '—') : mod.key === 'catalog' ? (stats.totalTables === null ? '—' : String(stats.totalTables))
+      : mod.key === 'kafka' ? (stats.activeTopics === null ? '—' : String(stats.activeTopics))
+      : mod.key === 'airflow' ? (stats.activeDAGs === null ? '—' : String(stats.activeDAGs))
+      : mod.key === 'dq' ? (stats.qualityScore === null ? '—' : `${stats.qualityScore}%`) : '—',
+  }));
 }
 
 export function HomeView() {
@@ -75,7 +55,7 @@ export function HomeView() {
     uptimeSeconds: statsData.uptimeSeconds,
   });
 
-  const modulesWithMetrics = resolveModuleMetrics(HOME_MODULES, statsData, statsQuery.isError);
+  const modulesWithMetrics = resolveModuleMetrics(HOME_MODULES, statsData);
 
   return (
     <BentoGrid
@@ -89,7 +69,7 @@ export function HomeView() {
           />
         </ErrorBoundary>
       }
-      quickStats={<QuickStatsGrid stats={quickStats} />}
+      quickStats={<div>{statsData.partial ? <p role="status" className="mb-3 text-sm">{t('home.partial')}</p> : null}<QuickStatsGrid stats={quickStats} /></div>}
       modules={<ModuleGrid modules={modulesWithMetrics} />}
       activity={<ActivityFeed items={HOME_ACTIVITY} />}
     />

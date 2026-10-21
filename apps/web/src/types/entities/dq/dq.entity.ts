@@ -1,8 +1,8 @@
 import type { EHealthStatus } from '@/types/commons';
 
-export type EDQRuleType = 'not_null' | 'unique' | 'range' | 'regex' | 'custom';
+export type EDQRuleType = 'not_null' | 'unique' | 'range' | 'regex' | 'custom' | 'in_set';
 export type EDQSeverity = 'low' | 'medium' | 'high' | 'critical';
-export type EDQStatus = 'pass' | 'fail' | 'warning';
+export type EDQStatus = 'pass' | 'fail' | 'warning' | 'unknown';
 
 export interface DQRule {
   ruleId: string;
@@ -63,13 +63,14 @@ export interface DQPreset {
 }
 
 export interface DQSummary {
+  passRate: number | null;
   totalRules: number;
   passing: number;
   failing: number;
-  warning: number;
+  warning?: number;
   lastRunAt?: string;
   overallStatus: EHealthStatus;
-  bySeverity: {
+  bySeverity?: {
     low: number;
     medium: number;
     high: number;

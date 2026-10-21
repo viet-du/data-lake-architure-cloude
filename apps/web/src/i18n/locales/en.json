@@ -11,7 +11,23 @@
     "refresh": "Refresh",
     "delete": "Delete",
     "close": "Close",
-    "latency": "Latency"
+    "latency": "Latency",
+    "empty": "No data",
+    "noTables": "No tables",
+    "noDatabases": "No databases",
+    "noJobs": "No jobs",
+    "noRules": "No DQ rules",
+    "noServices": "No services",
+    "noStatus": "No status",
+    "selectDatabase": "Select a database to inspect its tables.",
+    "databasesCount": "{{count}} databases",
+    "tablesCount": "{{count}} tables",
+    "networkError": "Cannot reach the API. Check its address and availability.",
+    "timeout": "API request timed out. Try again.",
+    "unauthorized": "Authentication required (401).",
+    "forbidden": "Access denied (403).",
+    "invalidResponse": "The API returned data that does not match its contract.",
+    "schema": "Schema"
   },
   "app": {
     "name": "Data Lake",
@@ -22,14 +38,75 @@
   },
   "home": {
     "greeting": "Welcome back",
-    "system_status": "System Status",
+    "system_status": "API Status",
     "uptime": "Uptime",
     "quick_stats": "Quick Stats",
     "activity": "Activity",
     "no_activity": "No recent activity",
     "modules_section_title": "Modules",
     "modules_section_subtitle": "Navigate through your data platform",
-    "open_module": "Open"
+    "open_module": "Open",
+    "modules": {
+      "catalog": {
+        "title": "Data Catalog",
+        "description": "Explore databases, tables and metadata."
+      },
+      "bronze": {
+        "title": "Bronze Layer",
+        "description": "Inspect raw tables and ingestion jobs."
+      },
+      "silver": {
+        "title": "Silver Layer",
+        "description": "Inspect cleaned data and transformation jobs."
+      },
+      "gold": {
+        "title": "Gold Layer",
+        "description": "Explore business data, queries and aggregation jobs."
+      },
+      "crawler": {
+        "title": "Data Crawlers",
+        "description": "Configure sources and inspect crawl history."
+      },
+      "kafka": {
+        "title": "Kafka Streaming",
+        "description": "Inspect topics, messages and consumer groups."
+      },
+      "airflow": {
+        "title": "Airflow Workflows",
+        "description": "Monitor DAGs, task logs and workflow runs."
+      },
+      "dq": {
+        "title": "Data Quality",
+        "description": "Manage validation rules and inspect results."
+      },
+      "health": {
+        "title": "System Health",
+        "description": "Inspect API availability and dependency checks."
+      }
+    },
+    "live": "API available",
+    "active": "Available",
+    "inactive": "Unavailable",
+    "metadata": "Metadata",
+    "ingestion": "Ingestion",
+    "transformation": "Transformation",
+    "aggregation": "Aggregation",
+    "messaging": "Messaging",
+    "crawling": "Collection",
+    "orchestration": "Orchestration",
+    "quality": "Quality",
+    "monitoring": "Monitoring",
+    "stats": {
+      "total_tables": "Total Tables",
+      "running_jobs": "Running Jobs",
+      "active_topics": "Active Topics",
+      "dags_active": "Active DAGs",
+      "records_24h": "Records Processed (all time)",
+      "quality_score": "Quality Pass Rate",
+      "uptime": "API Uptime"
+    },
+    "partial": "Some metrics are unavailable. See Health for dependency checks.",
+    "events": "{{count}} events"
   },
   "health": {
     "healthy": "Healthy",
@@ -38,7 +115,8 @@
     "status": "Health Status",
     "services": "services",
     "deep": "Deep Health",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "unknown": "Not checked"
   },
   "bronze": {
     "trigger_ingest": "Trigger Ingest",
@@ -107,7 +185,13 @@
     "error": {
       "trigger": "Failed to trigger: {{message}}",
       "toggle": "Failed to toggle: {{message}}"
-    }
+    },
+    "noGantt": "No timeline data",
+    "noLogs": "No task logs",
+    "noRuns": "No DAG runs",
+    "noTasks": "No tasks",
+    "runId": "Run ID",
+    "selectRun": "Select a run"
   },
   "crawler": {
     "trigger": "Trigger Crawl",
@@ -156,7 +240,8 @@
       "run": "Run failed: {{message}}",
       "suite": "Suite failed: {{message}}",
       "update": "Update failed: {{message}}"
-    }
+    },
+    "run": "Run check"
   },
   "catalog": {
     "databases": "Databases",
@@ -173,7 +258,20 @@
     "legend": {
       "nodes": "Nodes",
       "flows": "Data Flows"
-    }
+    },
+    "title": "Data Pipeline",
+    "subtitle": "Architecture",
+    "description": "Explore the platform modules and their illustrated data flows.",
+    "storage": "Storage",
+    "nodes": {
+      "bronze": "Bronze Layer",
+      "silver": "Silver Layer",
+      "gold": "Gold Layer",
+      "catalog": "Data Catalog",
+      "crawler": "Data Crawlers",
+      "storage": "Storage"
+    },
+    "static": "Static architecture illustration; no live metrics are collected here."
   },
   "sample": {
     "empty": "No sample data",
@@ -190,14 +288,25 @@
   "ingest": {
     "success": {
       "json": "JSON ingested successfully",
-      "csv": "CSV ingested successfully"
+      "csv": "CSV ingested successfully",
+      "stream": "Stream ingestion submitted"
     },
     "errors": {
       "invalidJson": "Invalid JSON format"
     },
     "error": {
       "submit": "Submit failed: {{message}}"
-    }
+    },
+    "title": "Ingest Data",
+    "description": "Submit an ingestion job from a source path.",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "warning": "Ingestion execution is not configured in this API.",
+    "hints": {
+      "checkpoint": "Streaming checkpoint path",
+      "delimiter": "CSV delimiter"
+    },
+    "submitted": "Ingestion job submitted"
   },
   "transform": {
     "success": "Transform submitted",
@@ -225,6 +334,9 @@
       "metricNameRequired": "Metric name required",
       "metricRequired": "At least one metric required",
       "invalidOp": "Invalid operation: {{op}}"
+    },
+    "error": {
+      "submit": "Submission failed: {{message}}"
     }
   },
   "adhoc": {
@@ -253,5 +365,247 @@
     "dq": "Data Quality",
     "health": "Health",
     "schematic": "Schematic"
+  },
+  "screens": {
+    "catalog": {
+      "databases": "Databases",
+      "tables": "tables",
+      "tables_in": "Tables in {{name}}",
+      "table_name": "Table Name",
+      "format": "Format",
+      "size": "Size",
+      "rows": "Rows",
+      "updated": "Updated",
+      "title": "Data Catalog",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Explore databases, tables and metadata."
+    },
+    "bronze": {
+      "trigger_ingest": "Trigger Ingest",
+      "search": "Search bronze tables…",
+      "tables": "Bronze Tables",
+      "jobs": "Ingest Jobs",
+      "title": "Bronze Layer",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Inspect raw tables and ingestion jobs."
+    },
+    "silver": {
+      "transform": "Transform",
+      "search": "Search silver tables…",
+      "tables": "Silver Tables",
+      "jobs": "Transform Jobs",
+      "refresh": "Refresh",
+      "title": "Silver Layer",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Inspect cleaned data and transformation jobs."
+    },
+    "gold": {
+      "runQuery": "Run Query",
+      "aggregate": "Aggregate",
+      "search": "Search gold tables…",
+      "tables": "Gold Tables",
+      "jobs": "Jobs",
+      "refresh": "Refresh",
+      "title": "Gold Layer",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Explore business data, queries and aggregation jobs.",
+      "queries": "Queries"
+    },
+    "crawler": {
+      "trigger": "Trigger Crawl",
+      "triggerTitle": "Trigger Crawler",
+      "triggerDescription": "Start a new crawl for {{name}}",
+      "running": "Running…",
+      "run": "Run",
+      "search": "Search crawlers…",
+      "jobs": "Crawler Jobs",
+      "overview": "Overview",
+      "runStarted": "Crawler started (run: {{runId}}…)",
+      "stop": "Stop",
+      "noRuns": "No runs yet",
+      "noPreview": "No preview available",
+      "selectRun": "Select a run to preview",
+      "asyncRun": "Run asynchronously",
+      "title": "Data Crawlers",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Configure sources and inspect crawl history."
+    },
+    "kafka": {
+      "produce": "Produce",
+      "produceTitle": "Produce Message",
+      "produceDescription": "Send a message to topic {{topic}}",
+      "search": "Search topics…",
+      "topics": "Topics",
+      "groups": "Consumer Groups",
+      "delete": "Delete",
+      "confirmDelete": "Delete topic {{name}}?",
+      "deleted": "Topic deleted",
+      "produced": "Message produced to partition {{partition}} at offset {{offset}}",
+      "noConfig": "No Kafka config",
+      "noLag": "No lag data",
+      "noMessages": "No messages",
+      "noGroups": "No consumer groups",
+      "producing": "Producing…",
+      "title": "Kafka Streaming",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Inspect topics, messages and consumer groups."
+    },
+    "airflow": {
+      "trigger": "Trigger",
+      "triggering": "Triggering…",
+      "triggered": "DAG triggered (run: {{runId}}…)",
+      "pause": "Pause",
+      "unpause": "Unpause",
+      "paused": "DAG paused",
+      "unpaused": "DAG unpaused",
+      "search": "Search DAGs…",
+      "dags": "DAGs",
+      "title": "Airflow Workflows",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Monitor DAGs, task logs and workflow runs."
+    },
+    "dq": {
+      "runSuite": "Run Suite",
+      "running": "Running…",
+      "search": "Search DQ rules…",
+      "rules": "DQ Rules",
+      "runs": "DQ Runs",
+      "runStarted": "DQ run started (run: {{runId}}…)",
+      "suiteStarted": "DQ suite started (run: {{runId}}…)",
+      "noRuns": "No runs yet",
+      "disable": "Disable",
+      "enable": "Enable",
+      "updated": "Rule updated",
+      "suiteTitle": "Run DQ Suite",
+      "suiteDescription": "Execute data quality checks on selected tables",
+      "title": "Data Quality",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Manage validation rules and inspect results."
+    },
+    "health": {
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unhealthy": "Unhealthy",
+      "status": "Health Status",
+      "services": "services",
+      "deep": "Deep Health",
+      "refresh": "Refresh",
+      "title": "System Health",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Inspect API availability and dependency checks.",
+      "dependencies": "Dependency Checks"
+    }
+  },
+  "form": {
+    "format": "Format",
+    "database": "Database",
+    "table": "Table",
+    "topic": "Kafka topic",
+    "source": "Source path",
+    "sourceTables": "Source table names (comma separated)",
+    "mode": "Mode",
+    "full": "Full",
+    "incremental": "Incremental"
+  },
+  "labels": {
+    "active": "Active",
+    "added": "Added",
+    "base_url": "Base URL",
+    "categories": "Categories",
+    "changed": "Changed",
+    "close": "Close",
+    "collected": "Collected",
+    "config": "Config",
+    "consumer_groups": "Consumer groups",
+    "dedup": "Dedup",
+    "diff": "Diff",
+    "expression": "Expression",
+    "failed": "Failed",
+    "failed_all_time": "Failed (all time)",
+    "failed_rows": "Failed rows",
+    "failing": "Failing",
+    "files": "Files",
+    "gantt": "Gantt",
+    "headers": "Headers",
+    "history": "History",
+    "jobs": "Jobs",
+    "key": "Key",
+    "lag": "Lag",
+    "last_check": "Last check",
+    "last_run": "Last run",
+    "last_status": "Last status",
+    "lineage": "Lineage",
+    "messages": "Messages",
+    "messages_s": "Messages/s",
+    "next_run": "Next run",
+    "no_dags": "No DAGs",
+    "no_dq_rules": "No DQ rules",
+    "no_aggregate_jobs": "No aggregate jobs",
+    "no_bronze_tables": "No bronze tables",
+    "no_crawler_jobs": "No crawler jobs",
+    "no_gold_tables": "No gold tables",
+    "no_history": "No history",
+    "no_ingestion_jobs": "No ingestion jobs",
+    "no_partitions": "No partitions",
+    "no_rows": "No rows",
+    "no_services": "No services",
+    "no_silver_tables": "No silver tables",
+    "no_status": "No status",
+    "no_topics": "No topics",
+    "no_transform_jobs": "No transform jobs",
+    "nulls": "Nulls",
+    "overview": "Overview",
+    "owners": "Owners",
+    "pages": "Pages",
+    "parallel": "Parallel",
+    "partition": "Partition",
+    "partitions": "Partitions",
+    "passing": "Passing",
+    "preview": "Preview",
+    "progress": "Progress",
+    "rate": "Rate",
+    "records": "Records",
+    "records_all_time": "Records (all time)",
+    "removed": "Removed",
+    "retain": "Retain",
+    "retries": "Retries",
+    "row_limit": "Row limit",
+    "rows": "Rows",
+    "rule_ids": "Rule IDs",
+    "running": "Running",
+    "runs": "Runs",
+    "sample": "Sample",
+    "schedule": "Schedule",
+    "size": "Size",
+    "source_layer": "Source layer",
+    "source_tables": "Source tables",
+    "sources": "Sources",
+    "started": "Started",
+    "stats": "Stats",
+    "success": "Success",
+    "success_24h": "Success 24h",
+    "tables": "Tables",
+    "tags": "Tags",
+    "tasks": "Tasks",
+    "time_travel": "Time travel",
+    "timeout": "Timeout",
+    "topics": "Topics",
+    "total": "Total",
+    "total_lag": "Total lag",
+    "total_rules": "Total rules",
+    "up": "Up",
+    "value": "Value",
+    "version": "Version",
+    "version_1": "Version 1",
+    "version_2": "Version 2",
+    "warning": "Warning",
+    "workers": "Workers",
+    "vs_24h": "vs 24h"
+  },
+  "databricks": {
+    "source": "Data source: Databricks · {{catalog}}",
+    "readOnly": "Browse live tables, schema and sample rows. Jobs, Kafka, Airflow and DQ show their separately connected services.",
+    "preview": "View data",
+    "permissionDenied": "Databricks: the server credential needs USE CATALOG, USE SCHEMA and SELECT for this table."
   }
 }

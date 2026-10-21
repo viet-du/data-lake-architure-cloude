@@ -25,10 +25,10 @@ export async function getDuckDB(): Promise<DuckDBInstance> {
     await conn.run(`
       CREATE SECRET minio_secret (
         TYPE s3,
-        KEY_ID '${env.MINIO_ACCESS_KEY}',
-        SECRET '${env.MINIO_SECRET_KEY}',
+        KEY_ID '${env.MINIO_ACCESS_KEY.replace(/'/g, "''")}',
+        SECRET '${env.MINIO_SECRET_KEY.replace(/'/g, "''")}',
         REGION '${MINIO_DEFAULT_REGION}',
-        ENDPOINT '${endpointUrl}',
+        ENDPOINT '${env.MINIO_ENDPOINT}',
         USE_SSL ${env.MINIO_SECURE},
         URL_STYLE 'path'
       );

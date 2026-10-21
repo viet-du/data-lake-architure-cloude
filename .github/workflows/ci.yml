@@ -54,7 +54,7 @@ jobs:
         with:
           node-version: "20"
           cache: "pnpm"
-          cache-dependency-path: apps/web/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -62,8 +62,38 @@ jobs:
       - name: TypeScript check
         run: pnpm exec tsc --noEmit
 
+      - name: Unit and contract tests
+        run: pnpm test
+
       - name: Build
         run: pnpm build
+
+  node-api:
+    name: API (typecheck + contracts + build)
+    runs-on: ubuntu-latest
+    env:
+      MINIO_ENDPOINT: 127.0.0.1:9000
+      MINIO_ACCESS_KEY: ci-test-only
+      MINIO_SECRET_KEY: ci-test-only
+      KAFKA_BOOTSTRAP: 127.0.0.1:9092
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter lakehouse-api typecheck
+      - name: Unit and contract tests
+        run: pnpm --filter lakehouse-api test
+      - name: Build
+        run: pnpm --filter lakehouse-api build
 
   docker-compose:
     name: Docker Compose validation
@@ -73,5 +103,5 @@ jobs:
 
       - name: Validate compose files
         run: |
+          export AIRFLOW_FERNET_KEY="$(python -c 'import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')"
           docker compose -f docker-compose.yml -f docker-compose-kafka.yml config --quiet
-          docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml config --quiet

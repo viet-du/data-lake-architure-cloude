@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -28,7 +28,8 @@ export interface BronzeTableDetailProps {
   onClose: () => void;
 }
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`;
   if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(2)} KB`;
@@ -72,29 +73,29 @@ export function BronzeTableDetail({ table, onClose }: BronzeTableDetailProps) {
               {tableQuery.data.format}
             </Tag>
             <Tag size="sm" variant={tableQuery.data.status === 'healthy' ? 'success' : 'warning'}>
-              {tableQuery.data.status}
+              {t(`health.${tableQuery.data.status}`)}
             </Tag>
             <span className="text-[10px] text-neutral-500">{tableQuery.data.database}</span>
           </div>
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="sample">Sample</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-              <TabsTrigger value="partitions">Partitions</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="sample"><Trans i18nKey="labels.sample" /></TabsTrigger>
+              <TabsTrigger value="history"><Trans i18nKey="labels.history" /></TabsTrigger>
+              <TabsTrigger value="partitions"><Trans i18nKey="labels.partitions" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Rows</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.rows" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatNumber(tableQuery.data.rowCount)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Size</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.size" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatBytes(tableQuery.data.sizeBytes)}
                   </p>
@@ -102,7 +103,7 @@ export function BronzeTableDetail({ table, onClose }: BronzeTableDetailProps) {
                 {statsQuery.data !== undefined ? (
                   <>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Files</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.files" /></p>
                       <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                         {statsQuery.data.fileCount}
                       </p>

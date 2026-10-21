@@ -10,7 +10,7 @@ export interface AirflowGanttChartProps {
   onRetry?: () => void;
 }
 
-const STATE_VARIANT: Readonly<Record<AirflowGanttEntry['state'], ETagVariant>> = {
+const STATE_VARIANT: Readonly<Partial<Record<AirflowGanttEntry['state'], ETagVariant>>> = {
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -18,7 +18,7 @@ const STATE_VARIANT: Readonly<Record<AirflowGanttEntry['state'], ETagVariant>> =
   skipped: 'neutral',
 };
 
-const STATE_BG: Readonly<Record<AirflowGanttEntry['state'], string>> = {
+const STATE_BG: Readonly<Partial<Record<AirflowGanttEntry['state'], string>>> = {
   success: 'bg-emerald-500/60',
   failed: 'bg-red-500/60',
   running: 'bg-sky-500/60',
@@ -79,7 +79,7 @@ export function AirflowGanttChart({
                 <tr key={it.taskId} className="border-t border-white/5">
                   <td className="px-3 py-1.5 font-mono text-neutral-300">{it.taskId}</td>
                   <td className="px-3 py-1.5">
-                    <Tag size="sm" variant={STATE_VARIANT[it.state]}>
+                    <Tag size="sm" variant={STATE_VARIANT[it.state] ?? 'neutral'}>
                       {it.state}
                     </Tag>
                   </td>

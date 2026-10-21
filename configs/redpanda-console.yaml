@@ -1,2 +1,2 @@
 kafka:
-  brokers: ["redpanda:9192"]
+  brokers: ["redpanda:9092"]

@@ -1,3 +1,5 @@
+import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
+import { DatabricksRepository } from '../repositories/databricks.repository';
 import { NotFoundError } from '@/errors';
 import { DuckDBRepository, TableRepository, type DeltaTableInfo } from '../repositories';
 import type { ColumnMeta, TableMeta, TableStats, Layer } from '../types';
@@ -72,6 +74,7 @@ function deltaToTableMeta(info: DeltaTableInfo, layer: Layer, database: string, 
 
 export const TableService = {
   async list(query: TTableLayerQuery): Promise<TableMeta[]> {
+    if (usesDatabricks()) return DatabricksRepository.list(query);
     const filter = {
       limit: query.limit,
       offset: query.offset,
@@ -84,6 +87,7 @@ export const TableService = {
   },
 
   async getOrFail(params: TTableIdParams): Promise<TableMeta> {
+    if (usesDatabricks()) return DatabricksRepository.get(params.tableId);
     const doc = await TableRepository.findById(params.tableId);
     if (!doc) {
       const parsed = parseTableId(params.tableId);
@@ -98,6 +102,7 @@ export const TableService = {
   },
 
   async getSchema(tableId: string): Promise<{ tableId: string; columns: ColumnMeta[] }> {
+    if (usesDatabricks()) return { tableId, columns: await DatabricksRepository.columns(tableId) };
     const parsed = parseTableId(tableId);
     if (!parsed) throw new NotFoundError('Table', tableId);
     const info = await DuckDBRepository.getTableInfo(parsed.layer, parsed.database, parsed.name);
@@ -119,6 +124,7 @@ export const TableService = {
   },
 
   async getSample(tableId: string, query: TSampleQuery): Promise<Array<Record<string, unknown>>> {
+    if (usesDatabricks()) return DatabricksRepository.sample(tableId, query.limit);
     const parsed = parseTableId(tableId);
     if (!parsed) throw new NotFoundError('Table', tableId);
     return DuckDBRepository.getTableSample(parsed.layer, parsed.database, parsed.name, query.limit);
@@ -128,6 +134,7 @@ export const TableService = {
     tableId: string,
     patch: TUpdateTableMetadata,
   ): Promise<TableMeta> {
+    remoteReadOnly();
     const exists = await TableRepository.findById(tableId);
     if (!exists) throw new NotFoundError('Table', tableId);
     const repoPatch: { description?: string; owner?: string; tags?: string[] } = {};
@@ -141,6 +148,7 @@ export const TableService = {
   },
 
   async delete(tableId: string): Promise<void> {
+    remoteReadOnly();
     const exists = await TableRepository.findById(tableId);
     if (!exists) throw new NotFoundError('Table', tableId);
     await TableRepository.delete(tableId);

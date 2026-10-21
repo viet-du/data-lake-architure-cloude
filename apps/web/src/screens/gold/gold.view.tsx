@@ -1,7 +1,10 @@
+import { useInfoQuery } from '@/services/queries';
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useGoldTablesQuery,
+  useGoldTableQuery,
   useGoldJobsQuery,
   useGoldJobStatsQuery,
   useRefreshGoldMutation,
@@ -59,9 +62,9 @@ function TablesGrid({
     return <ScreenError error={tablesQuery.error} onRetry={() => void tablesQuery.refetch()} compact />;
   }
   const items =
-    (tablesQuery.data as { items?: ReadonlyArray<{ name: string }> } | undefined)?.items ?? [];
+    tablesQuery.data?.items ?? [];
   if (items.length === 0) {
-    return <EmptyState compact title="No gold tables" />;
+    return <EmptyState compact title={i18n.t('labels.no_gold_tables')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -89,30 +92,17 @@ function GoldTableCardWrapper({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
-  const tableQuery = useGoldTablesQuery({ limit: 24, search: name });
-  const table = (tableQuery.data as { items?: ReadonlyArray<{
-    name: string;
-    database: string;
-    format: 'delta' | 'parquet';
-    sizeBytes: number;
-    rowCount: number;
-    sourceLayer: 'silver' | 'bronze';
-    sourceTables: ReadonlyArray<string>;
-    aggregateType?: 'sum' | 'avg' | 'count' | 'min' | 'max' | 'group_by';
-    refreshSchedule?: string;
-    lastRefreshedAt?: string;
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    createdAt: string;
-    updatedAt: string;
-  }> } | undefined)?.items?.[0];
-  if (table === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  const readOnly = useInfoQuery().data?.readOnly ?? false;
+  const tableQuery = useGoldTableQuery(name);
+  if (tableQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (tableQuery.isError) return <ScreenError error={tableQuery.error} onRetry={() => void tableQuery.refetch()} compact />;
+  const table = tableQuery.data;
+  if (!table) return null;
   return (
     <GoldTableCard
       table={table}
       onClick={() => onClick(name)}
-      onRefresh={onRefresh}
+      {...(readOnly ? {} : { onRefresh })}
       refreshing={refreshing}
     />
   );
@@ -126,7 +116,7 @@ function JobsList() {
   }
   const items = jobsQuery.data ?? [];
   if (items.length === 0) {
-    return <EmptyState compact title="No aggregate jobs" />;
+    return <EmptyState compact title={i18n.t('labels.no_aggregate_jobs')} />;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -155,29 +145,29 @@ function JobsList() {
 function JobStatsBar() {
   const statsQuery = useGoldJobStatsQuery();
   const stats = statsQuery.data;
-  if (statsQuery.isLoading || stats === null || stats === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  if (statsQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (statsQuery.isError) return <ScreenError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} compact />;
+  if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Total</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.total" /></p>
         <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
           {stats.total}
         </p>
       </div>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Success</p>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.success" /></p>
         <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">
           {stats.success}
         </p>
       </div>
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-sky-500">Running</p>
+        <p className="text-[10px] uppercase tracking-wider text-sky-500"><Trans i18nKey="labels.running" /></p>
         <p className="mt-1 text-xl font-bold text-sky-600 dark:text-sky-400">{stats.running}</p>
       </div>
       <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-violet-500">Records</p>
+        <p className="text-[10px] uppercase tracking-wider text-violet-500"><Trans i18nKey="labels.records" /></p>
         <p className="mt-1 text-base font-bold text-violet-600 dark:text-violet-400">
           {formatNumber(stats.totalRecordsProcessed)}
         </p>
@@ -211,6 +201,7 @@ function QueryPanel({ kind }: { kind: QueryKey }) {
 }
 
 export function GoldView() {
+  const readOnly = useInfoQuery().data?.readOnly ?? false;
   const { t } = useTranslation();
   const [tab, setTab] = useState<'tables' | 'queries' | 'jobs'>('tables');
   const [search, setSearch] = useState('');
@@ -236,7 +227,7 @@ export function GoldView() {
                 variant="primary"
                 size="sm"
                 onClick={() => setAggregateOpen(true)}
-                disabled={selected === null}
+                disabled={readOnly || selected === null}
               >
                 {t('screens.gold.aggregate')}
               </Button>

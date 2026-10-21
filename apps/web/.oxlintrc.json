@@ -1,0 +1,21 @@
+{
+  "categories": {
+    "correctness": "error",
+    "perf": "error",
+    "suspicious": "warn",
+    "nursery": "off",
+    "style": "off",
+    "restriction": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "react/jsx-key": "error",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "ignore": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

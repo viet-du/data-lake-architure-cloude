@@ -1,3 +1,4 @@
+import { remoteReadOnly } from '@/lib/infra/databricks/client';
 import { BronzeJobRepository } from '../repositories/bronze-job.repository';
 import { BronzeQueue } from '../queues/bronze.queue';
 import { BronzeJobService } from './job.service';
@@ -12,6 +13,7 @@ import type {
 
 export const BronzeIngestService = {
   async ingestCsv(body: TIngestCsvBody): Promise<BronzeJob> {
+    remoteReadOnly();
     const jobId = BronzeJobService.generateJobId();
     const job = await BronzeJobRepository.create({
       jobId,
@@ -35,6 +37,7 @@ export const BronzeIngestService = {
   },
 
   async ingestJson(body: TIngestJsonBody): Promise<BronzeJob> {
+    remoteReadOnly();
     const jobId = BronzeJobService.generateJobId();
     const job = await BronzeJobRepository.create({
       jobId,
@@ -58,6 +61,7 @@ export const BronzeIngestService = {
   },
 
   async ingestStream(params: TIngestStreamParams, body: TIngestStreamBody): Promise<BronzeJob> {
+    remoteReadOnly();
     const jobId = BronzeJobService.generateJobId();
     const job = await BronzeJobRepository.create({
       jobId,

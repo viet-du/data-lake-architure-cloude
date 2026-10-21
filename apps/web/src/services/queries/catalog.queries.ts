@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query';
-import { catalogService, type ListTablesParams } from '../catalog';
+import { catalogService, type ListTablesParams, type ListTablesResult } from '../catalog';
 import { QUERY_KEYS } from '../query-keys';
 import type { DatabaseEntity, TableEntity } from '@/types/entities';
 
@@ -27,9 +27,9 @@ export function useDatabaseQuery(
 
 export function useCatalogTablesQuery(
   params?: ListTablesParams,
-  options?: Omit<UseQueryOptions<unknown, Error>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<ListTablesResult, Error>, 'queryKey' | 'queryFn'>,
 ) {
-  return useQuery<unknown, Error>({
+  return useQuery<ListTablesResult, Error>({
     queryKey: QUERY_KEYS.catalog.tables(params),
     queryFn: () => catalogService.listTables(params),
     ...options,

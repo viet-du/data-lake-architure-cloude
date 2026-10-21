@@ -7,28 +7,28 @@ export interface GoldTable {
   fullName: string;
   description?: string;
   s3Path: string;
-  kind: 'fact' | 'dimension' | 'metric';
+  kind: 'fact' | 'dimension' | 'metric' | null;
   columns: ColumnMeta[];
   partitions: PartitionMeta[];
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
-  lastModified: string;
-  lastRefreshAt: string;
-  deltaHistoryVersion: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
+  lastModified: string | null;
+  lastRefreshAt: string | null;
+  deltaHistoryVersion: number | null;
   deltaHistory: GoldHistoryEntry[];
 }
 
 export interface GoldStats {
   table: string;
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
   columnCount: number;
   partitionCount: number;
-  lastModified: string;
-  lastRefreshAt: string;
-  deltaHistoryVersion: number;
+  lastModified: string | null;
+  lastRefreshAt: string | null;
+  deltaHistoryVersion: number | null;
 }
 
 export interface GoldHistoryEntry {

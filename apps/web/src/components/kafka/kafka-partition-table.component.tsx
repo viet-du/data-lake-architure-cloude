@@ -11,7 +11,9 @@ export interface KafkaPartitionTableProps {
   groupId: string;
 }
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | string | undefined | null): string {
+  if (typeof n === 'string') return n;
+  if (n == null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -61,7 +63,7 @@ export function KafkaPartitionTable({
           </thead>
           <tbody>
             {items.map((it, idx) => {
-              const lagging = it.lag > 0;
+              const lagging = (it.lag ?? 0) > 0;
               return (
                 <tr key={idx} className="border-t border-white/5 hover:bg-white/5">
                   <td className="px-3 py-1.5 font-mono text-neutral-300">p{it.partition}</td>

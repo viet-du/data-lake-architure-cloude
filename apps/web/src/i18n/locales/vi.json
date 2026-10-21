@@ -11,7 +11,23 @@
     "refresh": "Làm mới",
     "delete": "Xóa",
     "close": "Đóng",
-    "latency": "Độ trễ"
+    "latency": "Độ trễ",
+    "empty": "Chưa có dữ liệu",
+    "noTables": "Chưa có bảng",
+    "noDatabases": "Chưa có cơ sở dữ liệu",
+    "noJobs": "Chưa có tác vụ",
+    "noRules": "Chưa có quy tắc DQ",
+    "noServices": "Chưa có dịch vụ",
+    "noStatus": "Chưa có trạng thái",
+    "selectDatabase": "Chọn cơ sở dữ liệu để xem các bảng.",
+    "databasesCount": "{{count}} cơ sở dữ liệu",
+    "tablesCount": "{{count}} bảng",
+    "networkError": "Không kết nối được API. Kiểm tra địa chỉ và trạng thái API.",
+    "timeout": "Yêu cầu API hết thời gian chờ. Hãy thử lại.",
+    "unauthorized": "Cần xác thực (401).",
+    "forbidden": "Không có quyền truy cập (403).",
+    "invalidResponse": "Dữ liệu API trả về không đúng cấu trúc quy định.",
+    "schema": "Cấu trúc bảng"
   },
   "app": {
     "name": "Data Lake",
@@ -22,14 +38,75 @@
   },
   "home": {
     "greeting": "Chào mừng trở lại",
-    "system_status": "Trạng thái Hệ thống",
+    "system_status": "Trạng thái API",
     "uptime": "Thời gian hoạt động",
     "quick_stats": "Thống kê Nhanh",
     "activity": "Hoạt động",
     "no_activity": "Không có hoạt động gần đây",
     "modules_section_title": "Mô-đun",
     "modules_section_subtitle": "Điều hướng qua nền tảng dữ liệu của bạn",
-    "open_module": "Mở"
+    "open_module": "Mở",
+    "modules": {
+      "catalog": {
+        "title": "Danh mục dữ liệu",
+        "description": "Khám phá cơ sở dữ liệu, bảng và metadata."
+      },
+      "bronze": {
+        "title": "Lớp Bronze",
+        "description": "Kiểm tra bảng dữ liệu thô và tác vụ nạp dữ liệu."
+      },
+      "silver": {
+        "title": "Lớp Silver",
+        "description": "Kiểm tra dữ liệu đã làm sạch và tác vụ chuyển đổi."
+      },
+      "gold": {
+        "title": "Lớp Gold",
+        "description": "Khám phá dữ liệu nghiệp vụ, truy vấn và tác vụ tổng hợp."
+      },
+      "crawler": {
+        "title": "Thu thập dữ liệu",
+        "description": "Cấu hình nguồn và xem lịch sử thu thập dữ liệu."
+      },
+      "kafka": {
+        "title": "Luồng dữ liệu Kafka",
+        "description": "Kiểm tra topic, message và consumer group."
+      },
+      "airflow": {
+        "title": "Quy trình Airflow",
+        "description": "Theo dõi DAG, log tác vụ và các lần chạy quy trình."
+      },
+      "dq": {
+        "title": "Chất lượng dữ liệu",
+        "description": "Quản lý quy tắc kiểm tra và xem kết quả."
+      },
+      "health": {
+        "title": "Sức khỏe hệ thống",
+        "description": "Kiểm tra API và trạng thái các dịch vụ phụ thuộc."
+      }
+    },
+    "live": "API khả dụng",
+    "active": "Khả dụng",
+    "inactive": "Không khả dụng",
+    "metadata": "Metadata",
+    "ingestion": "Nạp dữ liệu",
+    "transformation": "Chuyển đổi",
+    "aggregation": "Tổng hợp",
+    "messaging": "Truyền thông điệp",
+    "crawling": "Thu thập",
+    "orchestration": "Điều phối",
+    "quality": "Chất lượng",
+    "monitoring": "Giám sát",
+    "stats": {
+      "total_tables": "Tổng số bảng",
+      "running_jobs": "Tác vụ đang chạy",
+      "active_topics": "Topic hiện có",
+      "dags_active": "DAG đang bật",
+      "records_24h": "Bản ghi đã xử lý (tất cả thời gian)",
+      "quality_score": "Tỷ lệ kiểm tra đạt",
+      "uptime": "Thời gian API hoạt động"
+    },
+    "partial": "Một số chỉ số chưa khả dụng. Xem trang Sức khỏe để kiểm tra dịch vụ.",
+    "events": "{{count}} sự kiện"
   },
   "health": {
     "healthy": "Khỏe mạnh",
@@ -38,7 +115,8 @@
     "status": "Trạng thái Sức khỏe",
     "services": "dịch vụ",
     "deep": "Sức khỏe Chi tiết",
-    "refresh": "Làm mới"
+    "refresh": "Làm mới",
+    "unknown": "Chưa kiểm tra"
   },
   "bronze": {
     "trigger_ingest": "Kích hoạt Nhập",
@@ -107,7 +185,13 @@
     "error": {
       "trigger": "Kích hoạt thất bại: {{message}}",
       "toggle": "Chuyển đổi thất bại: {{message}}"
-    }
+    },
+    "noGantt": "Chưa có dữ liệu tiến trình",
+    "noLogs": "Chưa có log tác vụ",
+    "noRuns": "Chưa có lần chạy DAG",
+    "noTasks": "Chưa có tác vụ",
+    "runId": "Mã lần chạy",
+    "selectRun": "Chọn lần chạy"
   },
   "crawler": {
     "trigger": "Kích hoạt Crawl",
@@ -156,7 +240,8 @@
       "run": "Run thất bại: {{message}}",
       "suite": "Suite thất bại: {{message}}",
       "update": "Cập nhật thất bại: {{message}}"
-    }
+    },
+    "run": "Chạy kiểm tra"
   },
   "catalog": {
     "databases": "Databases",
@@ -173,7 +258,20 @@
     "legend": {
       "nodes": "Nodes",
       "flows": "Luồng Dữ liệu"
-    }
+    },
+    "title": "Pipeline dữ liệu",
+    "subtitle": "Kiến trúc",
+    "description": "Khám phá các module và luồng dữ liệu minh họa của nền tảng.",
+    "storage": "Lưu trữ",
+    "nodes": {
+      "bronze": "Lớp Bronze",
+      "silver": "Lớp Silver",
+      "gold": "Lớp Gold",
+      "catalog": "Danh mục dữ liệu",
+      "crawler": "Thu thập dữ liệu",
+      "storage": "Lưu trữ"
+    },
+    "static": "Sơ đồ kiến trúc tĩnh; không thu thập chỉ số trực tiếp tại đây."
   },
   "sample": {
     "empty": "Không có dữ liệu mẫu",
@@ -190,14 +288,25 @@
   "ingest": {
     "success": {
       "json": "JSON đã nhập thành công",
-      "csv": "CSV đã nhập thành công"
+      "csv": "CSV đã nhập thành công",
+      "stream": "Đã gửi yêu cầu nạp stream"
     },
     "errors": {
       "invalidJson": "Định dạng JSON không hợp lệ"
     },
     "error": {
       "submit": "Gửi thất bại: {{message}}"
-    }
+    },
+    "title": "Nạp dữ liệu",
+    "description": "Gửi tác vụ nạp dữ liệu từ đường dẫn nguồn.",
+    "submit": "Gửi yêu cầu",
+    "submitting": "Đang gửi…",
+    "warning": "API chưa được cấu hình thực thi nạp dữ liệu.",
+    "hints": {
+      "checkpoint": "Đường dẫn checkpoint streaming",
+      "delimiter": "Dấu phân cách CSV"
+    },
+    "submitted": "Đã gửi tác vụ nạp dữ liệu"
   },
   "transform": {
     "success": "Transform đã gửi",
@@ -225,6 +334,9 @@
       "metricNameRequired": "Cần tên metric",
       "metricRequired": "Cần ít nhất một metric",
       "invalidOp": "Phép tính không hợp lệ: {{op}}"
+    },
+    "error": {
+      "submit": "Gửi yêu cầu thất bại: {{message}}"
     }
   },
   "adhoc": {
@@ -253,5 +365,247 @@
     "dq": "Chất lượng Dữ liệu",
     "health": "Sức khỏe",
     "schematic": "Sơ đồ"
+  },
+  "screens": {
+    "catalog": {
+      "databases": "Databases",
+      "tables": "bảng",
+      "tables_in": "Bảng trong {{name}}",
+      "table_name": "Tên Bảng",
+      "format": "Định dạng",
+      "size": "Kích thước",
+      "rows": "Dòng",
+      "updated": "Cập nhật",
+      "title": "Danh mục dữ liệu",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Khám phá cơ sở dữ liệu, bảng và metadata."
+    },
+    "bronze": {
+      "trigger_ingest": "Kích hoạt Nhập",
+      "search": "Tìm bảng bronze…",
+      "tables": "Bảng Bronze",
+      "jobs": "Công việc Nhập",
+      "title": "Lớp Bronze",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Kiểm tra bảng dữ liệu thô và tác vụ nạp dữ liệu."
+    },
+    "silver": {
+      "transform": "Chuyển đổi",
+      "search": "Tìm bảng silver…",
+      "tables": "Bảng Silver",
+      "jobs": "Công việc Chuyển đổi",
+      "refresh": "Làm mới",
+      "title": "Lớp Silver",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Kiểm tra dữ liệu đã làm sạch và tác vụ chuyển đổi."
+    },
+    "gold": {
+      "runQuery": "Chạy Truy vấn",
+      "aggregate": "Tổng hợp",
+      "search": "Tìm bảng gold…",
+      "tables": "Bảng Gold",
+      "jobs": "Công việc",
+      "refresh": "Làm mới",
+      "title": "Lớp Gold",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Khám phá dữ liệu nghiệp vụ, truy vấn và tác vụ tổng hợp.",
+      "queries": "Truy vấn"
+    },
+    "crawler": {
+      "trigger": "Kích hoạt Crawl",
+      "triggerTitle": "Kích hoạt Crawler",
+      "triggerDescription": "Bắt đầu crawl mới cho {{name}}",
+      "running": "Đang chạy…",
+      "run": "Chạy",
+      "search": "Tìm crawlers…",
+      "jobs": "Công việc Crawler",
+      "overview": "Tổng quan",
+      "runStarted": "Crawler đã bắt đầu (run: {{runId}}…)",
+      "stop": "Dừng",
+      "noRuns": "Chưa có lần chạy nào",
+      "noPreview": "Không có preview",
+      "selectRun": "Chọn một lần chạy để preview",
+      "asyncRun": "Chạy không đồng bộ",
+      "title": "Thu thập dữ liệu",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Cấu hình nguồn và xem lịch sử thu thập dữ liệu."
+    },
+    "kafka": {
+      "produce": "Gửi",
+      "produceTitle": "Gửi Message",
+      "produceDescription": "Gửi message đến topic {{topic}}",
+      "search": "Tìm topics…",
+      "topics": "Topics",
+      "groups": "Nhóm Consumer",
+      "delete": "Xóa",
+      "confirmDelete": "Xóa topic {{name}}?",
+      "deleted": "Topic đã xóa",
+      "produced": "Message đã gửi đến partition {{partition}} ở offset {{offset}}",
+      "noConfig": "Không có cấu hình Kafka",
+      "noLag": "Không có dữ liệu lag",
+      "noMessages": "Không có messages",
+      "noGroups": "Không có nhóm consumer",
+      "producing": "Đang gửi…",
+      "title": "Luồng dữ liệu Kafka",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Kiểm tra topic, message và consumer group."
+    },
+    "airflow": {
+      "trigger": "Kích hoạt",
+      "triggering": "Đang kích hoạt…",
+      "triggered": "DAG đã kích hoạt (run: {{runId}}…)",
+      "pause": "Tạm dừng",
+      "unpause": "Tiếp tục",
+      "paused": "DAG đã tạm dừng",
+      "unpaused": "DAG đã tiếp tục",
+      "search": "Tìm DAGs…",
+      "dags": "DAGs",
+      "title": "Quy trình Airflow",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Theo dõi DAG, log tác vụ và các lần chạy quy trình."
+    },
+    "dq": {
+      "runSuite": "Chạy Suite",
+      "running": "Đang chạy…",
+      "search": "Tìm quy tắc DQ…",
+      "rules": "Quy tắc DQ",
+      "runs": "Lần chạy DQ",
+      "runStarted": "DQ run đã bắt đầu (run: {{runId}}…)",
+      "suiteStarted": "DQ suite đã bắt đầu (run: {{runId}}…)",
+      "noRuns": "Chưa có lần chạy nào",
+      "disable": "Tắt",
+      "enable": "Bật",
+      "updated": "Quy tắc đã cập nhật",
+      "suiteTitle": "Chạy DQ Suite",
+      "suiteDescription": "Thực hiện kiểm tra chất lượng dữ liệu trên các bảng đã chọn",
+      "title": "Chất lượng dữ liệu",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Quản lý quy tắc kiểm tra và xem kết quả."
+    },
+    "health": {
+      "healthy": "Khỏe mạnh",
+      "degraded": "Suy giảm",
+      "unhealthy": "Không khỏe",
+      "status": "Trạng thái Sức khỏe",
+      "services": "dịch vụ",
+      "deep": "Sức khỏe Chi tiết",
+      "refresh": "Làm mới",
+      "title": "Sức khỏe hệ thống",
+      "subtitle": "Quản trị Data Lake",
+      "description": "Kiểm tra API và trạng thái các dịch vụ phụ thuộc.",
+      "dependencies": "Kiểm tra dịch vụ phụ thuộc"
+    }
+  },
+  "form": {
+    "format": "Định dạng",
+    "database": "Cơ sở dữ liệu",
+    "table": "Bảng",
+    "topic": "Kafka topic",
+    "source": "Đường dẫn nguồn",
+    "sourceTables": "Tên bảng nguồn (phân cách bằng dấu phẩy)",
+    "mode": "Chế độ",
+    "full": "Toàn bộ",
+    "incremental": "Gia tăng"
+  },
+  "labels": {
+    "active": "Đang bật",
+    "added": "Đã thêm",
+    "base_url": "URL gốc",
+    "categories": "Danh mục",
+    "changed": "Đã đổi",
+    "close": "Đóng",
+    "collected": "Đã thu thập",
+    "config": "Cấu hình",
+    "consumer_groups": "Consumer group",
+    "dedup": "Khử trùng lặp",
+    "diff": "So sánh",
+    "expression": "Biểu thức",
+    "failed": "Thất bại",
+    "failed_all_time": "Thất bại (tất cả thời gian)",
+    "failed_rows": "Bản ghi lỗi",
+    "failing": "Không đạt",
+    "files": "Tệp",
+    "gantt": "Biểu đồ Gantt",
+    "headers": "Header",
+    "history": "Lịch sử",
+    "jobs": "Tác vụ",
+    "key": "Khóa",
+    "lag": "Độ trễ",
+    "last_check": "Lần kiểm tra cuối",
+    "last_run": "Lần chạy cuối",
+    "last_status": "Trạng thái gần nhất",
+    "lineage": "Nguồn gốc dữ liệu",
+    "messages": "Thông điệp",
+    "messages_s": "Thông điệp/giây",
+    "next_run": "Lần chạy tiếp",
+    "no_dags": "Chưa có DAG",
+    "no_dq_rules": "Chưa có quy tắc DQ",
+    "no_aggregate_jobs": "Chưa có tác vụ tổng hợp",
+    "no_bronze_tables": "Chưa có bảng Bronze",
+    "no_crawler_jobs": "Chưa có crawler",
+    "no_gold_tables": "Chưa có bảng Gold",
+    "no_history": "Chưa có lịch sử",
+    "no_ingestion_jobs": "Chưa có tác vụ nạp dữ liệu",
+    "no_partitions": "Chưa có phân vùng",
+    "no_rows": "Chưa có bản ghi",
+    "no_services": "Chưa có dịch vụ",
+    "no_silver_tables": "Chưa có bảng Silver",
+    "no_status": "Chưa có trạng thái",
+    "no_topics": "Chưa có topic",
+    "no_transform_jobs": "Chưa có tác vụ chuyển đổi",
+    "nulls": "Giá trị rỗng",
+    "overview": "Tổng quan",
+    "owners": "Chủ sở hữu",
+    "pages": "Trang",
+    "parallel": "Song song",
+    "partition": "Phân vùng",
+    "partitions": "Phân vùng",
+    "passing": "Đạt",
+    "preview": "Xem trước",
+    "progress": "Tiến độ",
+    "rate": "Tốc độ",
+    "records": "Bản ghi",
+    "records_all_time": "Bản ghi (tất cả thời gian)",
+    "removed": "Đã xóa",
+    "retain": "Giữ lại",
+    "retries": "Số lần thử lại",
+    "row_limit": "Giới hạn bản ghi",
+    "rows": "Bản ghi",
+    "rule_ids": "Mã quy tắc",
+    "running": "Đang chạy",
+    "runs": "Lần chạy",
+    "sample": "Mẫu dữ liệu",
+    "schedule": "Lịch chạy",
+    "size": "Dung lượng",
+    "source_layer": "Lớp nguồn",
+    "source_tables": "Bảng nguồn",
+    "sources": "Nguồn",
+    "started": "Bắt đầu",
+    "stats": "Thống kê",
+    "success": "Thành công",
+    "success_24h": "Thành công trong 24 giờ",
+    "tables": "Bảng",
+    "tags": "Nhãn",
+    "tasks": "Tác vụ",
+    "time_travel": "Phiên bản dữ liệu",
+    "timeout": "Thời gian chờ",
+    "topics": "Topic",
+    "total": "Tổng",
+    "total_lag": "Tổng độ trễ",
+    "total_rules": "Tổng quy tắc",
+    "up": "Thời gian hoạt động",
+    "value": "Giá trị",
+    "version": "Phiên bản",
+    "version_1": "Phiên bản 1",
+    "version_2": "Phiên bản 2",
+    "warning": "Cảnh báo",
+    "workers": "Worker",
+    "vs_24h": "so với 24 giờ trước"
+  },
+  "databricks": {
+    "source": "Nguồn dữ liệu: Databricks · {{catalog}}",
+    "readOnly": "Xem bảng, cấu trúc và dữ liệu mẫu trực tiếp. Jobs, Kafka, Airflow và DQ hiển thị từ các dịch vụ kết nối riêng.",
+    "preview": "Xem dữ liệu",
+    "permissionDenied": "Databricks: tài khoản kết nối cần quyền USE CATALOG, USE SCHEMA và SELECT trên bảng này."
   }
 }

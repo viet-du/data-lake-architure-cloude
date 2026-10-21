@@ -1,10 +1,14 @@
 import { DatabaseRepository } from '../repositories';
 import { DuckDBRepository } from '../repositories';
+import { usesDatabricks } from '@/lib/infra/databricks/client';
+import { DatabricksRepository } from '../repositories/databricks.repository';
 
 export interface CatalogHealth {
   status: 'ok' | 'degraded' | 'down';
-  mongodb: { status: 'up' | 'down'; latencyMs: number; error?: string };
-  duckdb: { status: 'up' | 'down'; latencyMs: number; error?: string };
+  mongodb: { status: 'up' | 'down' | 'skipped'; latencyMs: number; error?: string };
+  duckdb: { status: 'up' | 'down' | 'skipped'; latencyMs: number; error?: string };
+  source?: 'databricks' | 'local';
+  databricks?: { status: 'up'; latencyMs: number };
   databaseCount: number;
   tableCount: number;
   timestamp: string;
@@ -13,6 +17,12 @@ export interface CatalogHealth {
 export const CatalogHealthController = {
   async check(): Promise<CatalogHealth> {
     const t0 = Date.now();
+    if (usesDatabricks()) {
+      const databases = await DatabricksRepository.databases();
+      return { status: 'ok', source: 'databricks', databricks: { status: 'up', latencyMs: Date.now() - t0 },
+        mongodb: { status: 'skipped', latencyMs: 0 }, duckdb: { status: 'skipped', latencyMs: 0 },
+        databaseCount: databases.length, tableCount: databases.reduce((sum, item) => sum + item.tableCount, 0), timestamp: new Date().toISOString() };
+    }
     let mongodb: CatalogHealth['mongodb'] = { status: 'down', latencyMs: 0, error: 'skipped' };
     try {
       await DatabaseRepository.list();

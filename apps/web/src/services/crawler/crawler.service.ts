@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import { decodeCrawlerConfig, decodeCrawlerTopic, decodeRunItems, decodePreview } from './crawler.adapter';
+import { decodeCrawler, decodeCrawlers, decodeCrawlerRun, decodeCrawlerStats, decodeCrawlerItems, crawlerPayload } from './crawler.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -28,21 +31,21 @@ export const crawlerService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<CrawlerJob>>>(
       ENDPOINTS.crawler.jobs,
     );
-    return res.data.data;
+    return decodeCrawlers(res.data.data);
   },
 
   getJob: async (name: string): Promise<CrawlerJob> => {
     const res = await apiClient.get<ApiResponse<CrawlerJob>>(
       ENDPOINTS.crawler.job(name),
     );
-    return res.data.data;
+    return decodeCrawler(res.data.data);
   },
 
   getConfig: async (name: string): Promise<CrawlerConfig> => {
     const res = await apiClient.get<ApiResponse<CrawlerConfig>>(
       ENDPOINTS.crawler.jobConfig(name),
     );
-    return res.data.data;
+    return decodeCrawlerConfig(res.data.data);
   },
 
   updateConfig: async (name: string, config: Partial<CrawlerConfig>): Promise<CrawlerConfig> => {
@@ -57,23 +60,24 @@ export const crawlerService = {
     const res = await apiClient.get<ApiResponse<CrawlerKafkaTopic>>(
       ENDPOINTS.crawler.jobKafkaTopic(name),
     );
-    return res.data.data;
+    return decodeCrawlerTopic(res.data.data);
   },
 
   runJob: async (name: string, payload: RunJobPayload = {}): Promise<CrawlerRun> => {
     const res = await apiClient.post<ApiResponse<CrawlerRun>>(
       ENDPOINTS.crawler.jobRun(name),
-      payload,
+      crawlerPayload(payload),
     );
-    return res.data.data;
+    return decodeCrawlerRun(res.data.data);
   },
 
   runJobAsync: async (name: string, payload: RunJobPayload = {}): Promise<CrawlerRun> => {
     const res = await apiClient.post<ApiResponse<CrawlerRun>>(
       ENDPOINTS.crawler.jobRunAsync(name),
-      payload,
+      crawlerPayload(payload),
     );
-    return res.data.data;
+    const value = z.object({ runId: z.string(), status: z.literal('queued') }).parse(res.data.data);
+    return crawlerService.getRun(name, value.runId);
   },
 
   stopJob: async (name: string): Promise<void> => {
@@ -83,9 +87,9 @@ export const crawlerService = {
   getPreview: async (name: string, limit?: number): Promise<ReadonlyArray<CrawlerPreviewItem>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<CrawlerPreviewItem>>>(
       ENDPOINTS.crawler.jobPreview(name),
-      { params: { limit } },
+      { params: { maxItems: Math.min(limit ?? 3, 20) } },
     );
-    return res.data.data;
+    return decodePreview(res.data.data);
   },
 
   listRuns: async (name: string, params: ListCrawlerRunsParams = {}): Promise<ReadonlyArray<CrawlerRun>> => {
@@ -93,14 +97,14 @@ export const crawlerService = {
       ENDPOINTS.crawler.jobRuns(name),
       { params: { ...params } },
     );
-    return res.data.data;
+    return decodeCrawlerItems(res.data.data).map(decodeCrawlerRun);
   },
 
   getRun: async (name: string, runId: string): Promise<CrawlerRun> => {
     const res = await apiClient.get<ApiResponse<CrawlerRun>>(
       ENDPOINTS.crawler.jobRun_(name, runId),
     );
-    return res.data.data;
+    return decodeCrawlerRun(res.data.data);
   },
 
   getRunItems: async (
@@ -112,11 +116,11 @@ export const crawlerService = {
       ENDPOINTS.crawler.jobRunItems(name, runId),
       { params: { limit } },
     );
-    return res.data.data;
+    return decodeRunItems(res.data.data);
   },
 
   getStats: async (): Promise<CrawlerStats> => {
     const res = await apiClient.get<ApiResponse<CrawlerStats>>(ENDPOINTS.crawler.stats);
-    return res.data.data;
+    return decodeCrawlerStats(res.data.data);
   },
 };

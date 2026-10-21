@@ -1,3 +1,4 @@
+import { REDIS_KEY_PREFIX } from '@/config';
 import { Queue } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
 import type { BronzeIngestKind } from '../types';
@@ -25,7 +26,7 @@ export const BronzeQueue = {
   get(): Queue<BronzeJobPayload> {
     if (queue) return queue;
     queue = new Queue<BronzeJobPayload>(BRONZE_QUEUE_NAME, {
-      connection: getQueueConnection(),
+      connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX,
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: 'exponential', delay: 1000 },

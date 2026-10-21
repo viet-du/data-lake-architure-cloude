@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { useTranslation } from 'react-i18next';
 import {
   Modal,
@@ -95,7 +96,7 @@ export function CrawlerTriggerForm({ open, name, onClose }: CrawlerTriggerFormPr
     >
       <div className="flex flex-col gap-3">
         <Field
-          label="Pages"
+          label={i18n.t('labels.pages')}
           hint={t('crawler.hint.pages')}
         >
           <NumberField
@@ -106,7 +107,7 @@ export function CrawlerTriggerForm({ open, name, onClose }: CrawlerTriggerFormPr
           />
         </Field>
         <Field
-          label="Categories"
+          label={i18n.t('labels.categories')}
           hint={t('crawler.hint.categories')}
         >
           <Textarea

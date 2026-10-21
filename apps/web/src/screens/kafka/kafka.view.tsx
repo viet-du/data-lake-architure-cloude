@@ -1,5 +1,6 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useKafkaTopicsQuery,
   useKafkaConsumerGroupsQuery,
@@ -26,12 +27,14 @@ import { cn } from '@/theme';
 import type { EHealthStatus } from '@/types/commons';
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, ETagVariant>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
 };
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined | null): string {
+  if (n == null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -42,31 +45,31 @@ function StatsBar() {
   const clusterQuery = useKafkaClusterQuery();
   const stats = statsQuery.data;
   const cluster = clusterQuery.data;
-  if (statsQuery.isLoading || stats === null || stats === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  if (statsQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (statsQuery.isError) return <ScreenError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} compact />;
+  if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Topics</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.topics" /></p>
         <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
           {stats.topics}
         </p>
       </div>
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-amber-500">Consumer groups</p>
+        <p className="text-[10px] uppercase tracking-wider text-amber-500"><Trans i18nKey="labels.consumer_groups" /></p>
         <p className="mt-1 text-xl font-bold text-amber-600 dark:text-amber-400">
           {stats.consumerGroups}
         </p>
       </div>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Messages/s</p>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.messages_s" /></p>
         <p className="mt-1 text-base font-bold text-emerald-600 dark:text-emerald-400">
           {formatNumber(stats.totalMessagesPerSec)}
         </p>
       </div>
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-red-500">Total lag</p>
+        <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.total_lag" /></p>
         <p className="mt-1 text-base font-bold text-red-600 dark:text-red-400">
           {formatNumber(stats.totalLag)}
         </p>
@@ -104,7 +107,7 @@ function TopicsList({
   const items = topicsQuery.data ?? [];
   const filtered = search === '' ? items : items.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()));
   if (filtered.length === 0) {
-    return <EmptyState compact title="No topics" />;
+    return <EmptyState compact title={i18n.t('labels.no_topics')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

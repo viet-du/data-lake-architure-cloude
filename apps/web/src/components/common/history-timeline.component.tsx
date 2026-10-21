@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { Tag, EmptyState, ScreenLoading, ScreenError } from '@/components';
 import type { ETagVariant } from '@/components';
 
@@ -40,7 +41,7 @@ export function HistoryTimeline({
     return <ScreenError error={error ?? new Error('Unknown error')} onRetry={onRetry} compact />;
   }
   if (items.length === 0) {
-    return <EmptyState compact title="No history" />;
+    return <EmptyState compact title={i18n.t('labels.no_history')} />;
   }
   return (
     <ol className="flex flex-col gap-2">

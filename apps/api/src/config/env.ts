@@ -1,10 +1,23 @@
 import { z } from 'zod';
 
 const EnvSchema = z.object({
+  LAKEHOUSE_DATA_SOURCE: z.enum(['local', 'databricks']).default('local'),
+  DATABRICKS_HOST: z.string().url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.pathname === '/' && !url.search && !url.username && !url.password;
+  }, 'Use an HTTPS workspace origin without path, query or credentials').optional(),
+  DATABRICKS_TOKEN: z.string().min(1).optional(),
+  DATABRICKS_WORKSPACE_ID: z.string().regex(/^\d+$/).optional(),
+  DATABRICKS_WAREHOUSE_ID: z.string().regex(/^[a-z0-9]+$/).optional(),
+  DATABRICKS_HTTP_PATH: z.string().regex(/^\/sql\/1\.0\/warehouses\/[a-z0-9]+$/).optional(),
+  DATABRICKS_CATALOG: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('workspace'),
+  DATABRICKS_BRONZE_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('bronze'),
+  DATABRICKS_SILVER_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('silver'),
+  DATABRICKS_GOLD_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('gold'),
   ENV: z.enum(['local', 'dev', 'staging', 'prod']).default('local'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
-  MINIO_ENDPOINT: z.string().min(1),
+  MINIO_ENDPOINT: z.string().min(1).refine((value) => !value.includes('://') && !value.includes('/'), 'Use hostname:port without a URL scheme or path'),
   MINIO_ACCESS_KEY: z.string().min(1),
   MINIO_SECRET_KEY: z.string().min(1),
   MINIO_SECURE: z
@@ -28,7 +41,7 @@ const EnvSchema = z.object({
 
   API_PORT: z.coerce.number().int().default(3001),
   API_RATE_LIMIT_PER_MIN: z.coerce.number().int().default(600),
-  API_CORS_ORIGINS: z.string().default('http://localhost:3000'),
+  API_CORS_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   API_SWAGGER_ENABLED: z
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
@@ -47,6 +60,14 @@ const EnvSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
     .default('false'),
+}).superRefine((value, context) => {
+  if (value.LAKEHOUSE_DATA_SOURCE !== 'databricks') return;
+  for (const key of ['DATABRICKS_HOST', 'DATABRICKS_TOKEN', 'DATABRICKS_WAREHOUSE_ID'] as const) {
+    if (!value[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Required for Databricks data source' });
+  }
+  if (value.DATABRICKS_HTTP_PATH && value.DATABRICKS_HTTP_PATH.split('/').at(-1) !== value.DATABRICKS_WAREHOUSE_ID) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['DATABRICKS_HTTP_PATH'], message: 'Warehouse ID and HTTP path must match' });
+  }
 });
 
 const parsed = EnvSchema.safeParse(process.env);

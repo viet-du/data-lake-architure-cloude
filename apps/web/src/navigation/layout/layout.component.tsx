@@ -18,6 +18,7 @@ import { useUiStore } from '@/store';
 import { useHotkey } from '@/hooks';
 import { cn } from '@/theme';
 import type { LayoutProps, NavRailItem } from '@/navigation';
+import { useInfoQuery } from '@/services/queries';
 
 const RAIL_WIDTH_EXPANDED = 'w-20';
 const RAIL_WIDTH_COLLAPSED = 'w-0';
@@ -25,6 +26,7 @@ const RAIL_WIDTH_COLLAPSED = 'w-0';
 export function Layout({ children }: LayoutProps) {
   const { t } = useTranslation();
   const location = useLocation();
+  const info = useInfoQuery();
   const navigate = useNavigate();
   const sidebar = useUiStore((s) => s.sidebar);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
@@ -69,7 +71,7 @@ export function Layout({ children }: LayoutProps) {
             />
           </div>
         </aside>
-        <div className="flex h-full flex-1 flex-col overflow-hidden">
+        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           <TopBar
             title={title}
             searchSlot={
@@ -87,6 +89,10 @@ export function Layout({ children }: LayoutProps) {
             }
           />
           <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
+            {info.data?.dataSource === 'databricks' ? <div role="status" className="mx-6 mt-4 rounded-xl border border-primary-500/30 bg-primary-500/10 p-3 text-sm">
+              <p className="font-semibold">{t('databricks.source', { catalog: info.data.catalog })}</p>
+              <p className="mt-1 text-xs">{t('databricks.readOnly')}</p>
+            </div> : null}
             <RouteTransition>
               {children ?? <Outlet />}
             </RouteTransition>

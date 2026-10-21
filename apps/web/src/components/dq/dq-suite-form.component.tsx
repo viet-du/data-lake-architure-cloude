@@ -1,116 +1,47 @@
+import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Modal, Field, Textarea, NumberField, Button } from '@/components';
+import { Modal, Field, Textarea, Button } from '@/components';
 import { useFormZod, useToast } from '@/hooks';
-import { runSuitePayloadSchema } from '@/schemas';
 import { useRunDQSuiteMutation } from '@/services/queries';
 
-type Values = {
-  ruleIdsText: string;
-  tablesText: string;
-  parallel: number | '';
-};
-
-const INITIAL: Values = {
-  ruleIdsText: '',
-  tablesText: '',
-  parallel: 4,
-};
+const valuesSchema = z.object({ ruleIdsText: z.string().trim().min(1) });
+const ruleIdsSchema = z.array(z.string().min(1).max(120)).min(1).max(200);
+const INITIAL = { ruleIdsText: '' };
 
 export interface DQSuiteFormProps {
   open: boolean;
   onClose: () => void;
 }
 
-function parseList(text: string): string[] {
-  return text
-    .split(/[,\n]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
-
 export function DQSuiteForm({ open, onClose }: DQSuiteFormProps) {
   const { t } = useTranslation();
   const toast = useToast();
-  const form = useFormZod<Values>(runSuitePayloadSchema, INITIAL);
-  const mut = useRunDQSuiteMutation();
+  const form = useFormZod(valuesSchema, INITIAL);
+  const mutation = useRunDQSuiteMutation();
 
-  function buildPayload(): { ruleIds?: string[]; tables?: string[]; parallel?: number } {
-    const out: { ruleIds?: string[]; tables?: string[]; parallel?: number } = {};
-    const ruleIds = parseList(form.values.ruleIdsText);
-    const tables = parseList(form.values.tablesText);
-    if (ruleIds.length > 0) out.ruleIds = ruleIds;
-    if (tables.length > 0) out.tables = tables;
-    if (form.values.parallel !== '') out.parallel = form.values.parallel;
-    return out;
-  }
-
-  async function handleSubmit(): Promise<void> {
-    if (!form.validate()) return;
-    try {
-      const result = await mut.mutateAsync(buildPayload());
-      toast.success(t('dq.suiteStarted', { runId: result.runId.slice(0, 12) }));
-      handleClose();
-    } catch (e) {
-      toast.error(t('dq.error.suite'), e instanceof Error ? e.message : '');
-    }
-  }
-
-  function handleClose(): void {
+  function close(): void {
     form.reset();
     onClose();
   }
 
+  async function submit(): Promise<void> {
+    if (!form.validate()) return;
+    try {
+      const ruleIds = ruleIdsSchema.parse(form.values.ruleIdsText.split(/[,\n]/).map((id) => id.trim()).filter(Boolean));
+      const result = await mutation.mutateAsync({ ruleIds });
+      toast.success(t('dq.suiteStarted', { runId: result.runId }));
+      close();
+    } catch (error) {
+      toast.error(t('dq.error.suite'), error instanceof Error ? error.message : '');
+    }
+  }
+
   return (
-    <Modal
-      open={open}
-      onClose={handleClose}
-      title={t('dq.suiteTitle')}
-      description={t('dq.suiteDescription')}
-      size="md"
-      footer={
-        <>
-          <Button variant="ghost" size="sm" onClick={handleClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void handleSubmit()}
-            disabled={mut.isPending}
-          >
-            {mut.isPending ? t('dq.running') : t('dq.runSuite')}
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-3">
-        <Field label="Rule IDs" hint={t('dq.hint.ruleIds')}>
-          <Textarea
-            value={form.values.ruleIdsText}
-            onChange={(e) => form.setField('ruleIdsText', e.target.value)}
-            placeholder="rule-001, rule-002"
-            rows={3}
-            className="font-mono"
-          />
-        </Field>
-        <Field label="Tables" hint={t('dq.hint.tables')}>
-          <Textarea
-            value={form.values.tablesText}
-            onChange={(e) => form.setField('tablesText', e.target.value)}
-            placeholder="bronze.orders, silver.customers"
-            rows={3}
-            className="font-mono"
-          />
-        </Field>
-        <Field label="Parallel" hint={t('dq.hint.parallel')}>
-          <NumberField
-            value={form.values.parallel}
-            onChange={(v) => form.setField('parallel', v)}
-            min={1}
-            max={32}
-          />
-        </Field>
-      </div>
+    <Modal open={open} onClose={close} title={t('dq.suiteTitle')} description={t('dq.suiteDescription')}
+      footer={<><Button variant="ghost" onClick={close}>{t('common.cancel')}</Button><Button variant="primary" disabled={mutation.isPending} onClick={() => void submit()}>{t(mutation.isPending ? 'dq.running' : 'dq.runSuite')}</Button></>}>
+      <Field label={t('labels.rule_ids')} hint={t('dq.hint.ruleIds')} error={form.errors.ruleIdsText}>
+        <Textarea value={form.values.ruleIdsText} onChange={(event) => form.setField('ruleIdsText', event.target.value)} rows={3} />
+      </Field>
     </Modal>
   );
 }

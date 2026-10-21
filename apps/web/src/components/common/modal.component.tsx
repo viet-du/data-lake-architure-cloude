@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import { i18n } from '@/i18n';
 import { useEffect, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/theme';
@@ -51,7 +53,8 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <AnimatePresence initial={false}>
       {open ? (
         <motion.div
@@ -73,7 +76,7 @@ export function Modal({
             role="dialog"
             aria-modal="true"
             className={cn(
-              'flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/95 shadow-2xl backdrop-blur-2xl',
+              'flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/95 shadow-2xl backdrop-blur-2xl',
               'dark:bg-slate-900/95',
               SIZE_MAP[size],
               className,
@@ -97,13 +100,13 @@ export function Modal({
                   type="button"
                   onClick={onClose}
                   className="ml-2 rounded-md p-1 text-neutral-500 hover:bg-white/10 hover:text-neutral-900 dark:hover:text-neutral-100"
-                  aria-label="Close"
+                  aria-label={i18n.t('labels.close')}
                 >
                   ×
                 </button>
               </div>
             ) : null}
-            <div className="flex-1 overflow-y-auto p-4">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
             {footer !== undefined ? (
               <div className="flex items-center justify-end gap-2 border-t border-white/10 p-3">
                 {footer}
@@ -112,6 +115,7 @@ export function Modal({
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

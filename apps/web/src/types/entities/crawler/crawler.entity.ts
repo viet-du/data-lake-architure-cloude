@@ -1,35 +1,36 @@
 import type { EHealthStatus } from '@/types/commons';
 
-export type ECrawlerStatus = 'idle' | 'running' | 'paused' | 'completed' | 'failed';
-export type ECrawlerRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'cancelled';
+export type ECrawlerStatus = 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'unknown';
+export type ECrawlerRunStatus = 'queued' | 'running' | 'success' | 'partial' | 'failed' | 'cancelled';
 
 export interface CrawlerJob {
+  description?: string;
   name: string;
   source: string;
-  category: string;
+  category?: string;
   status: ECrawlerStatus;
-  ratePerMinute: number;
-  maxWorkers: number;
-  startedAt: string;
+  ratePerMinute?: number;
+  maxWorkers?: number;
+  startedAt?: string;
   finishedAt?: string;
-  pagesScraped: number;
-  recordsCollected: number;
-  recordsFailed: number;
+  pagesScraped?: number;
+  recordsCollected?: number;
+  recordsFailed?: number;
   kafkaTopic?: string;
   errorMessage?: string;
   health: EHealthStatus;
 }
 
 export interface CrawlerConfig {
-  name: string;
-  source: string;
-  category: string;
-  baseUrl: string;
-  ratePerMinute: number;
-  maxWorkers: number;
+  name?: string;
+  source?: string;
+  category?: string;
+  baseUrl?: string;
+  ratePerMinute?: number;
+  maxWorkers?: number;
   timeoutSec: number;
   headers: Readonly<Record<string, string>>;
-  proxyEnabled: boolean;
+  proxyEnabled?: boolean;
   retries: number;
 }
 
@@ -48,36 +49,36 @@ export interface CrawlerRun {
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;
-  pagesScraped: number;
-  recordsCollected: number;
-  recordsFailed: number;
-  triggeredBy: 'manual' | 'schedule' | 'api';
+  pagesScraped?: number;
+  recordsCollected?: number;
+  recordsFailed?: number;
+  triggeredBy?: 'manual' | 'schedule' | 'api';
   errorMessage?: string;
 }
 
 export interface CrawlerRunItem {
   url: string;
   status: 'success' | 'failed' | 'skipped';
-  attempts: number;
-  durationMs: number;
+  attempts?: number;
+  durationMs?: number;
   errorMessage?: string;
   data?: Readonly<Record<string, unknown>>;
 }
 
 export interface CrawlerKafkaTopic {
   name: string;
-  topic: string;
+  topic?: string;
   enabled: boolean;
-  messageCount: number;
+  messageCount?: number;
   lastProducedAt?: string;
 }
 
 export interface CrawlerStats {
-  totalJobs: number;
-  runningJobs: number;
-  totalRuns24h: number;
+  totalJobs?: number;
+  runningJobs?: number;
+  totalRuns24h?: number;
   totalRecords24h: number;
   failedRecords24h: number;
-  avgRatePerMinute: number;
+  avgRatePerMinute?: number;
   health: EHealthStatus;
 }

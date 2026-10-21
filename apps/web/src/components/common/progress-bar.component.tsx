@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import { type FC } from 'react';
 import { cn } from '@/theme';
 
@@ -58,7 +59,7 @@ export const ProgressBar: FC<ProgressBarProps> = ({
     <div className={cn('w-full', className)}>
       {showLabel ? (
         <div className={cn('mb-1 flex items-center justify-between font-medium text-neutral-500 dark:text-neutral-400', SIZE_LABEL[size])}>
-          <span>Progress</span>
+          <span><Trans i18nKey="labels.progress" /></span>
           <span className="tabular-nums">{Math.round(percent)}%</span>
         </div>
       ) : null}

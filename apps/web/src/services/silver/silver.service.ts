@@ -1,3 +1,7 @@
+import { z } from 'zod';
+import { decodeSample, decodeTableStats, decodeHistory } from '../lake';
+import { decodeJob } from '../lake';
+import { decodeLayerList, decodeLayerDetail, decodeJobs, decodeJobStats } from '../lake';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -20,19 +24,16 @@ export interface ListSilverTablesParams {
 }
 
 export interface ListSilverTablesResult {
-  items: ReadonlyArray<SilverTable>;
+  items: ReadonlyArray<{ table: string; database: string; name: string }>;
   total: number;
 }
 
 export interface TransformPayload {
-  sourceTable: string;
-  transformRule: string;
-  mode?: 'full' | 'incremental';
-  checkpointLocation?: string;
+  sourceTable?: string;
+  kind: 'full' | 'incremental' | 'refresh';
 }
-
 export interface TransformAllPayload {
-  rules: ReadonlyArray<TransformPayload>;
+  kind: 'full' | 'incremental' | 'refresh';
   parallel?: number;
 }
 
@@ -42,14 +43,14 @@ export const silverService = {
       ENDPOINTS.silver.tables,
       { params: { ...params } },
     );
-    return res.data.data;
+    return decodeLayerList(res.data.data);
   },
 
   getTable: async (table: string): Promise<SilverTable> => {
     const res = await apiClient.get<ApiResponse<SilverTable>>(
       ENDPOINTS.silver.table(table),
     );
-    return res.data.data;
+    return decodeLayerDetail(res.data.data);
   },
 
   getTableSample: async (table: string, limit?: number): Promise<SilverTableSample> => {
@@ -57,21 +58,21 @@ export const silverService = {
       ENDPOINTS.silver.tableSample(table),
       { params: { limit } },
     );
-    return res.data.data;
+    return decodeSample(res.data.data);
   },
 
   getTableStats: async (table: string): Promise<SilverTableStats> => {
     const res = await apiClient.get<ApiResponse<SilverTableStats>>(
       ENDPOINTS.silver.tableStats(table),
     );
-    return res.data.data;
+    return decodeTableStats(res.data.data);
   },
 
   getTableHistory: async (table: string): Promise<ReadonlyArray<SilverTableHistory>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<SilverTableHistory>>>(
       ENDPOINTS.silver.tableHistory(table),
     );
-    return res.data.data;
+    return decodeHistory(res.data.data);
   },
 
   getTablePartitions: async (table: string): Promise<ReadonlyArray<unknown>> => {
@@ -100,7 +101,7 @@ export const silverService = {
       ENDPOINTS.silver.tableRefresh(table),
       {},
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   transform: async (table: string, payload: TransformPayload): Promise<SilverTransformJob> => {
@@ -108,7 +109,7 @@ export const silverService = {
       ENDPOINTS.silver.tableTransform(table),
       payload,
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   transformAll: async (payload: TransformAllPayload): Promise<ReadonlyArray<SilverTransformJob>> => {
@@ -123,24 +124,34 @@ export const silverService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<SilverTransformJob>>>(
       ENDPOINTS.silver.jobs,
     );
-    return res.data.data;
+    return decodeJobs(res.data.data).map(mapJob);
   },
 
   getJobStats: async (): Promise<SilverJobsStats> => {
     const res = await apiClient.get<ApiResponse<SilverJobsStats>>(
       ENDPOINTS.silver.jobsStats,
     );
-    return res.data.data;
+    return mapStats(res.data.data);
   },
 
   getJob: async (jobId: string): Promise<SilverTransformJob> => {
     const res = await apiClient.get<ApiResponse<SilverTransformJob>>(
       ENDPOINTS.silver.job(jobId),
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   cancelJob: async (jobId: string): Promise<void> => {
     await apiClient.delete<ApiResponse<null>>(ENDPOINTS.silver.job(jobId));
   },
 };
+
+function mapStats(input: unknown) {
+  const value = decodeJobStats(input);
+  return { ...value, totalRecordsProcessed: z.number().parse(value.totalRowsTransformed) };
+}
+
+function mapJob(input: unknown) {
+  const value = decodeJob(input);
+  return { ...value, recordsProcessed: value.rowCount };
+}

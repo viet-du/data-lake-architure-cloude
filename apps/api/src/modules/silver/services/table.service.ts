@@ -1,3 +1,5 @@
+import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
+import { DatabricksRepository } from '@/modules/catalog/repositories/databricks.repository';
 import { NotFoundError } from '@/errors';
 import { SilverDuckDBRepository } from '../repositories/duckdb.repository';
 import type { ColumnMeta } from '@/modules/catalog/types';
@@ -28,6 +30,7 @@ function parseTableParam(table: string): { database: string; name: string } | nu
 
 export const SilverTableService = {
   async list(query: TTableListQuery): Promise<{ table: string; database: string; name: string }[]> {
+    if (usesDatabricks()) return DatabricksRepository.layerList('silver', query);
     const tableIds = await SilverDuckDBRepository.listTables({
       ...(query.database ? { database: query.database } : {}),
       ...(query.search ? { search: query.search } : {}),
@@ -40,6 +43,7 @@ export const SilverTableService = {
   },
 
   async getOrFail(params: TTableParams): Promise<SilverTable> {
+    if (usesDatabricks()) return DatabricksRepository.layerDetail('silver', params.table);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     const [columns, rowCount, fileCount, sizeBytes, hist, partitions] = await Promise.all([
@@ -68,12 +72,14 @@ export const SilverTableService = {
   },
 
   async sample(params: TTableParams, query: TSampleQuery): Promise<Array<Record<string, unknown>>> {
+    if (usesDatabricks()) return DatabricksRepository.sample(DatabricksRepository.layerName('silver', params.table), query.limit);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.sample(parsed.database, parsed.name, query.limit);
   },
 
   async schema(params: TTableParams): Promise<{ table: string; columns: ColumnMeta[] }> {
+    if (usesDatabricks()) return { table: params.table, columns: await DatabricksRepository.columns(DatabricksRepository.layerName('silver', params.table)) };
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     const columns = await SilverDuckDBRepository.describe(parsed.database, parsed.name);
@@ -81,30 +87,36 @@ export const SilverTableService = {
   },
 
   async history(params: TTableParams): Promise<SilverHistoryEntry[]> {
+    if (usesDatabricks()) return DatabricksRepository.layerHistory('silver', params.table);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.history(parsed.database, parsed.name);
   },
 
   async partitions(params: TTableParams): Promise<SilverPartition[]> {
+    if (usesDatabricks()) return DatabricksRepository.layerPartitions('silver', params.table);
+    remoteReadOnly();
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.partitions(parsed.database, parsed.name);
   },
 
   async stats(params: TTableParams): Promise<SilverStats> {
+    if (usesDatabricks()) return DatabricksRepository.layerStats('silver', params.table);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.stats(parsed.database, parsed.name);
   },
 
   async timeTravel(params: TTimeTravelParams, query: TTimeTravelQuery): Promise<TimeTravelData> {
+    remoteReadOnly();
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.timeTravel(parsed.database, parsed.name, params.version, query.limit);
   },
 
   async diff(params: TDiffParams): Promise<DiffResult> {
+    remoteReadOnly();
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return SilverDuckDBRepository.diff(parsed.database, parsed.name, params.v1, params.v2);

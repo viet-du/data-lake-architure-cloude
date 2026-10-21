@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -30,18 +30,21 @@ export interface KafkaTopicDetailProps {
 type DetailTab = 'overview' | 'messages' | 'config' | 'produce';
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, 'success' | 'warning' | 'error'>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
 };
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined | null): string {
+  if (n == null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
-function formatRetention(ms: number): string {
+function formatRetention(ms: number | null): string {
+  if (ms === null) return '—';
   if (ms >= 86_400_000) return `${Math.round(ms / 86_400_000)}d`;
   if (ms >= 3_600_000) return `${Math.round(ms / 3_600_000)}h`;
   if (ms >= 60_000) return `${Math.round(ms / 60_000)}m`;
@@ -124,9 +127,9 @@ export function KafkaTopicDetail({ name, onClose }: KafkaTopicDetailProps) {
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="config">Config</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="messages"><Trans i18nKey="labels.messages" /></TabsTrigger>
+              <TabsTrigger value="config"><Trans i18nKey="labels.config" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -140,7 +143,7 @@ export function KafkaTopicDetail({ name, onClose }: KafkaTopicDetailProps) {
                   </p>
                 </div>
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-amber-500">Lag</p>
+                  <p className="text-[10px] uppercase tracking-wider text-amber-500"><Trans i18nKey="labels.lag" /></p>
                   <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">
                     {formatNumber(topicQuery.data.lag)}
                   </p>
@@ -158,7 +161,7 @@ export function KafkaTopicDetail({ name, onClose }: KafkaTopicDetailProps) {
                     Created
                   </p>
                   <p className="mt-1 text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    {new Date(topicQuery.data.createdAt).toLocaleString()}
+                    {topicQuery.data.createdAt ? new Date(topicQuery.data.createdAt).toLocaleString() : '—'}
                   </p>
                 </div>
               </div>

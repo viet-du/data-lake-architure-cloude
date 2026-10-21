@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { GlassCard } from '@/components';
 import { cn } from '@/theme';
 import { useCountUp, useReducedMotion } from '@/hooks';
@@ -40,8 +40,8 @@ function parseNumeric(value: string): { numeric: number | null; suffix: string; 
   return { numeric: Number(numericPart), suffix, prefix };
 }
 
-function formatNumber(value: number, suffix: string, prefix: string): string {
-  const isInteger = Number.isInteger(value);
+function formatNumber(value: number, suffix: string, prefix: string, integer: boolean): string {
+  const isInteger = integer;
   const rounded = isInteger ? Math.round(value).toString() : value.toFixed(1);
   return `${prefix}${rounded}${suffix}`;
 }
@@ -56,7 +56,7 @@ export function QuickStatCard({ stat }: QuickStatCardProps) {
   const parsed = parseNumeric(stat.value);
   const target = parsed.numeric ?? 0;
   const animated = useCountUp(target, { enabled: parsed.numeric !== null && !reducedMotion });
-  const display = parsed.numeric === null ? stat.value : formatNumber(animated, parsed.suffix, parsed.prefix);
+  const display = parsed.numeric === null ? stat.value : formatNumber(animated, parsed.suffix, parsed.prefix, Number.isInteger(target));
 
   return (
     <GlassCard
@@ -79,7 +79,7 @@ export function QuickStatCard({ stat }: QuickStatCardProps) {
         <p className="text-xs font-medium uppercase tracking-wider text-black dark:text-white">
           {t(stat.labelKey)}
         </p>
-        <p className="mt-2 text-3xl font-bold text-black dark:text-white tabular-nums">
+        <p data-stat={stat.key} data-target={stat.value} className="mt-2 text-3xl font-bold text-black dark:text-white tabular-nums">
           {display}
         </p>
       </div>
@@ -95,7 +95,7 @@ export function QuickStatCard({ stat }: QuickStatCardProps) {
           >
             {stat.delta >= 0 ? '+' : ''}{stat.delta}%
           </span>
-          <span className="text-black dark:text-white">vs 24h</span>
+          <span className="text-black dark:text-white"><Trans i18nKey="labels.vs_24h" /></span>
         </div>
       ) : null}
     </GlassCard>

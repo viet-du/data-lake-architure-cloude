@@ -1,3 +1,7 @@
+import { z } from 'zod';
+import { decodeSample, decodeTableStats, decodeHistory } from '../lake';
+import { decodeJob } from '../lake';
+import { decodeLayerList, decodeLayerDetail, decodeJobs, decodeJobStats } from '../lake';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -19,30 +23,22 @@ export interface ListBronzeTablesParams {
 }
 
 export interface ListBronzeTablesResult {
-  items: ReadonlyArray<BronzeTable>;
+  items: ReadonlyArray<{ table: string; database: string; name: string }>;
   total: number;
 }
 
 export interface IngestJsonPayload {
   table: string;
   database: string;
-  data: ReadonlyArray<Readonly<Record<string, unknown>>>;
-  mode?: 'append' | 'overwrite' | 'merge';
+  source: string;
 }
-
-export interface IngestCsvPayload {
-  table: string;
-  database: string;
-  fileUrl: string;
-  delimiter?: string;
-  hasHeader?: boolean;
-  mode?: 'append' | 'overwrite';
+export interface IngestCsvPayload extends IngestJsonPayload {
+  options?: { header?: boolean; delimiter?: string; encoding?: string };
 }
-
 export interface IngestStreamPayload {
   database: string;
   table: string;
-  checkpointLocation?: string;
+  consumerGroup?: string;
 }
 
 export interface VacuumPayload {
@@ -56,14 +52,14 @@ export const bronzeService = {
       ENDPOINTS.bronze.tables,
       { params: { ...params } },
     );
-    return res.data.data;
+    return decodeLayerList(res.data.data);
   },
 
   getTable: async (table: string): Promise<BronzeTable> => {
     const res = await apiClient.get<ApiResponse<BronzeTable>>(
       ENDPOINTS.bronze.table(table),
     );
-    return res.data.data;
+    return decodeLayerDetail(res.data.data);
   },
 
   getTableSample: async (table: string, limit?: number): Promise<BronzeTableSample> => {
@@ -71,21 +67,21 @@ export const bronzeService = {
       ENDPOINTS.bronze.tableSample(table),
       { params: { limit } },
     );
-    return res.data.data;
+    return decodeSample(res.data.data);
   },
 
   getTableStats: async (table: string): Promise<BronzeTableStats> => {
     const res = await apiClient.get<ApiResponse<BronzeTableStats>>(
       ENDPOINTS.bronze.tableStats(table),
     );
-    return res.data.data;
+    return decodeTableStats(res.data.data);
   },
 
   getTableHistory: async (table: string): Promise<ReadonlyArray<BronzeTableHistory>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<BronzeTableHistory>>>(
       ENDPOINTS.bronze.tableHistory(table),
     );
-    return res.data.data;
+    return decodeHistory(res.data.data);
   },
 
   getTablePartitions: async (table: string): Promise<ReadonlyArray<BronzeTablePartition>> => {
@@ -112,7 +108,7 @@ export const bronzeService = {
       ENDPOINTS.bronze.ingestJson,
       payload,
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   ingestCsv: async (payload: IngestCsvPayload): Promise<BronzeIngestJob> => {
@@ -120,7 +116,7 @@ export const bronzeService = {
       ENDPOINTS.bronze.ingestCsv,
       payload,
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   ingestStream: async (topic: string, payload: IngestStreamPayload): Promise<BronzeIngestJob> => {
@@ -128,31 +124,41 @@ export const bronzeService = {
       ENDPOINTS.bronze.ingestStream(topic),
       payload,
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   listJobs: async (): Promise<ReadonlyArray<BronzeIngestJob>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<BronzeIngestJob>>>(
       ENDPOINTS.bronze.jobs,
     );
-    return res.data.data;
+    return decodeJobs(res.data.data).map(mapJob);
   },
 
   getJobStats: async (): Promise<BronzeJobsStats> => {
     const res = await apiClient.get<ApiResponse<BronzeJobsStats>>(
       ENDPOINTS.bronze.jobsStats,
     );
-    return res.data.data;
+    return mapStats(res.data.data);
   },
 
   getJob: async (jobId: string): Promise<BronzeIngestJob> => {
     const res = await apiClient.get<ApiResponse<BronzeIngestJob>>(
       ENDPOINTS.bronze.job(jobId),
     );
-    return res.data.data;
+    return mapJob(res.data.data);
   },
 
   cancelJob: async (jobId: string): Promise<void> => {
     await apiClient.delete<ApiResponse<null>>(ENDPOINTS.bronze.job(jobId));
   },
 };
+
+function mapStats(input: unknown) {
+  const value = decodeJobStats(input);
+  return { ...value, totalRecordsIngested: z.number().parse(value.totalRowsIngested), totalBytesIngested: z.number().parse(value.totalBytesProcessed) };
+}
+
+function mapJob(input: unknown) {
+  const value = decodeJob(input);
+  return { ...value, source: value.kind === 'stream' ? 'kafka' as const : value.kind === 'csv' ? 'csv' as const : 'json' as const, recordsIngested: value.rowCount, bytesIngested: value.bytesProcessed };
+}

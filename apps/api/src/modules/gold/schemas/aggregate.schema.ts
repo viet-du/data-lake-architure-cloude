@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GOLD_AGGREGATE_KINDS } from '../types';
+import { GOLD_AGGREGATE_KINDS } from '../types/job-status.enum';
 
 export const AggregateBodySchema = z.object({
   kind: z.enum(GOLD_AGGREGATE_KINDS).default('full'),

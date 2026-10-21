@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import { Tag, type ETagVariant } from '@/components';
 import { cn } from '@/theme';
 import type { DQRule, EDQSeverity, EDQStatus } from '@/types/entities';
@@ -10,6 +11,7 @@ export interface DQRuleCardProps {
 }
 
 const STATUS_VARIANT: Readonly<Record<EDQStatus, ETagVariant>> = {
+  unknown: 'warning',
   pass: 'success',
   fail: 'error',
   warning: 'warning',
@@ -62,11 +64,11 @@ export function DQRuleCard({ rule, onClick, onRun, onToggle }: DQRuleCardProps) 
       ) : null}
       <div className="grid grid-cols-2 gap-1 text-[10px] text-neutral-500">
         <div>
-          <p>Last run</p>
+          <p><Trans i18nKey="labels.last_run" /></p>
           <p className="font-mono text-[10px] text-neutral-300">{formatTime(rule.lastRunAt)}</p>
         </div>
         <div>
-          <p>Failed rows</p>
+          <p><Trans i18nKey="labels.failed_rows" /></p>
           <p className="font-mono text-xs text-neutral-300">
             {rule.failedRows === undefined ? '—' : rule.failedRows}
             {rule.totalRows !== undefined ? ` / ${rule.totalRows}` : ''}

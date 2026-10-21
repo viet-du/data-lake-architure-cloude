@@ -23,7 +23,7 @@ export async function getMongo(): Promise<typeof mongoose> {
         bufferCommands: false,
       })
       .then((m) => {
-        logger.info({ uri: env.MONGO_URI, db: env.MONGO_DB }, 'MongoDB connected');
+        logger.info({ db: env.MONGO_DB }, 'MongoDB connected');
         return m;
       })
       .catch((err) => {

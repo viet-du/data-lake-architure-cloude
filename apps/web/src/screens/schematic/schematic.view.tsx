@@ -15,7 +15,7 @@ export function SchematicView() {
 
   return (
     <ErrorBoundary>
-      <div className="flex h-full flex-col gap-4">
+      <div className="flex min-h-[850px] flex-col gap-4">
         <ScreenPageHeader
           iconName="Cloud"
           titleKey="schematic.title"
@@ -24,7 +24,7 @@ export function SchematicView() {
           accent="primary"
         />
 
-        <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950">
+        <div className="relative h-[650px] min-h-[650px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950">
           <ErrorBoundary>
             <PipelineFlow activeKind={active} onSelect={setActive} />
           </ErrorBoundary>

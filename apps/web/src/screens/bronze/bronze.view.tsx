@@ -1,7 +1,10 @@
+import { useInfoQuery } from '@/services/queries';
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useBronzeTablesQuery,
+  useBronzeTableQuery,
   useBronzeJobsQuery,
   useBronzeJobStatsQuery,
   useCancelBronzeJobMutation,
@@ -45,9 +48,9 @@ function TablesGrid({ search, onSelect }: { search: string; onSelect: (name: str
     return <ScreenError error={tablesQuery.error} onRetry={() => void tablesQuery.refetch()} compact />;
   }
   const items =
-    (tablesQuery.data as { items?: ReadonlyArray<{ name: string }> } | undefined)?.items ?? [];
+    tablesQuery.data?.items ?? [];
   if (items.length === 0) {
-    return <EmptyState compact title="No bronze tables" />;
+    return <EmptyState compact title={i18n.t('labels.no_bronze_tables')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -65,23 +68,11 @@ function BronzeTableCardWrapper({
   name: string;
   onClick: (n: string) => void;
 }) {
-  const tableQuery = useBronzeTablesQuery({ limit: 24, search: name });
-  const table = (tableQuery.data as { items?: ReadonlyArray<{
-    name: string;
-    database: string;
-    format: 'delta' | 'parquet' | 'csv' | 'json';
-    sizeBytes: number;
-    rowCount: number;
-    partitionBy: ReadonlyArray<string>;
-    createdAt: string;
-    updatedAt: string;
-    lastIngestedAt?: string;
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    location?: string;
-  }> } | undefined)?.items?.[0];
-  if (table === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  const tableQuery = useBronzeTableQuery(name);
+  if (tableQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (tableQuery.isError) return <ScreenError error={tableQuery.error} onRetry={() => void tableQuery.refetch()} compact />;
+  const table = tableQuery.data;
+  if (!table) return null;
   return <BronzeTableCard table={table} onClick={() => onClick(name)} />;
 }
 
@@ -96,7 +87,7 @@ function JobsList() {
   }
   const items = jobsQuery.data ?? [];
   if (items.length === 0) {
-    return <EmptyState compact title="No ingestion jobs" />;
+    return <EmptyState compact title={i18n.t('labels.no_ingestion_jobs')} />;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -141,13 +132,13 @@ function JobStatsBar() {
   const { t } = useTranslation();
   const statsQuery = useBronzeJobStatsQuery();
   const stats = statsQuery.data;
-  if (statsQuery.isLoading || stats === null || stats === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  if (statsQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (statsQuery.isError) return <ScreenError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} compact />;
+  if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Total</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.total" /></p>
         <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
           {stats.total}
         </p>
@@ -159,11 +150,11 @@ function JobStatsBar() {
         </p>
       </div>
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-sky-500">Running</p>
+        <p className="text-[10px] uppercase tracking-wider text-sky-500"><Trans i18nKey="labels.running" /></p>
         <p className="mt-1 text-xl font-bold text-sky-600 dark:text-sky-400">{stats.running}</p>
       </div>
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-red-500">Failed</p>
+        <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.failed" /></p>
         <p className="mt-1 text-xl font-bold text-red-600 dark:text-red-400">{stats.failed}</p>
       </div>
     </div>
@@ -171,6 +162,7 @@ function JobStatsBar() {
 }
 
 export function BronzeView() {
+  const readOnly = useInfoQuery().data?.readOnly ?? false;
   const { t } = useTranslation();
   const [tab, setTab] = useState<'tables' | 'jobs'>('tables');
   const [search, setSearch] = useState('');
@@ -187,7 +179,7 @@ export function BronzeView() {
           descriptionKey="screens.bronze.description"
           accent="bronze"
           actions={
-            <Button variant="primary" size="sm" onClick={() => setIngestOpen(true)}>
+            <Button variant="primary" size="sm" disabled={readOnly} onClick={() => setIngestOpen(true)}>
               {t('screens.bronze.trigger_ingest')}
             </Button>
           }

@@ -1,6 +1,7 @@
-import { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useEffect } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { Fog, PerspectiveCamera } from 'three';
 import {
   PIPELINE_LINKS,
   PIPELINE_NODES,
@@ -25,6 +26,7 @@ export function PipelineFlow({ activeKind, onSelect }: PipelineFlowProps) {
     >
       <color attach="background" args={['#0a0a16']} />
       <fog attach="fog" args={['#0a0a16', 10, 24]} />
+      <ResponsiveCamera />
 
       <ambientLight intensity={0.45} />
       <directionalLight position={[3, 4, 4]} intensity={0.9} color="#a78bfa" />
@@ -50,10 +52,11 @@ export function PipelineFlow({ activeKind, onSelect }: PipelineFlowProps) {
       </Suspense>
 
       <OrbitControls
+        makeDefault
         enablePan={false}
         enableZoom
         minDistance={5}
-        maxDistance={14}
+        maxDistance={50}
         minPolarAngle={Math.PI / 4}
         maxPolarAngle={Math.PI / 1.7}
         autoRotate
@@ -61,6 +64,23 @@ export function PipelineFlow({ activeKind, onSelect }: PipelineFlowProps) {
       />
     </Canvas>
   );
+}
+
+function ResponsiveCamera() {
+  const { camera, scene, size } = useThree();
+  useEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    const aspect = size.width / Math.max(size.height, 1);
+    const distance = Math.max(9, 6 / (Math.tan(camera.fov * Math.PI / 360) * aspect));
+    camera.position.set(0, 2, distance);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    if (scene.fog instanceof Fog) {
+      scene.fog.near = distance + 1;
+      scene.fog.far = distance + 15;
+    }
+  }, [camera, scene, size.width, size.height]);
+  return null;
 }
 
 function BackgroundRing() {

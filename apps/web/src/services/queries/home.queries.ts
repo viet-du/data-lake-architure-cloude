@@ -1,96 +1,53 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../query-keys';
-import { bronzeService, silverService, goldService, kafkaService, airflowService, dqService, healthService } from '..';
+import { catalogService, bronzeService, silverService, goldService, kafkaService, airflowService, dqService, healthService } from '..';
 import type { EHealthStatus } from '@/types/commons';
-import type {
-  BronzeJobsStats,
-  SilverJobsStats,
-  GoldJobsStats,
-  KafkaStats,
-  AirflowStats,
-  DQSummary,
-  HealthResponse,
-} from '@/types/entities';
 
 export interface HomeAggregatedStats {
-  totalTables: number;
-  runningJobs: number;
-  activeTopics: number;
-  activeDAGs: number;
-  records24h: number;
-  qualityScore: number;
-  uptimeSeconds: number;
-  totalLag: number;
+  layerTables?: Readonly<Record<'bronze' | 'silver' | 'gold', number | null>>;
+  totalTables: number | null;
+  runningJobs: number | null;
+  activeTopics: number | null;
+  activeDAGs: number | null;
+  records24h: number | null;
+  qualityScore: number | null;
+  uptimeSeconds: number | null;
+  totalLag: number | null;
   systemStatus: EHealthStatus;
+  partial: boolean;
 }
 
-function toNumber(value: number | string | undefined, fallback: number = 0): number {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : fallback;
-  }
-  return fallback;
+export async function fetchHomeStats(): Promise<HomeAggregatedStats> {
+  const [databases, bronze, silver, gold, kafka, airflow, dq, health] = await Promise.allSettled([
+    catalogService.listDatabases(), bronzeService.getJobStats(), silverService.getJobStats(),
+    goldService.getJobStats(), kafkaService.getStats(), airflowService.getStats(),
+    dqService.getSummary(), healthService.getHealth(),
+  ]);
+  const layerCount = (layer: 'bronze' | 'silver' | 'gold') => {
+    if (databases.status !== 'fulfilled') return null;
+    const matching = databases.value.filter((database) => database.layers.includes(layer));
+    return matching.some((database) => database.layers.length > 1) ? null : matching.reduce((sum, database) => sum + database.tableCount, 0);
+  };
+  return {
+    layerTables: { bronze: layerCount('bronze'), silver: layerCount('silver'), gold: layerCount('gold') },
+    totalTables: databases.status === 'fulfilled' ? databases.value.filter((database) => !database.systemSchema).reduce((sum, db) => sum + db.tableCount, 0) : null,
+    runningJobs: bronze.status === 'fulfilled' && silver.status === 'fulfilled' && gold.status === 'fulfilled'
+      ? bronze.value.running + silver.value.running + gold.value.running : null,
+    records24h: databases.status === 'fulfilled' && databases.value.some((database) => database.source === 'databricks') ? null : bronze.status === 'fulfilled' && silver.status === 'fulfilled' && gold.status === 'fulfilled'
+      ? bronze.value.totalRecordsIngested + silver.value.totalRecordsProcessed + gold.value.totalRecordsProcessed : null,
+    activeTopics: kafka.status === 'fulfilled' ? kafka.value.topics : null,
+    activeDAGs: airflow.status === 'fulfilled' ? airflow.value.activeDAGs : null,
+    qualityScore: dq.status === 'fulfilled' ? dq.value.passRate : null,
+    uptimeSeconds: health.status === 'fulfilled' ? health.value.uptime : null,
+    totalLag: kafka.status === 'fulfilled' ? kafka.value.totalLag : null,
+    systemStatus: health.status === 'fulfilled' ? health.value.status : 'unknown',
+    partial: [databases, bronze, silver, gold, kafka, airflow, dq, health].some((result) => result.status === 'rejected'),
+  };
 }
 
-export function useHomeStatsQuery(
-  options?: Omit<UseQueryOptions<HomeAggregatedStats, Error>, 'queryKey' | 'queryFn'>,
-) {
+export function useHomeStatsQuery(options?: Omit<UseQueryOptions<HomeAggregatedStats, Error>, 'queryKey' | 'queryFn'>) {
   return useQuery<HomeAggregatedStats, Error>({
-    queryKey: [...QUERY_KEYS.health.all, 'home-stats'],
-    queryFn: async () => {
-      const [
-        bronzeStats,
-        silverStats,
-        goldStats,
-        kafkaStats,
-        airflowStats,
-        dqSummary,
-        health,
-      ] = await Promise.allSettled([
-        bronzeService.getJobStats(),
-        silverService.getJobStats(),
-        goldService.getJobStats(),
-        kafkaService.getStats(),
-        airflowService.getStats(),
-        dqService.getSummary(),
-        healthService.getHealth(),
-      ]);
-
-      const bronze = bronzeStats.status === 'fulfilled' ? (bronzeStats.value as BronzeJobsStats) : null;
-      const silver = silverStats.status === 'fulfilled' ? (silverStats.value as SilverJobsStats) : null;
-      const gold = goldStats.status === 'fulfilled' ? (goldStats.value as GoldJobsStats) : null;
-      const kafka = kafkaStats.status === 'fulfilled' ? (kafkaStats.value as KafkaStats) : null;
-      const airflow = airflowStats.status === 'fulfilled' ? (airflowStats.value as AirflowStats) : null;
-      const dq = dqSummary.status === 'fulfilled' ? (dqSummary.value as DQSummary) : null;
-      const healthValue = health.status === 'fulfilled' ? (health.value as HealthResponse) : null;
-
-      const runningJobs =
-        toNumber(bronze?.running) + toNumber(silver?.running) + toNumber(gold?.running);
-
-      const records24h =
-        toNumber(bronze?.totalRecordsIngested) +
-        toNumber(silver?.totalRecordsProcessed) +
-        toNumber(gold?.totalRecordsProcessed);
-
-      const totalTables = 0;
-
-      return {
-        totalTables,
-        runningJobs,
-        activeTopics: toNumber(kafka?.topics),
-        activeDAGs: toNumber(airflow?.activeDAGs),
-        records24h,
-        qualityScore: dq === null ? 0 : Math.round(
-          (dq.passing / Math.max(1, dq.passing + dq.failing + dq.warning)) * 100,
-        ),
-        uptimeSeconds: toNumber(healthValue?.uptime),
-        totalLag: toNumber(kafka?.totalLag),
-        systemStatus: healthValue?.status ?? 'healthy',
-      } satisfies HomeAggregatedStats;
-    },
-    refetchInterval: 30_000,
-    staleTime: 15_000,
-    ...options,
+    queryKey: [...QUERY_KEYS.health.all, 'home-stats'], queryFn: fetchHomeStats,
+    refetchInterval: 30_000, staleTime: 15_000, ...options,
   });
 }

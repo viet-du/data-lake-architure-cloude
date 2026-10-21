@@ -1,3 +1,5 @@
+import { decodeMessages, decodeProduce, decodeLag } from './kafka.adapter';
+import { decodeTopic, decodeGroup, decodeKafkaStats, decodeCluster, decodeTopicNames, decodeGroupIds } from './kafka.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -32,14 +34,14 @@ export const kafkaService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<KafkaTopic>>>(
       ENDPOINTS.kafka.topics,
     );
-    return res.data.data;
+    return Promise.all(decodeTopicNames(res.data.data).map((topic) => kafkaService.getTopic(topic)));
   },
 
   getTopic: async (topic: string): Promise<KafkaTopic> => {
     const res = await apiClient.get<ApiResponse<KafkaTopic>>(
       ENDPOINTS.kafka.topic(topic),
     );
-    return res.data.data;
+    return decodeTopic(res.data.data);
   },
 
   deleteTopic: async (topic: string): Promise<void> => {
@@ -52,9 +54,9 @@ export const kafkaService = {
   ): Promise<ReadonlyArray<KafkaMessage>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<KafkaMessage>>>(
       ENDPOINTS.kafka.topicMessages(topic),
-      { params: { ...params } },
+      { params: { partition: params.partition, limit: params.limit, fromOffset: params.offset } },
     );
-    return res.data.data;
+    return decodeMessages(res.data.data);
   },
 
   produce: async (topic: string, payload: KafkaProducePayload): Promise<KafkaProduceResult> => {
@@ -62,7 +64,7 @@ export const kafkaService = {
       ENDPOINTS.kafka.topicProduce(topic),
       payload,
     );
-    return res.data.data;
+    return decodeProduce(res.data.data);
   },
 
   produceBatch: async (topic: string, payload: KafkaProduceBatchPayload): Promise<KafkaProduceBatchResult> => {
@@ -70,21 +72,21 @@ export const kafkaService = {
       ENDPOINTS.kafka.topicProduceBatch(topic),
       payload,
     );
-    return res.data.data;
+    return decodeProduce(res.data.data);
   },
 
   listConsumerGroups: async (): Promise<ReadonlyArray<KafkaConsumerGroup>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<KafkaConsumerGroup>>>(
       ENDPOINTS.kafka.consumerGroups,
     );
-    return res.data.data;
+    return Promise.all(decodeGroupIds(res.data.data).map((id) => kafkaService.getConsumerGroup(id)));
   },
 
   getConsumerGroup: async (groupId: string): Promise<KafkaConsumerGroup> => {
     const res = await apiClient.get<ApiResponse<KafkaConsumerGroup>>(
       ENDPOINTS.kafka.consumerGroup(groupId),
     );
-    return res.data.data;
+    return decodeGroup(res.data.data);
   },
 
   deleteConsumerGroup: async (groupId: string): Promise<void> => {
@@ -95,23 +97,23 @@ export const kafkaService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<KafkaConsumerGroupLag>>>(
       ENDPOINTS.kafka.consumerGroupLag(groupId),
     );
-    return res.data.data;
+    return decodeLag(res.data.data);
   },
 
   resetOffset: async (groupId: string, payload: ResetOffsetPayload): Promise<void> => {
     await apiClient.post<ApiResponse<null>>(
       ENDPOINTS.kafka.consumerGroupReset(groupId),
-      payload,
+      { topic: payload.topic, partitions: [payload.partition], reset: typeof payload.offset === 'number' ? 'specific' : payload.offset, ...(typeof payload.offset === 'number' ? { offset: payload.offset } : {}) },
     );
   },
 
   getCluster: async (): Promise<KafkaCluster> => {
     const res = await apiClient.get<ApiResponse<KafkaCluster>>(ENDPOINTS.kafka.cluster);
-    return res.data.data;
+    return decodeCluster(res.data.data);
   },
 
   getStats: async (): Promise<KafkaStats> => {
     const res = await apiClient.get<ApiResponse<KafkaStats>>(ENDPOINTS.kafka.stats);
-    return res.data.data;
+    return decodeKafkaStats(res.data.data);
   },
 };

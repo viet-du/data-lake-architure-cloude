@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import { env, REDIS_KEY_PREFIX } from '@/config';
+import { env } from '@/config';
 import { logger } from '@/lib/logger';
 
 const globalForQueue = globalThis as unknown as { _queueConnection?: Redis | null };
@@ -11,7 +11,6 @@ export function getQueueConnection(): Redis {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
     password: env.REDIS_PASSWORD,
-    keyPrefix: REDIS_KEY_PREFIX,
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
   });

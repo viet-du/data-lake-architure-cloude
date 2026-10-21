@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const ServiceStatusSchema = z.object({
+  name: z.string(),
   status: z.enum(['up', 'down', 'degraded', 'skipped']),
   latencyMs: z.number().optional(),
   message: z.string().optional(),
@@ -19,6 +20,10 @@ export const HealthResponseSchema = z.object({
 export type THealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const AppInfoResponseSchema = z.object({
+  dataSource: z.enum(['local', 'databricks']),
+  catalog: z.string().nullable(),
+  workspaceId: z.string().nullable(),
+  readOnly: z.boolean(),
   name: z.string(),
   version: z.string(),
   env: z.string(),

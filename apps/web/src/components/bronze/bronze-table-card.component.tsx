@@ -13,7 +13,8 @@ function formatNumber(n: number): string {
   return String(n);
 }
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`;
   if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(2)} KB`;

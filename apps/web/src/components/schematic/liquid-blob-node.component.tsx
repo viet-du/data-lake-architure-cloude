@@ -1,7 +1,8 @@
-import { useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Float, MeshDistortMaterial, Text } from '@react-three/drei';
-import type { Group } from 'three';
+import { Float, MeshDistortMaterial } from '@react-three/drei';
+import { CanvasTexture, SRGBColorSpace, type Group } from 'three';
 import type { PipelineNode } from './schematic.types';
 
 export interface LiquidBlobNodeProps {
@@ -11,6 +12,26 @@ export interface LiquidBlobNodeProps {
 }
 
 export function LiquidBlobNode({ node, active, onSelect }: LiquidBlobNodeProps) {
+  const { t } = useTranslation();
+  const label = t(node.labelKey);
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 96;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas text rendering is unavailable');
+    context.fillStyle = '#0f172a';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.font = '36px system-ui, sans-serif';
+    context.fillStyle = '#e2e8f0';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label, canvas.width / 2, canvas.height / 2, canvas.width - 24);
+    const value = new CanvasTexture(canvas);
+    value.colorSpace = SRGBColorSpace;
+    return value;
+  }, [label]);
+  useEffect(() => () => texture.dispose(), [texture]);
   const groupRef = useRef<Group | null>(null);
 
   useFrame(({ clock }) => {
@@ -59,17 +80,9 @@ export function LiquidBlobNode({ node, active, onSelect }: LiquidBlobNodeProps) 
           <ringGeometry args={[0.72, 0.8, 64]} />
           <meshBasicMaterial color={node.glow} transparent opacity={active ? 0.7 : 0.35} />
         </mesh>
-        <Text
-          position={[0, -0.95, 0]}
-          fontSize={0.22}
-          color="#e2e8f0"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.012}
-          outlineColor="#0f172a"
-        >
-          {node.labelKey}
-        </Text>
+        <sprite position={[0, -0.95, 0]} scale={[2.2, 0.33, 1]}>
+          <spriteMaterial map={texture} depthWrite={false} />
+        </sprite>
       </group>
     </Float>
   );

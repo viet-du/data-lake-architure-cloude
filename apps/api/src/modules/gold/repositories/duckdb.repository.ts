@@ -48,7 +48,7 @@ export const GoldDuckDBRepository = {
     const conn = await instance.connect();
     const res = await conn.runAndReadAll(`
       SELECT file
-      FROM glob('s3://${GOLD_BUCKET}/${GOLD_LAYER}/*/_delta_log/00000000000000000000.json')
+      FROM glob('s3://${GOLD_BUCKET}/${GOLD_LAYER}/*/*/_delta_log/00000000000000000000.json')
       ORDER BY file
     `);
     const rows = res.getRowObjects() as Array<{ file: string }>;

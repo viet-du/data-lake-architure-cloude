@@ -1,3 +1,4 @@
+import { remoteReadOnly } from '@/lib/infra/databricks/client';
 import { DuckDBRepository, TableRepository, DatabaseRepository, type TableInput } from '../repositories';
 import { TableService } from './table.service';
 import { LineageInferenceService } from './lineage-inference.service';
@@ -45,6 +46,7 @@ function buildInputFromDelta(
 
 export const SyncService = {
   async syncAll(): Promise<SyncResult> {
+    remoteReadOnly();
     const syncedAt = new Date().toISOString();
     const result: SyncResult = { scanned: 0, upserted: 0, failed: 0, errors: [], syncedAt };
 
@@ -93,6 +95,7 @@ export const SyncService = {
     if (!parsed) throw new Error(`Invalid tableId format: ${tableId}`);
     const info = await DuckDBRepository.getTableInfo(parsed.layer, parsed.database, parsed.name);
     if (!info) throw new Error(`Table not found in Delta: ${tableId}`);
+    remoteReadOnly();
     const syncedAt = new Date().toISOString();
     const input = buildInputFromDelta(info, parsed.layer, parsed.database, parsed.name, syncedAt);
     await TableRepository.upsert(input);

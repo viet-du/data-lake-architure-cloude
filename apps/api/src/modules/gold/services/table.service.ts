@@ -1,3 +1,5 @@
+import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
+import { DatabricksRepository } from '@/modules/catalog/repositories/databricks.repository';
 import { NotFoundError } from '@/errors';
 import { GoldDuckDBRepository, inferTableKind } from '../repositories/duckdb.repository';
 import type { ColumnMeta } from '@/modules/catalog/types';
@@ -22,7 +24,8 @@ function parseTableParam(table: string): { database: string; name: string } | nu
 }
 
 export const GoldTableService = {
-  async list(query: TTableListQuery): Promise<{ table: string; database: string; name: string; kind: 'fact' | 'dimension' | 'metric' }[]> {
+  async list(query: TTableListQuery): Promise<{ table: string; database: string; name: string; kind: 'fact' | 'dimension' | 'metric' | null }[]> {
+    if (usesDatabricks()) return DatabricksRepository.layerList('gold', query).then((items) => items.map((item) => ({ ...item, kind: null })));
     const tableIds = await GoldDuckDBRepository.listTables({
       ...(query.database ? { database: query.database } : {}),
       ...(query.search ? { search: query.search } : {}),
@@ -41,6 +44,7 @@ export const GoldTableService = {
   },
 
   async getOrFail(params: TTableParams): Promise<GoldTable> {
+    if (usesDatabricks()) return DatabricksRepository.layerDetail('gold', params.table).then((value) => ({ ...value, lastRefreshAt: null, kind: null }));
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     const [columns, rowCount, fileCount, sizeBytes, hist, partitions, lastRefresh] = await Promise.all([
@@ -72,12 +76,14 @@ export const GoldTableService = {
   },
 
   async sample(params: TTableParams, query: TSampleQuery): Promise<Array<Record<string, unknown>>> {
+    if (usesDatabricks()) return DatabricksRepository.sample(DatabricksRepository.layerName('gold', params.table), query.limit);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return GoldDuckDBRepository.sample(parsed.database, parsed.name, query.limit);
   },
 
   async schema(params: TTableParams): Promise<{ table: string; columns: ColumnMeta[] }> {
+    if (usesDatabricks()) return { table: params.table, columns: await DatabricksRepository.columns(DatabricksRepository.layerName('gold', params.table)) };
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     const columns = await GoldDuckDBRepository.describe(parsed.database, parsed.name);
@@ -85,18 +91,21 @@ export const GoldTableService = {
   },
 
   async history(params: TTableParams): Promise<GoldHistoryEntry[]> {
+    if (usesDatabricks()) return DatabricksRepository.layerHistory('gold', params.table);
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return GoldDuckDBRepository.history(parsed.database, parsed.name);
   },
 
   async stats(params: TTableParams): Promise<GoldStats> {
+    if (usesDatabricks()) return DatabricksRepository.layerStats('gold', params.table).then((value) => ({ ...value, lastRefreshAt: null }));
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return GoldDuckDBRepository.stats(parsed.database, parsed.name);
   },
 
   async lineage(params: TTableParams): Promise<GoldLineageGraph> {
+    remoteReadOnly();
     const parsed = parseTableParam(params.table);
     if (!parsed) throw new NotFoundError('Table', params.table);
     return GoldDuckDBRepository.lineage(parsed.database, parsed.name);

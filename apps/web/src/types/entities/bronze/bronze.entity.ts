@@ -8,11 +8,11 @@ export interface BronzeTable {
   name: string;
   database: string;
   format: EBronzeFormat;
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
   partitionBy: ReadonlyArray<string>;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt: string | null;
   lastIngestedAt?: string;
   status: EHealthStatus;
   location?: string;
@@ -20,20 +20,20 @@ export interface BronzeTable {
 
 export interface BronzeTableStats {
   name: string;
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
-  fileCount: number;
+  fileCount: number | null;
   partitionCount: number;
-  avgFileSizeBytes: number;
+  avgFileSizeBytes: number | null;
   lastVacuumedAt?: string;
 }
 
 export interface BronzeTableHistory {
   version: number;
   timestamp: string;
-  operation: 'WRITE' | 'DELETE' | 'OPTIMIZE' | 'VACUUM';
-  recordsAdded: number;
-  recordsRemoved: number;
+  operation: string;
+  recordsAdded?: number;
+  recordsRemoved?: number;
   userName?: string;
 }
 
@@ -49,7 +49,7 @@ export interface BronzeTableSample {
   columns: ReadonlyArray<string>;
   rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
   totalRows: number;
-  sampledAt: string;
+  sampledAt?: string;
 }
 
 export interface BronzeIngestJob {

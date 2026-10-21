@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SILVER_TRANSFORM_KINDS } from '../types';
+import { SILVER_TRANSFORM_KINDS } from '../types/job-status.enum';
 
 export const TransformBodySchema = z.object({
   kind: z.enum(SILVER_TRANSFORM_KINDS).default('full'),

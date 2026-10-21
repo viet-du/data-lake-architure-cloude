@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { AirflowClientSingleton } from './airflow-client';
 import type {
   Dag,
@@ -408,36 +409,33 @@ export const AirflowClusterRepository = {
 
   async stats(): Promise<AirflowStats> {
     const client = AirflowClientSingleton.get();
-    const [dagsRes, runsRes] = await Promise.all([
-      client.request<AirflowListResponse<AirflowDagSummary>>({
-        method: 'GET',
-        path: '/dags',
-        query: { limit: 1000, offset: 0 },
-      }),
-      client.request<{ dags_run_states?: Array<{ dag_id: string; run_states: Record<string, number> }> }>({
-        method: 'GET',
-        path: '/dag_runs/statistics',
-        query: { limit: 1000, offset: 0 },
-      }).catch(() => ({ dags_run_states: [] })),
-    ]);
-    const dags = (dagsRes.dags ?? []).map(toDag);
-    const totalDags = dags.length;
-    const activeDags = dags.filter((d) => d.isActive && !d.isPaused).length;
-    const pausedDags = dags.filter((d) => d.isPaused).length;
-    const byState: Record<string, number> = {};
-    let runningRuns = 0;
-    let failedRuns = 0;
-    let successRuns = 0;
-    let queuedRuns = 0;
-    for (const ds of runsRes.dags_run_states ?? []) {
-      for (const [state, count] of Object.entries(ds.run_states ?? {})) {
-        byState[state] = (byState[state] ?? 0) + count;
-        if (state === 'running') runningRuns += count;
-        else if (state === 'failed') failedRuns += count;
-        else if (state === 'success') successRuns += count;
-        else if (state === 'queued') queuedRuns += count;
+    const dags: Dag[] = [];
+    let totalDags = 0;
+    do {
+      const page = await client.request<AirflowListResponse<AirflowDagSummary>>({
+        method: 'GET', path: '/dags', query: { limit: 100, offset: dags.length },
+      });
+      totalDags = z.number().int().nonnegative().parse(page.total_entries);
+      const items = page.dags;
+      if (!items || (items.length === 0 && dags.length < totalDags)) {
+        throw new Error('Invalid Airflow DAG page');
       }
-    }
+      dags.push(...items.map(toDag));
+    } while (dags.length < totalDags);
+    const states = ['running', 'failed', 'success', 'queued'] as const;
+    const byState = await Promise.all(states.map(async (state) => {
+      const page = await client.request<AirflowListResponse<AirflowDagRun>>({
+        method: 'GET', path: '/dags/~/dagRuns', query: { limit: 1, offset: 0, state },
+      });
+      return { state, count: z.number().int().nonnegative().parse(page.total_entries) };
+    }));
+    const activeDags = dags.filter((dag) => dag.isActive && !dag.isPaused).length;
+    const pausedDags = dags.filter((dag) => dag.isPaused).length;
+    const count = (state: DagRunState) => byState.find((entry) => entry.state === state)?.count ?? 0;
+    const runningRuns = count('running');
+    const failedRuns = count('failed');
+    const successRuns = count('success');
+    const queuedRuns = count('queued');
     return {
       totalDags,
       activeDags,
@@ -447,10 +445,7 @@ export const AirflowClusterRepository = {
       successRuns,
       queuedRuns,
       byDate: [],
-      byState: Object.entries(byState).map(([state, count]) => ({
-        state: state as DagRunState,
-        count,
-      })),
+      byState,
     };
   },
 };

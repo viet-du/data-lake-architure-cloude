@@ -1,14 +1,12 @@
+import { ZodError } from 'zod';
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import { APP_CONFIG } from '@/config';
+import i18n from '@/i18n/config';
 import { useAuthStore } from '@/store';
 
 export interface ApiErrorBody {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
+  error: string | { code: string; message: string };
+  message?: string;
 }
 
 function createClient(): AxiosInstance {
@@ -35,6 +33,7 @@ function createClient(): AxiosInstance {
       if (error.response?.status === 401) {
         useAuthStore.getState().signOut();
       }
+      if (axios.isAxiosError(error)) error.message = getErrorMessage(error);
       return Promise.reject(error);
     },
   );
@@ -49,9 +48,16 @@ export function unwrap<T>(payload: { data: T }): T {
 }
 
 export function getErrorMessage(error: unknown): string {
+  if (error instanceof ZodError) return i18n.t('common.invalidResponse');
   if (axios.isAxiosError<ApiErrorBody>(error)) {
-    return error.response?.data?.error?.message ?? error.message;
+    if (error.response?.status === 401) return i18n.t('common.unauthorized');
+    if (error.response?.status === 403) return i18n.t(error.response.data?.error === 'DATABRICKS_PERMISSION_DENIED' ? 'databricks.permissionDenied' : 'common.forbidden');
+    const body = error.response?.data;
+    if (body && body.error !== null && typeof body.error === 'object') return body.error.message;
+    if (body?.message) return body.message;
+    if (error.response) return `HTTP ${error.response.status}: ${error.response.statusText}`;
+    return i18n.t(error.code === 'ECONNABORTED' ? 'common.timeout' : 'common.networkError');
   }
   if (error instanceof Error) return error.message;
-  return 'Unknown error';
+  return i18n.t('common.error');
 }

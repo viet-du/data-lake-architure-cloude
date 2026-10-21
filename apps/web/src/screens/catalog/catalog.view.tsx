@@ -1,7 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
+import { catalogService } from '@/services';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDatabasesQuery, useCatalogTablesQuery } from '@/services/queries';
+import { useDatabasesQuery, useCatalogTablesQuery, useCatalogTableQuery } from '@/services/queries';
 import {
+  Drawer,
+  SamplePreview,
+  Button,
   GlassCard,
   Tag,
   Skeleton,
@@ -16,20 +21,22 @@ import { useThemeStore } from '@/store';
 import { cn } from '@/theme';
 import type { DatabaseEntity } from '@/types/entities';
 
-const LAYER_COLOR: Readonly<Record<DatabaseEntity['layer'], { dot: string; labelKey: string }>> = {
+const LAYER_COLOR: Readonly<Record<'bronze' | 'silver' | 'gold', { dot: string; labelKey: string }>> = {
   bronze: { dot: 'bg-amber-500', labelKey: 'nav.bronze' },
   silver: { dot: 'bg-slate-400', labelKey: 'nav.silver' },
   gold: { dot: 'bg-yellow-400', labelKey: 'nav.gold' },
 };
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -45,7 +52,7 @@ function DatabaseListItem({
   onClick: () => void;
 }) {
   const { t } = useTranslation();
-  const layerInfo = LAYER_COLOR[database.layer];
+
   return (
     <button
       type="button"
@@ -60,25 +67,25 @@ function DatabaseListItem({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className={cn('h-2 w-2 rounded-full', layerInfo.dot)} />
+          <span className={cn('h-2 w-2 rounded-full', 'bg-primary-500')} />
           <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
             {database.name}
           </span>
         </div>
         <Tag size="sm" variant="neutral">
-          {t(layerInfo.labelKey)}
+          {database.layers.length ? database.layers.map((layer) => t(LAYER_COLOR[layer].labelKey)).join(' / ') : database.catalogName}
         </Tag>
       </div>
       <div className="flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400">
         <span>{database.tableCount} {t('screens.catalog.tables').toLowerCase()}</span>
-        <span className="h-1 w-1 rounded-full bg-neutral-400" />
-        <span>{formatBytes(database.tableCount * 1_000_000)}</span>
+
       </div>
     </button>
   );
 }
 
 function TableList({ databaseName }: { databaseName: string }) {
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const { t } = useTranslation();
   const tablesQuery = useCatalogTablesQuery({ database: databaseName, pageSize: 50 });
 
@@ -86,13 +93,14 @@ function TableList({ databaseName }: { databaseName: string }) {
   if (tablesQuery.isError) {
     return <ScreenError error={tablesQuery.error} onRetry={() => void tablesQuery.refetch()} compact />;
   }
-  const items = (tablesQuery.data as { items?: ReadonlyArray<{ name: string; format: string; sizeBytes: number; rowCount: number; updatedAt: string }> } | undefined)?.items ?? [];
+  const items = tablesQuery.data?.items ?? [];
 
   if (items.length === 0) {
-    return <EmptyState compact title={t('common.loading')} />;
+    return <EmptyState compact title={t('common.noTables')} />;
   }
 
   return (
+    <>
     <div className="overflow-auto">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-neutral-500">
@@ -111,7 +119,7 @@ function TableList({ databaseName }: { databaseName: string }) {
               className="border-b border-white/5 transition-colors hover:bg-white/5"
             >
               <td className="px-3 py-2 font-medium text-neutral-900 dark:text-neutral-50">
-                {table.name}
+                <Button variant="ghost" size="sm" onClick={() => setSelectedTable(table.id)}>{table.name}</Button>
               </td>
               <td className="px-3 py-2">
                 <Tag size="sm" variant="primary">
@@ -125,14 +133,29 @@ function TableList({ databaseName }: { databaseName: string }) {
                 {formatNumber(table.rowCount)}
               </td>
               <td className="px-3 py-2 text-neutral-500 dark:text-neutral-400">
-                {new Date(table.updatedAt).toLocaleString()}
+                {table.updatedAt ? new Date(table.updatedAt).toLocaleString() : '—'}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+    {selectedTable ? <CatalogTablePreview tableId={selectedTable} onClose={() => setSelectedTable(null)} /> : null}
+    </>
   );
+}
+
+function CatalogTablePreview({ tableId, onClose }: { tableId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const metadata = useCatalogTableQuery(tableId);
+  const schema = useQuery({ queryKey: ['catalog', 'preview-schema', tableId], queryFn: () => catalogService.getTableSchema(tableId) });
+  const sample = useQuery({ queryKey: ['catalog', 'preview-sample', tableId], queryFn: () => catalogService.getTableSample(tableId) });
+  return <Drawer open onClose={onClose} title={tableId} size="xl">
+    {metadata.isError ? <ScreenError error={metadata.error} onRetry={() => void metadata.refetch()} compact /> : <p className="mb-4 text-sm">{t('screens.catalog.rows')}: {formatNumber(metadata.data?.rowCount ?? null)} · {t('screens.catalog.size')}: {formatBytes(metadata.data?.sizeBytes ?? null)}</p>}
+    <h3 className="mb-2 font-semibold">{t('common.schema')}</h3>
+    {schema.isError ? <ScreenError error={schema.error} onRetry={() => void schema.refetch()} compact /> : schema.isLoading ? <ScreenLoading rows={2} /> : <div className="mb-5 flex flex-wrap gap-2">{schema.data?.map((column) => <Tag key={column.name} variant="neutral">{column.name}: {column.type}</Tag>)}</div>}
+    <SamplePreview columns={schema.data?.map((column) => column.name) ?? []} rows={sample.data ?? []} isLoading={sample.isLoading} isError={sample.isError} error={sample.error} onRetry={() => void sample.refetch()} />
+  </Drawer>;
 }
 
 function DatabasePanel() {
@@ -146,7 +169,7 @@ function DatabasePanel() {
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-3">
       <ScreenSection
         title={t('screens.catalog.databases')}
-        description={`${databasesQuery.data?.length ?? 0} databases`}
+        description={t('common.databasesCount', { count: databasesQuery.data?.length ?? 0 })}
         padded={false}
         className="lg:col-span-1"
       >
@@ -160,7 +183,7 @@ function DatabasePanel() {
           ) : databasesQuery.isError ? (
             <ScreenError error={databasesQuery.error} onRetry={() => void databasesQuery.refetch()} compact />
           ) : (databasesQuery.data?.length ?? 0) === 0 ? (
-            <EmptyState compact title="No databases" />
+            <EmptyState compact title={t('common.noDatabases')} />
           ) : (
             <div className="flex flex-col gap-2">
               {databasesQuery.data?.map((db) => (
@@ -178,7 +201,7 @@ function DatabasePanel() {
 
       <ScreenSection
         title={selected !== null ? t('screens.catalog.tables_in', { name: selected }) : t('screens.catalog.tables')}
-        description={selected !== null ? `${(databasesQuery.data ?? []).find((d) => d.name === selected)?.tableCount ?? 0} tables` : undefined}
+        description={selected !== null ? t('common.tablesCount', { count: (databasesQuery.data ?? []).find((d) => d.name === selected)?.tableCount ?? 0 }) : undefined}
         padded={false}
         className="lg:col-span-2"
       >
@@ -193,7 +216,7 @@ function DatabasePanel() {
           >
             <GlassCard elevation={0} className="max-w-md border-dashed p-8">
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Select a database from the left to inspect its tables, schema and sample data.
+                {t('common.selectDatabase')}
               </p>
             </GlassCard>
           </div>

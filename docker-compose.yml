@@ -1,7 +1,7 @@
 
 services:
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     container_name: lake-minio
     user: "0:0"   # Chainguard image defaults to nonroot (uid 65532); run as root so it can write /data
     environment:
@@ -9,13 +9,13 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"   # API
-      - "9001:9001"   # Console
+      - "${MINIO_API_PORT:-9000}:9000"   # API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"   # Console
     volumes:
       - minio_data:/data
     healthcheck:
-      # Chainguard minio image is minimal (no curl/wget/grep). Use TCP-only check.
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo PING >&3 && head -c 1 <&3 && exit 0 || exit 1"]
+      # The selected image must provide wget or curl for an HTTP readiness check.
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://localhost:9000/minio/health/ready; else curl -fsS http://localhost:9000/minio/health/ready >/dev/null; fi"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -158,35 +158,43 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
-      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in the root .env}"
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
       PYTHONPATH: /app-src/src
     ports:
-      - "8088:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
+      - "${AIRFLOW_WEB_PORT:-8088}:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
       - ./src:/app-src/src:ro
-      # Mount source at /app-src/src so DAGs referencing /app-src/lakehouse/... resolve correctly
-      - ./src:/app-src/src:ro
       - ./airflow_logs:/opt/airflow/logs
     command: >
-      bash -c "
+      bash -ec "
       airflow db init &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin || true;
-      airflow webserver
+      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin &&
+      exec airflow webserver
       "
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   airflow-scheduler:
     image: apache/airflow:2.7.0-python3.11
     container_name: lake-airflow-scheduler
     depends_on:
-      - airflow-db
+      airflow-webserver:
+        condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
-      AIRFLOW__CORE__FERNET_KEY: "W7LcX4pJ9z8V0qK1yN6mE3hG5sF2bA0dR9tQ8uX7vP="
+      AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in the root .env}"
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
       PYTHONPATH: /app-src/src
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
@@ -195,7 +203,7 @@ services:
       - ./airflow_logs:/opt/airflow/logs
     command: airflow scheduler
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -u admin:admin http://localhost:8080/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --local"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -230,8 +238,8 @@ services:
       - --reserve-memory=0M
       - --node-id=0
       - --check=false
-      - --kafka-addr=PLAINTEXT://0.0.0.0:9192
-      - --advertise-kafka-addr=PLAINTEXT://redpanda:9192
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:9192
+      - --advertise-kafka-addr=internal://redpanda:9092,external://127.0.0.1:9192
       - --pandaproxy-addr=0.0.0.0:8282
       - --advertise-pandaproxy-addr=redpanda:8282
       - --rpc-addr=0.0.0.0:33145
@@ -255,7 +263,7 @@ services:
       redpanda:
         condition: service_healthy
     environment:
-      KAFKA_BROKERS: redpanda:9192
+      KAFKA_BROKERS: redpanda:9092
       CONFIG_FILEPATH: /etc/console/configs/console.yaml
     ports:
       - "8091:8080"   # Web UI (8081 conflicts with kafka-ui in compose-kafka)
@@ -275,7 +283,7 @@ services:
         condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: redpanda-local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9192
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: ""
     ports:
       - "8089:8080"   # Web UI
@@ -286,7 +294,7 @@ services:
       retries: 5
 
   mongo:
-    image: mongo:7
+    image: mongo:7.0
     container_name: lake-mongo
     restart: unless-stopped
     environment:
@@ -295,7 +303,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
       interval: 15s
@@ -303,12 +311,12 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
     container_name: lake-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -317,8 +325,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Note: api & web services are defined in docker-compose.api.yml
-  # Run together: docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compose.api.yml up -d
+  # Start the API and web applications with scripts/dev-api.sh and scripts/dev-web.sh.
 
 volumes:
   minio_data:

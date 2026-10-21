@@ -12,7 +12,7 @@ export interface AirflowTaskListProps {
   selectedTaskId?: string | undefined;
 }
 
-const STATE_VARIANT: Readonly<Record<AirflowTaskInstance['state'], ETagVariant>> = {
+const STATE_VARIANT: Readonly<Partial<Record<AirflowTaskInstance['state'], ETagVariant>>> = {
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -85,7 +85,7 @@ export function AirflowTaskList({
                 >
                   <td className="px-3 py-1.5 font-mono text-neutral-300">{task.taskId}</td>
                   <td className="px-3 py-1.5">
-                    <Tag size="sm" variant={STATE_VARIANT[task.state]}>
+                    <Tag size="sm" variant={STATE_VARIANT[task.state] ?? 'neutral'}>
                       {task.state}
                     </Tag>
                   </td>
@@ -99,7 +99,7 @@ export function AirflowTaskList({
                     {formatDuration(task.durationMs)}
                   </td>
                   <td className="max-w-[200px] truncate px-3 py-1.5 font-mono text-[10px] text-neutral-500">
-                    {task.dependencies.length === 0 ? '—' : task.dependencies.join(', ')}
+                    {(task.dependencies?.length ?? 0) === 0 ? '—' : task.dependencies?.join(', ')}
                   </td>
                 </tr>
               );

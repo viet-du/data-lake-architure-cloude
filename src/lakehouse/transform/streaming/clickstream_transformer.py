@@ -70,7 +70,7 @@ class ClickstreamTransformer:
             paths=self.paths,
             output_mode="append",
             partition_by="event_date",
-            trigger_available_now=False,
+            trigger_available_now=True,
         )
 
 

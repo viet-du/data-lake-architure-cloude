@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# scripts/verify_lake_data.sh
-# ----------------------------------------------------------------------------
-# Verify that data exists in MinIO at each layer (bronze / silver / gold).
-# Reports row counts and schema summary for each Delta table.
+# Verify Delta data in MinIO (bronze / silver / gold).
 #
 # Usage:
 #   bash scripts/verify_lake_data.sh
@@ -27,67 +24,58 @@ if ! docker ps --format '{{.Names}}' | grep -q '^lake-minio$'; then
     echo "❌ lake-minio container not running. Start with: make up" >&2
     exit 1
 fi
+if ! docker ps --format '{{.Names}}' | grep -q '^lake-spark-master$'; then
+    echo "❌ lake-spark-master container not running. Start with: make up" >&2
+    exit 1
+fi
 
-# Ensure alias is set
 docker exec lake-minio mc alias set local http://localhost:9000 minioadmin minioadmin >/dev/null 2>&1
 
 echo "═══════════════════════════════════════════════════════════════"
 echo "  MinIO Data Lake — Verification"
 echo "═══════════════════════════════════════════════════════════════"
 
-LAYERS=("${LAYER:-bronze}" "${LAYER:-silver}" "${LAYER:-gold}")
+if [[ -n "$LAYER" ]]; then
+    LAYERS=("$LAYER")
+else
+    LAYERS=(bronze silver gold)
+fi
 
 for layer in "${LAYERS[@]}"; do
     echo ""
     echo "─── Layer: $layer ────────────────────────────────────────"
-    docker exec lake-minio mc ls --recursive "local/$layer/" 2>/dev/null | head -20 || echo "  (empty)"
-
-    if docker exec lake-minio mc ls "local/$layer/" >/dev/null 2>&1; then
-        TOTAL_SIZE=$(docker exec lake-minio mc du --recursive "local/$layer/" 2>/dev/null | tail -1 | awk '{print $1, $2}')
-        echo "  Total size: $TOTAL_SIZE"
+    # sed consumes the full listing but prints only 20 lines. `head -20` exits
+    # early, can SIGPIPE `mc`, and with pipefail makes a populated bucket look empty.
+    if LISTING=$(docker exec lake-minio mc ls --recursive "local/$layer/" 2>&1 | sed -n '1,20p'); then
+        if [[ -n "$LISTING" ]]; then
+            printf '%s\n' "$LISTING"
+        else
+            echo "  (empty)"
+        fi
+    else
+        echo "❌ Could not list local/$layer/:" >&2
+        printf '%s\n' "$LISTING" >&2
+        exit 1
     fi
 done
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "  Spark Delta tables (row counts via spark-submit)"
+echo "  Delta table row counts (each table checked separately)"
 echo "═══════════════════════════════════════════════════════════════"
 
-# Run a quick Python script via spark-submit to count rows
-docker exec lake-spark-master bash -c '
-export HOME=/tmp
-export PYTHONPATH=/app-src/src:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip
-export PYSPARK_PYTHON=python3
+SPARK_ARGS=(--layers "${LAYERS[@]}")
+if [[ -n "$TABLE" ]]; then
+    SPARK_ARGS+=(--table "$TABLE")
+fi
 
-python3 -c "
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.appName(\"verify\").master(\"spark://spark-master:7077\").getOrCreate()
-
-# MinIO config
-spark._jsc.hadoopConfiguration().set(\"fs.s3a.endpoint\", \"http://minio:9000\")
-spark._jsc.hadoopConfiguration().set(\"fs.s3a.access.key\", \"minioadmin\")
-spark._jsc.hadoopConfiguration().set(\"fs.s3a.secret.key\", \"minioadmin\")
-spark._jsc.hadoopConfiguration().set(\"fs.s3a.path.style.access\", \"true\")
-
-# Try to read all delta tables
-layers = [\"bronze\", \"silver\", \"gold\"]
-for layer in layers:
-    print(f\"\\n=== {layer.upper()} ===\")
-    try:
-        # List objects at prefix
-        df = spark.read.format(\"delta\").load(f\"s3a://{layer}/\")
-        # Show only top-level tables (not subdirs)
-        # (Delta automatically picks up partitioned tables)
-        cnt = df.count()
-        print(f\"  Total rows in s3a://{layer}/: {cnt}\")
-        if cnt > 0:
-            print(f\"  Schema:\")
-            df.printSchema()
-    except Exception as e:
-        print(f\"  (no data or error: {type(e).__name__})\")
-spark.stop()
-"
-' 2>&1 | grep -v "WARN\|INFO\|SLF4J" | head -50
+docker exec lake-spark-master spark-submit \
+    --master 'local[1]' \
+    --driver-memory 512m \
+    --conf spark.executor.memory=512m \
+    --packages io.delta:delta-spark_2.12:3.0.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+    /app-src/src/lakehouse/tools/verify_minio_delta.py \
+    "${SPARK_ARGS[@]}"
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"

@@ -24,8 +24,11 @@ class EcommerceMetricsAggregator:
 
     def category_metrics(self, products_silver: DataFrame) -> DataFrame:
         return (
-            products_silver.withWatermark("_crawl_timestamp", "10 minutes")
-            .groupBy(F.window(F.col("_crawl_timestamp"), "5 minutes"), F.col("category_name"))
+            products_silver.withColumn(
+                "_crawl_timestamp_ts", F.to_timestamp(F.col("_crawl_timestamp"))
+            )
+            .withWatermark("_crawl_timestamp_ts", "10 minutes")
+            .groupBy(F.window(F.col("_crawl_timestamp_ts"), "5 minutes"), F.col("category_name"))
             .agg(
                 F.count("*").alias("product_count"),
                 F.avg("price").alias("avg_price"),
@@ -36,19 +39,25 @@ class EcommerceMetricsAggregator:
 
     def price_tier_metrics(self, products_silver: DataFrame) -> DataFrame:
         return (
-            products_silver.withWatermark("_crawl_timestamp", "10 minutes")
-            .groupBy(F.window(F.col("_crawl_timestamp"), "5 minutes"), F.col("price_tier"))
+            products_silver.withColumn(
+                "_crawl_timestamp_ts", F.to_timestamp(F.col("_crawl_timestamp"))
+            )
+            .withWatermark("_crawl_timestamp_ts", "10 minutes")
+            .groupBy(F.window(F.col("_crawl_timestamp_ts"), "5 minutes"), F.col("price_tier"))
             .agg(
                 F.count("*").alias("product_count"),
                 F.avg("price").alias("avg_price"),
-                F.avg("discount_rate_pct").alias("avg_discount"),
+                F.avg("discount_rate").alias("avg_discount"),
             )
         )
 
     def seller_metrics(self, products_silver: DataFrame) -> DataFrame:
         return (
-            products_silver.withWatermark("_crawl_timestamp", "10 minutes")
-            .groupBy(F.window(F.col("_crawl_timestamp"), "5 minutes"), F.col("seller_name"))
+            products_silver.withColumn(
+                "_crawl_timestamp_ts", F.to_timestamp(F.col("_crawl_timestamp"))
+            )
+            .withWatermark("_crawl_timestamp_ts", "10 minutes")
+            .groupBy(F.window(F.col("_crawl_timestamp_ts"), "5 minutes"), F.col("seller_name"))
             .agg(
                 F.count("*").alias("product_count"),
                 F.sum(F.col("order_count")).alias("total_orders"),

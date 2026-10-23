@@ -18,5 +18,5 @@ COPY --from=builder /app/apps/web/dist ./
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 5173
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost:5173/ >/dev/null || exit 1
+  CMD wget -qO- http://127.0.0.1:5173/ >/dev/null || exit 1
 CMD ["nginx", "-g", "daemon off;"]

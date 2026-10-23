@@ -1,4 +1,4 @@
-import { Input } from '@/components';
+import { Input } from '@/components/common/input.component';
 import { cn } from '@/theme';
 
 export interface SearchInputProps {

@@ -172,7 +172,7 @@ class TestClickstreamSchemaCompatibility:
             "Clickstream timestamps must use a formatter that supports microseconds"
         )
 
-    def test_clickstream_streams_use_continuous_triggers(self) -> None:
+    def test_clickstream_streams_drain_offsets_for_scheduled_runs(self) -> None:
         for module_name, class_name, method_name in [
             (
                 "lakehouse.ingest.streaming.clickstream_ingestor",
@@ -187,15 +187,16 @@ class TestClickstreamSchemaCompatibility:
         ]:
             module = importlib.import_module(module_name)
             src = inspect.getsource(getattr(getattr(module, class_name), method_name))
-            assert "trigger_available_now=False" in src, (
-                f"{module_name}.{class_name}.{method_name} must continue consuming newly arriving events"
+            assert "trigger_available_now=True" in src, (
+                f"{module_name}.{class_name}.{method_name} must drain available offsets and exit "
+                "so the hourly Airflow run can complete its downstream tasks"
             )
         from lakehouse.aggregate.streaming.clickstream_metrics_aggregator import (
             ClickstreamMetricsAggregator,
         )
 
         aggregator_src = inspect.getsource(ClickstreamMetricsAggregator.build)
-        assert aggregator_src.count("trigger_available_now=False") == 2
+        assert aggregator_src.count("trigger_available_now=True") == 2
 
     def test_clickstream_producer_emits_required_fields(self) -> None:
         # The standalone clickstream_producer.py has its own generate_event()

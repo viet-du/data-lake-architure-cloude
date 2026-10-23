@@ -27,6 +27,7 @@ class BaseCrawler(ABC):
         rate_limit: float | None = None,
         timeout: int = 30,
         max_retries: int = 3,
+        kafka_enabled: bool = True,
     ) -> None:
         self.kafka_bootstrap = kafka_bootstrap or get_env(
             "KAFKA_BOOTSTRAP", DEFAULT_KAFKA_BOOTSTRAP
@@ -35,7 +36,7 @@ class BaseCrawler(ABC):
         self.timeout = timeout or int(get_env("CRAWLER_TIMEOUT", "30"))
         self.max_retries = max_retries
         self.session = self._build_session()
-        self.producer = self._build_producer() if self.kafka_topic else None
+        self.producer = self._build_producer() if self.kafka_topic and kafka_enabled else None
         self.stats = {"success": 0, "failed": 0, "skipped": 0}
 
     @property
@@ -131,4 +132,10 @@ class BaseCrawler(ABC):
 
     def _get_json(self, url: str, **kwargs: Any) -> dict[str, Any] | None:
         response = self._request(url, **kwargs)
-        return response.json() if response else None
+        if not response:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            logger.warning("Non-JSON response from %s; treating it as an empty crawl page", url)
+            return None

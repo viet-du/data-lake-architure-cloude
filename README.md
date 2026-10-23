@@ -1,223 +1,169 @@
-<a id="top"></a>
+# Data Lakehouse
 
-# Data Lakehouse — Databricks Edition
+Local-first data lakehouse and control plane for retail batch and streaming
+workloads. The core stack stores Bronze, Silver, and Gold Delta tables in
+MinIO; Spark processes the data; Kafka and Airflow provide streaming and
+orchestration. An optional API and Web UI expose operational tools. Metabase
+reads a PostgreSQL mirror of Gold tables.
 
-> **A production-shaped data lakehouse** built on **Databricks Unity Catalog + Delta Lake**, with ETL and ELT pipelines compared side-by-side.
+> Databricks support remains available as an optional storage/query provider.
+> The retail batch run and Metabase dashboard described below use the local
+> MinIO path, not the separate Databricks demo pipeline.
 
-<div align="center">
+## Quick start
 
-![Databricks](https://img.shields.io/badge/Databricks-Unity%20Catalog-FF3621?style=for-the-badge&logo=databricks&logoColor=white)
-![Delta Lake](https://img.shields.io/badge/Delta%20Lake-ACID-00ADD8?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Status](https://img.shields.io/badge/Pipelines-ETL%20%26%20ELT%20verified-brightgreen?style=for-the-badge)
-
-</div>
-
----
-
-## 🚀 Quick Start (Mac tools → Databricks Cloud)
+Requirements: Docker Desktop with Compose, Node.js 20+ and pnpm for local
+development. Run commands from the repository root.
 
 ```bash
-# 1. Configure the local client
+# Configure local services. Never commit .env or real credentials.
 cp .env.example .env
-$EDITOR .env
-# Fill DATABRICKS_HOST, DATABRICKS_TOKEN and DATABRICKS_WAREHOUSE_ID.
+# Edit .env if you need non-default local settings.
 
-# 2. Create ~/.databrickscfg from the local .env
-set -a; source .env; set +a
-python scripts/_quick_config.py
+# Start core services and Kafka.
+make up
 
-# 3. Verify the HTTPS connection from this Mac to Databricks
-python scripts/_sql_query.py "SELECT current_user()"
+# Start the optional API + Web control plane.
+make up-api
 
-# 4. Run ETL + ELT from the Mac
-bash scripts/run_all.sh
+# Run the batch retail pipeline (Bronze -> Silver -> Gold).
+bash scripts/run_batch_pipeline.sh --pipeline batch_retail
 
-# 5. Open the Databricks workspace UI
-open "$DATABRICKS_HOST"
+# Mirror Gold Delta tables from MinIO into PostgreSQL for Metabase.
+bash scripts/sync_gold_to_metabase.sh
 ```
 
-The scripts run on this Mac, send SQL and data operations over HTTPS to the
-Databricks SQL Warehouse, and write Delta tables into Unity Catalog. The
-Databricks workspace UI is hosted by Databricks, not Cloudflare. Cloudflare
-Pages may host a separate project Web UI, while Cloudflare R2 is optional
-object storage and is not the Databricks UI.
+Open the Web UI at <http://localhost:5173>, API docs at
+<http://localhost:3001/api/docs>, Metabase at <http://localhost:3000>, and
+MinIO Console at <http://localhost:9001>. Local MinIO defaults are
+`minioadmin` / `minioadmin`; Airflow defaults are `admin` / `admin`.
+Metabase requires its initial account setup.
 
----
-
-## 📁 Project structure
-
-```
-data-lake-architecture/
-├── scripts/                       ← Pipeline + utility scripts (see scripts/run_all.sh)
-│   ├── run_all.sh                 ← ONE-SHOT: ETL + ELT
-│   ├── _etl_pipeline.py           ← Transform in pandas → load clean
-│   ├── _elt_pipeline.py           ← Load raw → transform in SQL
-│   ├── _compare_etl_elt.py        ← Side-by-side report
-│   ├── _sql_query.py              ← CLI: arbitrary SQL
-│   ├── _quick_config.py           ← Write ~/.databrickscfg
-│   └── _legacy/                   ← Old scripts (archived)
-│
-├── src/lakehouse/                 ← Python package (databricks_bridge.py)
-│
-├── docs/handbook/                 ← 📖 READ THIS — handoff to frontend team
-│   ├── HANDOFF.md                 ← Entry point (15-min read)
-│   ├── DATA_LAYOUT.md             ← Schemas + sample queries
-│   ├── UI_GUIDE.md                ← Databricks UI walkthrough
-│   ├── TOOLS.md                   ← Scripts + env + Docker
-│   ├── API.md                     ← Frontend consumes via SQL API
-│   └── ETL_VS_ELT.md              ← Why two pipelines
-│
-├── .env.example                   ← Credential template (NEVER commit .env)
-├── docker-compose.yml             ← Optional local Spark/Kafka/Airflow stack
-├── docker-compose-kafka.yml       ← Optional local Kafka/Zookeeper overlay
-├── docker-compose.dev-api.yml     ← Optional local API/Web overlay
-└── README.md                      ← (this file)
-```
-
----
-
-## 🔗 Runtime topology
+## Data flow and current reporting setup
 
 ```text
-Local Mac tools/scripts
-  ├─ pandas ETL logic
-  ├─ Databricks SDK / SQL Statement Execution API
-  └─ HTTPS
-       ↓
-Databricks Cloud
-  ├─ SQL Warehouse executes SQL/ELT
-  ├─ Unity Catalog manages schemas and tables
-  ├─ Delta Lake stores Bronze/Silver/Gold tables
-  └─ Databricks Workspace UI shows and queries the data
-
-Optional: Cloudflare Pages hosts a separate project UI.
-Optional: Cloudflare R2 stores object data only; it does not host Databricks UI.
+CSV/JSON + Kafka
+      |
+      v
+Bronze Delta (MinIO) -> Silver Delta (MinIO) -> Gold Delta (MinIO)
+                                                   |
+                                      sync_gold_to_metabase.sh
+                                                   v
+                                       PostgreSQL: gold_analytics
+                                                   |
+                                                   v
+                                           Metabase dashboards
 ```
 
-- **Mac:** runs the client tools and local transformation code.
-- **Databricks Cloud:** runs the SQL warehouse, stores Delta tables, and provides the Databricks UI.
-- **Cloudflare:** only optional hosting/storage around the system, never the Databricks workspace.
+MinIO remains the source of truth for the local Delta lake. Metabase does not
+read Delta tables directly from MinIO, so `scripts/sync_gold_to_metabase.sh`
+replaces the reporting tables in the local `gold_analytics` PostgreSQL
+database. Run it again after a pipeline refresh.
 
----
+The local mirror includes:
 
-## ✍️ Dữ liệu đang được ghi ở đâu?
+| PostgreSQL table | Verified rows in the current local run |
+|---|---:|
+| `public.fact_orders` | 222 |
+| `public.daily_revenue` | 175 |
+| `public.dim_customers` | 200 |
+| `public.dim_products` | 50 |
 
-Pipeline chính chạy từ máy Mac nhưng dữ liệu lakehouse được ghi vào Databricks Cloud:
+Connect Metabase with database type **PostgreSQL**:
 
-| Bước | Chạy ở đâu | Đọc từ | Ghi ra |
-|---|---|---|---|
-| Extract | Mac gọi Databricks SQL Warehouse | CSV trong Databricks Volume `/Volumes/workspace/bronze/bronze_data` | DataFrame tạm trên Mac hoặc raw query trên warehouse |
-| ETL transform | Mac, bằng Python/pandas | Dữ liệu đọc từ Volume qua SQL Warehouse | `workspace.silver.customers_clean_etl`, `workspace.silver.orders_enriched_etl`, `workspace.gold.customer_ltv_etl` |
-| ELT raw landing | Databricks SQL Warehouse | CSV trong Databricks Volume | `workspace.raw_elt.customers_raw`, `workspace.raw_elt.orders_raw` |
-| ELT transform | Databricks SQL Warehouse | `workspace.raw_elt.*` | `workspace.silver.customers_clean_elt`, `workspace.silver.orders_enriched_elt`, `workspace.gold.customer_ltv_elt` |
-| Bronze source tables | Databricks Cloud | Dữ liệu nguồn đã nạp sẵn trong Volume | Được pipeline đọc làm đầu vào; không bị ghi đè bởi `run_all.sh` |
+| Field | Value |
+|---|---|
+| Display name | `Lakehouse Gold (MinIO)` |
+| Host | `gold-postgres` |
+| Port | `5432` |
+| Database | `gold_analytics` |
+| Username | `metabase` by default |
+| Password | `lakehouse-local` by default; override using `GOLD_POSTGRES_PASSWORD` |
 
-### Sau khi chạy `bash scripts/run_all.sh`
+The PostgreSQL service is also exposed to the host on `localhost:5433`.
+The current local Metabase dashboard is [Tổng quan Lakehouse](http://localhost:3000/dashboard/2-t-ng-quan-lakehouse).
+For secure Internet sharing with a friend, use
+[`docs/METABASE_SHARING.md`](./docs/METABASE_SHARING.md). The local URL is
+not reachable from another computer, and sharing the dashboard does not
+require a Metabase API token.
 
-Pipeline đọc Bronze CSV từ Databricks Volume, sau đó ghi các bảng Raw ELT, Silver và Gold thành Delta tables trong Unity Catalog của Databricks. DataFrame ETL có thể tồn tại tạm thời trên Mac trong lúc transform, nhưng các bảng kết quả được ghi trên Databricks Cloud, không ghi vào thư mục local trên Mac. Mở Databricks UI rồi vào:
+## Web UI API connections
+
+The [Web UI handoff README](./apps/web/README.md) lists the required screens,
+UI components, API mapping, and frontend implementation rules. The separate
+[Web UI API connections README](./docs/UI_API_CONNECTIONS.md) records route
+families and observed local connection checks.
+
+## Main services
+
+| Service | Local address | Purpose |
+|---|---|---|
+| MinIO API / Console | `localhost:9000` / <http://localhost:9001> | S3 storage for Delta layers |
+| Spark UI | <http://localhost:8080> | Spark cluster |
+| Kafka broker / UI | `localhost:9092` / <http://localhost:8081> | Streaming |
+| Airflow | <http://localhost:8088> | Pipeline orchestration |
+| API / Swagger | <http://localhost:3001> | Control-plane API |
+| Web UI | <http://localhost:5173> | Lakehouse tools dashboard |
+| Gold PostgreSQL | `localhost:5433` | Metabase reporting mirror |
+| Metabase | <http://localhost:3000> | BI and dashboarding |
+
+Use `make help` for the repository's supported commands. Core stack lifecycle
+and additional service information are documented in
+[`docs/operations/DEV_LINKS.md`](./docs/operations/DEV_LINKS.md).
+
+## Repository map
 
 ```text
-Catalog → workspace → bronze
-Catalog → workspace → raw_elt
-Catalog → workspace → silver
-Catalog → workspace → gold
+apps/api/               Next.js API, OpenAPI routes, service modules
+apps/web/               React/Vite control-plane UI
+airflow_dags/           Airflow DAG definitions
+data-samples/           Local retail pipeline inputs
+scripts/                Pipeline, verification, and Gold mirror commands
+src/lakehouse/          Spark ingestion, transforms, aggregation, storage
+docker-compose*.yml     Local services and optional API/Web overlay
+docs/                   Architecture, operations, API and setup guides
 ```
 
-Hoặc mở trực tiếp bảng Gold:
+## Environment and security
+
+- Start from [`.env.example`](./.env.example); local `.env` files are ignored.
+- Do not put PATs, OAuth secrets, or cloud credentials in README files,
+  screenshots, commits, or browser URLs.
+- For Databricks, use a newly rotated token stored only in a local ignored env
+  file or the Databricks connection form. See
+  [`docs/operations/DATABRICKS_SETUP.md`](./docs/operations/DATABRICKS_SETUP.md).
+- `GOLD_POSTGRES_USER` and `GOLD_POSTGRES_PASSWORD` configure the local
+  reporting mirror. Change the development defaults before exposing services
+  outside the local machine.
+
+## Validation and troubleshooting
 
 ```bash
-open "$DATABRICKS_HOST/explore/data/workspace/gold/customer_ltv_etl"
+# Check that the Compose model is valid.
+docker compose -f docker-compose.yml -f docker-compose-kafka.yml config --quiet
+
+# Verify pipeline data and Delta tables.
+bash scripts/verify_phase3.sh
+
+# Verify service endpoints.
+bash scripts/check_dev_links.sh
+
+# Check current mirrored reporting tables.
+docker exec lake-gold-postgres psql -U metabase -d gold_analytics \
+  -c '\dt public.*'
 ```
 
-Kiểm tra nhanh từ máy Mac:
+If a Web UI page cannot load data, check the API and dependency statuses in
+the [Web UI API connections README](./docs/UI_API_CONNECTIONS.md), then inspect
+the API route implementation and available docs. If Metabase does not show
+newly built Gold data, rerun
+`bash scripts/sync_gold_to_metabase.sh`, then sync the database schema in
+Metabase.
 
-```bash
-python scripts/_sql_query.py "SHOW TABLES IN workspace.gold"
-python scripts/_sql_query.py "SELECT * FROM workspace.gold.customer_ltv_etl LIMIT 10"
-```
+## Further reading
 
-Phân biệt các nơi lưu dữ liệu:
-
-- **Mac:** chỉ chạy scripts, giữ DataFrame tạm và gửi lệnh qua HTTPS.
-- **Databricks Cloud:** nơi thực thi SQL, lưu Delta tables và cung cấp Databricks UI.
-- **Cloudflare Pages:** chỉ dành cho Web UI riêng nếu có.
-- **Cloudflare R2:** storage tùy chọn; không phải Databricks UI và không phải SQL Warehouse.
-- **Docker Compose:** stack phụ cho thử nghiệm local, Kafka, Airflow, MinIO, Spark hoặc API/Web; không phải đích ghi của pipeline Databricks.
-
----
-
-## 🎯 For the frontend team
-
-👉 **Read [`docs/handbook/HANDOFF.md`](./docs/handbook/HANDOFF.md) first.** Everything you need to query data from React/Next.js is there.
-
-TL;DR:
-- 10 Delta tables in `workspace.bronze` / `silver` / `gold` / `raw_elt`
-- Use either `_etl` or `_elt` tables — same data
-- Query via the Next.js API in [`docs/handbook/API.md`](./docs/handbook/API.md)
-- Browse data in the Databricks UI ([`UI_GUIDE.md`](./docs/handbook/UI_GUIDE.md))
-
----
-
-## 🏗️ Architecture
-
-```
-CSV files (Volume)
-       ↓
-[Bronze]   workspace.bronze.*_test         ← raw, 1:1 with CSV
-[Raw ELT]  workspace.raw_elt.*_raw          ← verbatim landing (ELT only)
-       ↓
-[Silver]   workspace.silver.*_clean_*       ← cleaned, deduped, validated
-           workspace.silver.*_enriched_*    ← joined with customers
-       ↓
-[Gold]     workspace.gold.customer_ltv_*    ← LTV per customer (KPI)
-```
-
-Both **ETL** (transform in pandas locally) and **ELT** (transform in SQL warehouse) produce identical outputs. Pick `_elt` for new features (warehouse-native, scales better).
-
----
-
-## 🧪 Current state
-
-| Layer | Schema | Table | Rows | Status |
-|---|---|---|---:|---|
-| Bronze | workspace.bronze | customers_test | 10 | ✅ |
-| Bronze | workspace.bronze | orders_test | 17 | ✅ |
-| Raw ELT | workspace.raw_elt | customers_raw | 10 | ✅ |
-| Raw ELT | workspace.raw_elt | orders_raw | 17 | ✅ |
-| Silver | workspace.silver | customers_clean_etl | 10 | ✅ |
-| Silver | workspace.silver | orders_enriched_etl | 17 | ✅ |
-| Silver | workspace.silver | customers_clean_elt | 10 | ✅ |
-| Silver | workspace.silver | orders_enriched_elt | 17 | ✅ |
-| Gold | workspace.gold | customer_ltv_etl | 10 | ✅ |
-| Gold | workspace.gold | customer_ltv_elt | 10 | ✅ |
-
-**ETL ≡ ELT**: row counts match, top-3 LTV match. Verified 2026-10-19.
-
----
-
-## 📜 More docs
-
-- **Handoff for frontend:** [`docs/handbook/HANDOFF.md`](./docs/handbook/HANDOFF.md)
-- **Data schemas:** [`docs/handbook/DATA_LAYOUT.md`](./docs/handbook/DATA_LAYOUT.md)
-- **Why ETL vs ELT:** [`docs/handbook/ETL_VS_ELT.md`](./docs/handbook/ETL_VS_ELT.md)
-- **Setup walkthrough:** [`docs/operations/DATABRICKS_SETUP.md`](./docs/operations/DATABRICKS_SETUP.md)
-- **Cloudflare R2 (optional storage only):** [`docs/cloud/r2/SETUP.md`](./docs/cloud/r2/SETUP.md)
-- **Local Docker runtime:** [`docs/operations/docker.md`](./docs/operations/docker.md)
-- **Architecture details:** [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md)
-
----
-
-## 🔒 Security
-
-- **Never commit `.env`.** Only `.env.example` is tracked.
-- **Personal Access Tokens** expire (default 90 days). Rotate regularly.
-- **Warehouse is serverless** — scales to zero when idle, no cost for unused time.
-
----
-
-## 🆘 Help
-
-1. Read [`docs/handbook/HANDOFF.md`](./docs/handbook/HANDOFF.md) (15 min)
-2. Check [`docs/handbook/TOOLS.md`](./docs/handbook/TOOLS.md) Troubleshooting section
-3. Open an issue with: error message + the script you ran + the SQL (if any)
+- [Documentation index](./docs/README.md)
+- [Local service URLs and workflows](./docs/operations/DEV_LINKS.md)
+- [Docker operations](./docs/operations/docker.md)
+- [API implementation and docs](./apps/api/README.md)
+- [Databricks setup](./docs/operations/DATABRICKS_SETUP.md)

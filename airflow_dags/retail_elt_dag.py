@@ -35,8 +35,12 @@ def health_check(**context: dict) -> str:
 with DAG(
     dag_id="retail_elt_dag",
     default_args=default_args,
-    description="Retail ELT pipeline (Bronze → Silver → Gold) using lakehouse package",
-    schedule_interval=timedelta(hours=24),
+    description=(
+        "Legacy retail batch pipeline using pre-existing input files; "
+        "automatic mock-data generation has been removed"
+    ),
+    # Manual only: this legacy DAG must not generate synthetic data on a timer.
+    schedule_interval=None,
     catchup=False,
     tags=["elt", "batch", "retail"],
 ) as dag:
@@ -44,12 +48,6 @@ with DAG(
     health = PythonOperator(
         task_id="health_check",
         python_callable=health_check,
-    )
-
-    # ===== Generate mock data =====
-    generate_data = BashOperator(
-        task_id="generate_sample_data",
-        bash_command="python -m lakehouse.sources.mock.retail_generator",
     )
 
     # ===== 🥉 Bronze: Ingest =====
@@ -173,7 +171,9 @@ with DAG(
     )
 
     # ===== Dependencies =====
-    health >> generate_data >> [
+    # Source files must be supplied independently; this DAG no longer creates
+    # sample retail records. Historical data already in the lake is untouched.
+    health >> [
         bronze_ingest_customers,
         bronze_ingest_products,
         bronze_ingest_json,

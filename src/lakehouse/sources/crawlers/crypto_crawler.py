@@ -32,8 +32,41 @@ class CryptoCrawler(BaseCrawler):
         return KafkaTopics.CRYPTO_PRICES
 
     def crawl(
-        self, *, vs_currency: str = "usd", coins: list[str] | None = None
+        self,
+        *,
+        vs_currency: str = "usd",
+        coins: list[str] | None = None,
+        per_page: int | None = None,
     ) -> list[dict[str, Any]]:
+        if per_page is not None:
+            if not 1 <= per_page <= 250:
+                raise ValueError("per_page must be between 1 and 250")
+            logger.info(" Crawling top %d crypto markets, vs=%s", per_page, vs_currency)
+            url = (
+                f"{self.API_BASE}/coins/markets?vs_currency={vs_currency}"
+                f"&order=market_cap_desc&per_page={per_page}&page=1&sparkline=false"
+            )
+            data = self._get_json(url)
+            if not isinstance(data, list):
+                return []
+            return [
+                self.process(
+                    {
+                        "coin_id": item.get("id"),
+                        "symbol": item.get("symbol"),
+                        "name": item.get("name"),
+                        "vs_currency": vs_currency,
+                        "price": item.get("current_price"),
+                        "change_24h_pct": item.get("price_change_percentage_24h"),
+                        "market_cap": item.get("market_cap"),
+                        "volume_24h": item.get("total_volume"),
+                        "market_cap_rank": item.get("market_cap_rank"),
+                        "last_updated": item.get("last_updated"),
+                    }
+                )
+                for item in data
+            ]
+
         coins = coins or self.TOP_COINS
         logger.info(" Crawling crypto: %d coins, vs=%s", len(coins), vs_currency)
         ids = ",".join(coins)

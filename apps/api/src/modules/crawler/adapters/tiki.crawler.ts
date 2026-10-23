@@ -1,15 +1,45 @@
 import { BaseCrawler, type CrawlerContext } from './base-crawler';
 import type { CrawlerItem } from '../types';
 
-const TIKI_CATEGORIES_API = 'https://api.tiki.vn/raiden/v2/menu-config';
-const TIKI_SEARCH_API = 'https://api.tiki.vn/v3/search';
+const TIKI_CATEGORIES_API = 'https://tiki.vn/api/v2/categories?parent_id=2';
+const TIKI_SEARCH_API = 'https://tiki.vn/api/v2/products';
+
+const CATEGORY_IDS: Readonly<Record<string, number>> = {
+  smartphone: 1795,
+  laptop: 1846,
+  tablet: 1789,
+  fashion: 931,
+  beauty: 1520,
+  'home-appliance': 1882,
+};
 
 interface TikiCategoryNode {
   id?: number;
+  name?: string;
   text?: string;
   link?: string;
+  url_key?: string;
   icon?: string;
   children?: TikiCategoryNode[];
+}
+
+interface TikiCategoryResponse {
+  menu_block?: { items?: TikiCategoryNode[] };
+  data?: TikiCategoryNode[];
+}
+
+function extractCategoryTree(raw: unknown): TikiCategoryNode[] | null {
+  if (Array.isArray(raw)) return raw as TikiCategoryNode[];
+  if (raw && typeof raw === 'object') {
+    const wrapped = raw as TikiCategoryResponse;
+    if (Array.isArray(wrapped.menu_block?.items)) {
+      return wrapped.menu_block.items;
+    }
+    if (Array.isArray(wrapped.data)) {
+      return wrapped.data;
+    }
+  }
+  return null;
 }
 
 export class TikiCrawlerImpl extends BaseCrawler {
@@ -24,20 +54,30 @@ export class TikiCrawlerImpl extends BaseCrawler {
     const maxPages = ctx.request.maxPages;
     const category = ctx.request.category ?? '';
     try {
-      const tree = (await this.fetchJson(TIKI_CATEGORIES_API, {
+      const raw = (await this.fetchJson(TIKI_CATEGORIES_API, {
         timeoutMs: ctx.config.timeout * 1000,
         headers: { 'User-Agent': ctx.config.userAgent },
-      })) as TikiCategoryNode[] | null;
+      })) as unknown;
+      const tree = extractCategoryTree(raw);
       if (!tree) {
-        items.push(
-          this.fail('tiki-categories', 'Failed to fetch category tree', this.timestamp()),
-        );
+        const reason =
+          raw === null || raw === undefined
+            ? 'category tree endpoint returned empty body'
+            : `unexpected payload shape: ${JSON.stringify(raw).slice(0, 200)}`;
+        items.push(this.fail('tiki-categories', reason, this.timestamp()));
         return items;
       }
       const flat = this.flattenCategories(tree);
-      const selected = category
-        ? flat.filter((c) => c.text?.toLowerCase().includes(category.toLowerCase()))
-        : flat.slice(0, maxPages);
+      const categoryId = CATEGORY_IDS[category.toLowerCase()];
+      const selected = categoryId
+        ? [{ id: categoryId, name: category, text: category }]
+        : category
+          ? flat.filter((c) =>
+              `${c.name ?? ''} ${c.text ?? ''} ${c.url_key ?? ''}`
+                .toLowerCase()
+                .includes(category.toLowerCase()),
+            )
+          : flat.slice(0, maxPages);
       if (selected.length === 0) {
         items.push(
           this.skip('tiki-categories', 'No categories matched filter', this.timestamp()),
@@ -60,7 +100,10 @@ export class TikiCrawlerImpl extends BaseCrawler {
   private flattenCategories(nodes: TikiCategoryNode[], depth = 0): TikiCategoryNode[] {
     const out: TikiCategoryNode[] = [];
     for (const node of nodes) {
-      out.push({ ...node, text: `${'  '.repeat(depth)}${node.text ?? ''}` });
+      out.push({
+        ...node,
+        text: `${'  '.repeat(depth)}${node.name ?? node.text ?? ''}`,
+      });
       if (node.children && depth < 2) {
         out.push(...this.flattenCategories(node.children, depth + 1));
       }
@@ -73,21 +116,37 @@ export class TikiCrawlerImpl extends BaseCrawler {
     ctx: CrawlerContext,
   ): Promise<CrawlerItem[]> {
     if (!category.id) return [];
-    const url = `${TIKI_SEARCH_API}?category=${category.id}&limit=10&page=1`;
-    const data = (await this.fetchJson(url, {
+    const params = new URLSearchParams({ category: String(category.id), limit: '10', page: '1' });
+    const url = `${TIKI_SEARCH_API}?${params.toString()}`;
+    const raw = (await this.fetchJson(url, {
       timeoutMs: ctx.config.timeout * 1000,
-      headers: { 'User-Agent': ctx.config.userAgent },
-    })) as { data?: Array<Record<string, unknown>> } | null;
+      headers: {
+        'User-Agent': ctx.config.userAgent,
+        Accept: 'application/json, text/plain, */*',
+        Referer: 'https://tiki.vn/',
+      },
+    })) as { data?: Array<Record<string, unknown>>; error?: unknown } | null;
     const ts = this.timestamp();
-    if (!data || !data.data) {
+    if (!raw) {
       return [this.fail(`tiki-cat-${category.id}`, 'No products returned', ts)];
     }
-    return data.data.map((p) =>
-      this.ok(String(p.id ?? `${category.id}-${Math.random()}`), {
-        product_id: p.id,
+    if (!Array.isArray(raw.data)) {
+      const reason =
+        typeof raw === 'object'
+          ? `unexpected search payload: ${JSON.stringify(raw).slice(0, 200)}`
+          : 'search body is not an object';
+      return [this.fail(`tiki-cat-${category.id}`, reason, ts)];
+    }
+    return raw.data.flatMap((p) => {
+      const productId = p.id ?? p.product_id;
+      if (productId === undefined || productId === null || String(productId).trim() === '') {
+        return [this.fail(`tiki-cat-${category.id}`, 'Product response has no stable product ID', ts)];
+      }
+      return [this.ok(String(productId), {
+        product_id: productId,
         name: p.name,
         category_id: category.id,
-        category_name: category.text,
+        category_name: category.name ?? category.text,
         price: p.price,
         original_price: p.original_price,
         discount: p.discount,
@@ -96,7 +155,7 @@ export class TikiCrawlerImpl extends BaseCrawler {
         url: p.url_key,
         thumbnail: p.thumbnail_url,
         crawled_at: ts,
-      }, ts),
-    );
+      }, ts)];
+    });
   }
 }

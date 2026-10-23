@@ -66,6 +66,23 @@ services:
       timeout: 5s
       retries: 5
 
+  gold-postgres:
+    image: postgres:16-alpine
+    container_name: lake-gold-postgres
+    environment:
+      POSTGRES_DB: gold_analytics
+      POSTGRES_USER: ${GOLD_POSTGRES_USER:-metabase}
+      POSTGRES_PASSWORD: ${GOLD_POSTGRES_PASSWORD:-lakehouse-local}
+    ports:
+      - "5433:5432"
+    volumes:
+      - gold_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d gold_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Hive Metastore (apache/hive:3.1.3) was removed in PHASE 2.
   # Delta Lake uses its own _delta_log/ transaction log for the catalog,
   # and no code path in src/lakehouse/ queries the metastore. The previous
@@ -94,6 +111,11 @@ services:
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
       MINIO_SECURE: "false"
+      GOLD_POSTGRES_HOST: "gold-postgres"
+      GOLD_POSTGRES_PORT: "5432"
+      GOLD_POSTGRES_DB: "gold_analytics"
+      GOLD_POSTGRES_USER: ${GOLD_POSTGRES_USER:-metabase}
+      GOLD_POSTGRES_PASSWORD: ${GOLD_POSTGRES_PASSWORD:-lakehouse-local}
       KAFKA_BOOTSTRAP: "kafka:29092"
       PYTHONPATH: /app-src/src
     ports:
@@ -104,6 +126,9 @@ services:
       - ./src:/app-src/src:ro
       - ./data-samples:/data-samples:ro
       - ./configs/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf:ro
+    depends_on:
+      gold-postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ >/dev/null || exit 1"]
       interval: 30s
@@ -331,6 +356,7 @@ services:
 volumes:
   minio_data:
   postgres_data:
+  gold_postgres_data:
   airflow_db_data:
   metabase_data:
   mongo_data:

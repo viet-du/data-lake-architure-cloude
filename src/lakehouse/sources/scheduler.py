@@ -116,6 +116,11 @@ class CrawlScheduler:
         logger.info("Scheduler stop requested")
         self._stop_event.set()
 
+    def close(self) -> None:
+        """Close every crawler owned by this scheduler."""
+        for job in self._jobs:
+            job.crawler.close()
+
     def _install_signal_handlers(self) -> None:
         def handler(signum, frame):  # noqa: ARG001
             logger.info("Received signal %s, stopping", signum)
@@ -153,6 +158,14 @@ class CrawlScheduler:
             return result
         return 0
 
+    def get_job(self, name: str) -> CrawlJob:
+        """Return a configured job so orchestrators can own its output handling."""
+        with self._lock:
+            job = next((j for j in self._jobs if j.name == name), None)
+        if job is None:
+            raise KeyError(f"Job '{name}' not found")
+        return job
+
     def _run_job(self, job: CrawlJob, now: float) -> int:
         logger.info("Running job '%s' (kwargs=%s)", job.name, job.kwargs)
         job.last_run_at = now
@@ -182,7 +195,7 @@ class CrawlScheduler:
         return count
 
 
-def build_default_scheduler() -> CrawlScheduler:
+def build_default_scheduler(*, kafka_enabled: bool = True) -> CrawlScheduler:
     """Factory: returns a scheduler pre-loaded with the recommended jobs.
 
     Tweak intervals per your business needs. Defaults are conservative
@@ -205,15 +218,17 @@ def build_default_scheduler() -> CrawlScheduler:
     for cat in ("smartphone", "laptop", "fashion", "beauty", "home-appliance"):
         s.add(CrawlJob(
             name=f"tiki-{cat}",
-            crawler=TikiCrawler(rate_limit=2.0),
+        crawler=TikiCrawler(rate_limit=5.0, kafka_enabled=kafka_enabled),
             run_every_s=6 * 3600,
-            kwargs={"category": cat, "max_pages": 5, "workers": 4},
+        # Tiki's anonymous product API starts returning HTML when category
+        # pages are fetched too quickly. Keep requests serial and spaced out.
+        kwargs={"category": cat, "max_pages": 5, "workers": 1},
         ))
 
     # --- Trending: GitHub ---
     s.add(CrawlJob(
         name="github-trending",
-        crawler=GithubCrawler(rate_limit=1.0),
+        crawler=GithubCrawler(rate_limit=1.0, kafka_enabled=kafka_enabled),
         run_every_s=3600,
         kwargs={"language": "python", "since": "daily"},
     ))
@@ -221,15 +236,15 @@ def build_default_scheduler() -> CrawlScheduler:
     # --- HackerNews top stories ---
     s.add(CrawlJob(
         name="hackernews-top",
-        crawler=HackerNewsCrawler(rate_limit=0.5),
+        crawler=HackerNewsCrawler(rate_limit=0.5, kafka_enabled=kafka_enabled),
         run_every_s=1800,
-        kwargs={"limit": 50},
+        kwargs={"max_stories": 50},
     ))
 
     # --- Crypto prices (high frequency) ---
     s.add(CrawlJob(
         name="crypto-top-50",
-        crawler=CryptoCrawler(rate_limit=0.3),
+        crawler=CryptoCrawler(rate_limit=0.3, kafka_enabled=kafka_enabled),
         run_every_s=300,
         kwargs={"vs_currency": "usd", "per_page": 50},
     ))

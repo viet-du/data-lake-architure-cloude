@@ -37,6 +37,7 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compo
 | **Databricks CE** (lakehouse) | https://community.cloud.databricks.com/ | Demo ấn tượng, native Delta, notebook UI | [`DATABRICKS_SETUP.md`](./DATABRICKS_SETUP.md) |
 
 **Switch backend**: chỉ cần sửa `.env` (set/unset `S3_ENDPOINT`), không cần đổi code.
+Local Gold-to-Metabase reporting uses a PostgreSQL mirror; see the runbook below.
 
 ---
 
@@ -46,8 +47,7 @@ docker compose -f docker-compose.yml -f docker-compose-kafka.yml -f docker-compo
 | ---------------- | ------------------------------ | ----- | ------------------- | ----------------------------------- |
 | **MinIO API**    | http://localhost:9000          | 9000  | minioadmin/minioadmin | S3-compatible data lake backend    |
 | **MinIO Console**| http://localhost:9001          | 9001  | minioadmin/minioadmin | GUI browse buckets/objects          |
-| **Hive Metastore**| http://localhost:9083          | 9083  | (Thrift)            | Delta table catalog (Metastore URI) |
-| **PostgreSQL** (Metastore) | `postgres:5432`    | 5432  | hive/hive           | Hive Metastore DB                   |
+| **Gold PostgreSQL** | `localhost:5433`             | 5433  | `GOLD_POSTGRES_USER` / `GOLD_POSTGRES_PASSWORD` | Read-optimized mirror for Metabase |
 | **Spark Master** | http://localhost:8080          | 8080  | -                   | Cluster status, running apps        |
 | **Spark App UI** | http://localhost:4040          | 4040  | -                   | Active job logs (mở khi job chạy)   |
 
@@ -74,6 +74,35 @@ s3a://gold/         ← business-level, aggregated
 
 Buckets được tạo tự động bởi `lake-minio-init` (service `minio-init` trong
 `docker-compose.yml`). Nếu muốn tạo tay: `docker exec lake-minio mc mb local/<bucket>`.
+
+### Hiển thị Gold trên Metabase
+
+Metabase không đọc trực tiếp Delta Lake trên MinIO. Dùng PostgreSQL làm lớp
+truy vấn báo cáo: MinIO vẫn là nguồn Gold chuẩn, còn `gold-postgres` là bản
+mirror có thể tạo lại bất kỳ lúc nào.
+
+```bash
+# Chạy sau khi Gold Delta đã có trên MinIO
+bash scripts/sync_gold_to_metabase.sh
+```
+
+Thêm database trong Metabase bằng loại **PostgreSQL**:
+
+| Field | Value |
+|---|---|
+| Display name | `Lakehouse Gold (MinIO)` |
+| Host | `gold-postgres` |
+| Port | `5432` |
+| Database name | `gold_analytics` |
+| Username / Password | `GOLD_POSTGRES_USER` / `GOLD_POSTGRES_PASSWORD` trong `.env` (nếu chưa đặt, local mặc định là `metabase` / `lakehouse-local`) |
+
+Sau khi kết nối, sync schema và tạo câu hỏi từ các bảng `fact_orders`,
+`daily_revenue`, `dim_customers`, `dim_products` trong schema `public`.
+Chạy lại script sau mỗi lần pipeline cập nhật Gold để làm mới bản mirror.
+
+Danh sách route frontend gọi và trạng thái kết nối local được ghi riêng tại
+[`../UI_API_CONNECTIONS.md`](../UI_API_CONNECTIONS.md). Swagger/OpenAPI là
+nguồn chuẩn cho HTTP method, request schema và response contract.
 
 ---
 
@@ -143,12 +172,12 @@ thêm `airflow-webserver` healthy trước khi chạy task.
 
 ### Endpoints chính (API)
 
-| Method | Path                        | Mục đích                                |
-| ------ | --------------------------- | --------------------------------------- |
-| `GET`  | `/api/health`               | Health check                            |
-| `GET`  | `/api/buckets`              | Liệt kê MinIO buckets                   |
-| `GET`  | `/api/datasets?layer=gold`  | List datasets ở 1 layer (bronze/silver/gold) |
-| `GET`  | `/api/query/sql?q=...`      | DuckDB SQL query on top of MinIO/Delta  |
+Các route hiện tại được mô tả trong Swagger/OpenAPI. Những nhóm route Web UI
+dùng nhiều gồm `/api/catalog/*`, `/api/bronze/*`, `/api/silver/*`,
+`/api/gold/*`, `/api/crawler/*`, `/api/kafka/*`, `/api/airflow/*`,
+`/api/dq/*` và `/api/health/*`. Xem trạng thái kiểm tra kết nối tại
+[`../UI_API_CONNECTIONS.md`](../UI_API_CONNECTIONS.md), và tham khảo Swagger
+tại <http://localhost:3001/api/docs>.
 | `POST` | `/api/pipeline/run/{name}`  | Trigger pipeline (e.g. `retail_elt`)    |
 | `GET`  | `/api/jobs?limit=20`        | List BullMQ job history                 |
 
@@ -158,7 +187,7 @@ thêm `airflow-webserver` healthy trước khi chạy task.
 
 | Service          | URL                            | Port  | Credentials              | Mục đích                       |
 | ---------------- | ------------------------------ | ----- | ------------------------ | ------------------------------ |
-| **Metabase**     | http://localhost:3000          | 3000  | (first-run setup)        | BI dashboard, query MinIO/Delta|
+| **Metabase**     | http://localhost:3000          | 3000  | (first-run setup)        | BI dashboard, query Gold PostgreSQL mirror |
 | **MongoDB**      | `localhost:27017`             | 27017 | mongoadmin/mongoadmin    | App metadata (api db)          |
 | **Redis**        | `localhost:6379`              | 6379  | (no auth)                | BullMQ queue cache, sessions  |
 
@@ -253,7 +282,5 @@ make down && make up
 native trên M-series mà không cần QEMU.
 
 ### ❌ `airflow-webserver-api` lỗi "address already in use" trên 8088
-→ Bạn đang chạy cả `docker-compose.yml` lẫn `docker-compose.api.yml` cũ
-(file này đã được đổi tên thành `docker-compose.api.yml.deprecated`).
-Dùng `docker-compose.dev-api.yml` mới thay thế — file này chỉ thêm
-`api` + `web` chứ không duplicate lại Airflow.
+→ Chỉ dùng `docker-compose.dev-api.yml` làm overlay API/Web. Các file compose
+core và Kafka vẫn được truyền rõ ràng theo ví dụ `make up-api`.

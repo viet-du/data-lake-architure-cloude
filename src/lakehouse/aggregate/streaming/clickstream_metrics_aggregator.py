@@ -47,7 +47,7 @@ class ClickstreamMetricsAggregator:
                 paths=self.paths,
                 output_mode="append",
                 partition_by=None,
-                trigger_available_now=False,
+                trigger_available_now=True,
             )
         )
         queries.append(
@@ -58,7 +58,7 @@ class ClickstreamMetricsAggregator:
                 paths=self.paths,
                 output_mode="append",
                 partition_by=None,
-                trigger_available_now=False,
+                trigger_available_now=True,
             )
         )
         return queries

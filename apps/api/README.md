@@ -54,18 +54,18 @@ Quy tắc bắt buộc:
 
 ## Modules
 
-| Module   | Endpoints | Mục đích                                                                  |
-| -------- | --------- | ------------------------------------------------------------------------- |
-| catalog  | 20        | Database / schema discovery, lineage giữa Bronze/Silver/Gold              |
-| bronze   | 14        | CRUD + ingest CSV/JSON/stream cho bảng Bronze (Delta trên MinIO)           |
-| silver   | 14        | Transform + dedupe + time-travel cho bảng Silver                          |
-| gold     | 18        | Aggregate + business SQL (revenue, customer analytics, ad-hoc sandbox)     |
-| crawler  | 14        | Quản lý 5 crawlers (tiki, github, crypto, weather, hackernews) + BullMQ    |
-| kafka    | 14        | Topics / producers / consumer groups / cluster / lag (kafkajs)            |
-| airflow  | 13        | DAG CRUD + task logs + gantt + health/stats (REST proxy)                   |
-| dq       | 11        | Data Quality rules CRUD + run/suite + summary + presets (DuckDB)          |
-| health   | 4         | Liveness / readiness cho API + dependencies                              |
-| **Tổng** | **122**   |                                                                           |
+| Module   | Endpoints |
+| -------- | --------- |
+| catalog  | 20        |
+| bronze   | 14        |
+| silver   | 14        |
+| gold     | 18        |
+| crawler  | 14        |
+| kafka    | 14        |
+| airflow  | 13        |
+| dq       | 11        |
+| health   | 4         |
+| **Tổng** | **122**   |
 
 ## Yêu cầu môi trường
 
@@ -76,22 +76,17 @@ Quy tắc bắt buộc:
 ## Cài đặt nhanh
 
 ```bash
-# 1. Từ thư mục root
-cp .env.example apps/api/.env
-
-# 2. Khởi động infrastructure (MinIO + Mongo + Redis + Kafka + Airflow)
-docker compose up -d minio mongo redis kafka airflow-db
-
-# 3. Cài dependencies cho API
-cd apps/api
-npm install
-
-# 4. Dev mode
-npm run dev
-
-# 5. Truy cập Swagger UI
-open http://localhost:3001/api/docs
+# Từ thư mục root: khởi động core services, API và Web UI
+make up-api
 ```
+
+API: `http://localhost:3001`. Swagger UI:
+`http://localhost:3001/api/docs`. OpenAPI JSON:
+`http://localhost:3001/api/openapi.json`.
+
+Để chạy API riêng trong chế độ phát triển, cấu hình `apps/api/.env.local`
+theo `apps/api/.env.example`, cài dependencies bằng workspace package manager
+tại root, sau đó chạy `pnpm --dir apps/api dev`.
 
 ## Scripts
 
@@ -120,9 +115,15 @@ Các nhóm chính:
 
 ## API documentation
 
-- **Swagger UI**: `http://localhost:3001/api/docs`
-- **OpenAPI JSON**: `http://localhost:3001/api/openapi.json`
+- **Swagger UI**: `http://localhost:3001/api-doc` (`/api/docs` redirects here)
+- **OpenAPI JSON**: chưa có route khả dụng; `/api/openapi.json` hiện trả `404`.
 - **Examples**: xem `apps/api/docs/api/` (curl + TypeScript fetch snippets cho từng nhóm endpoint).
+- **Web UI route mapping and observed connection status**:
+  [`../../docs/UI_API_CONNECTIONS.md`](../../docs/UI_API_CONNECTIONS.md).
+
+The Gold-to-Metabase synchronization is currently a Spark CLI operation,
+`bash scripts/sync_gold_to_metabase.sh`; it is not an API endpoint. It mirrors
+MinIO Gold Delta tables into PostgreSQL for Metabase.
 
 ## Đóng góp
 

@@ -1,5 +1,6 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -33,7 +34,8 @@ export interface SilverTableDetailProps {
 
 type DetailTab = 'overview' | 'sample' | 'history' | 'timetravel' | 'diff';
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`;
   if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(2)} KB`;
@@ -46,7 +48,8 @@ function formatNumber(n: number): string {
   return String(n);
 }
 
-function formatPercent(n: number): string {
+function formatPercent(n: number | undefined): string {
+  if (n === undefined) return '—';
   return `${(n * 100).toFixed(2)}%`;
 }
 
@@ -104,7 +107,7 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
               {tableQuery.data.format}
             </Tag>
             <Tag size="sm" variant={tableQuery.data.status === 'healthy' ? 'success' : 'warning'}>
-              {tableQuery.data.status}
+              {t(`health.${tableQuery.data.status}`)}
             </Tag>
             <span className="text-[10px] text-neutral-500">{tableQuery.data.database}</span>
             {tableQuery.data.sourceTable !== undefined ? (
@@ -116,23 +119,23 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="sample">Sample</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-              <TabsTrigger value="timetravel">Time travel</TabsTrigger>
-              <TabsTrigger value="diff">Diff</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="sample"><Trans i18nKey="labels.sample" /></TabsTrigger>
+              <TabsTrigger value="history"><Trans i18nKey="labels.history" /></TabsTrigger>
+              <TabsTrigger value="timetravel"><Trans i18nKey="labels.time_travel" /></TabsTrigger>
+              <TabsTrigger value="diff"><Trans i18nKey="labels.diff" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Rows</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.rows" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatNumber(tableQuery.data.rowCount)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Size</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.size" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatBytes(tableQuery.data.sizeBytes)}
                   </p>
@@ -140,13 +143,13 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
                 {statsQuery.data !== undefined ? (
                   <>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Dedup</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.dedup" /></p>
                       <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                         {formatPercent(statsQuery.data.dedupRate)}
                       </p>
                     </div>
                     <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-neutral-500">Nulls</p>
+                      <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.nulls" /></p>
                       <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                         {formatPercent(statsQuery.data.nullRate)}
                       </p>
@@ -198,7 +201,7 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
 
             <TabsContent value="timetravel">
               <div className="flex flex-col gap-3">
-                <Field label="Version">
+                <Field label={i18n.t('labels.version')}>
                   <NumberField
                     value={ttVersion}
                     onChange={setTtVersion}
@@ -226,10 +229,10 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
             <TabsContent value="diff">
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Version 1">
+                  <Field label={i18n.t('labels.version_1')}>
                     <NumberField value={v1} onChange={setV1} min={0} placeholder="e.g. 1" />
                   </Field>
-                  <Field label="Version 2">
+                  <Field label={i18n.t('labels.version_2')}>
                     <NumberField value={v2} onChange={setV2} min={0} placeholder="e.g. 2" />
                   </Field>
                 </div>
@@ -241,19 +244,19 @@ export function SilverTableDetail({ table, onClose }: SilverTableDetailProps) {
                   ) : diffQuery.data === undefined ? null : (
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Added</p>
+                        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.added" /></p>
                         <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">
                           {formatNumber(diffQuery.data.addedRows)}
                         </p>
                       </div>
                       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-red-500">Removed</p>
+                        <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.removed" /></p>
                         <p className="mt-1 text-lg font-bold text-red-600 dark:text-red-400">
                           {formatNumber(diffQuery.data.removedRows)}
                         </p>
                       </div>
                       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-amber-500">Changed</p>
+                        <p className="text-[10px] uppercase tracking-wider text-amber-500"><Trans i18nKey="labels.changed" /></p>
                         <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">
                           {formatNumber(diffQuery.data.changedRows)}
                         </p>

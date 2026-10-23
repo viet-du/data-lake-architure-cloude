@@ -1,3 +1,6 @@
+import { z } from 'zod';
+const suiteSchema = z.object({ runId: z.string(), startedAt: z.string(), finishedAt: z.string(), durationMs: z.number(), passedRules: z.number(), failedRules: z.number(), erroredRules: z.number(), totalRows: z.number() });
+import { decodeRule, decodeRun, decodeSummary, decodeItems } from './dq.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -24,25 +27,23 @@ export interface ListRunsParams {
 }
 
 export interface RunSuitePayload {
-  ruleIds?: ReadonlyArray<string>;
-  tables?: ReadonlyArray<string>;
-  parallel?: number;
+  ruleIds: ReadonlyArray<string>;
 }
 
 export const dqService = {
   listRules: async (params: ListRulesParams = {}): Promise<ReadonlyArray<DQRule>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<DQRule>>>(
       ENDPOINTS.dq.rules,
-      { params: { ...params } },
+      { params: { ...params, table: params.tableName } },
     );
-    return res.data.data;
+    return decodeItems(res.data.data).map(decodeRule);
   },
 
   getRule: async (ruleId: string): Promise<DQRule> => {
     const res = await apiClient.get<ApiResponse<DQRule>>(
       ENDPOINTS.dq.rule(ruleId),
     );
-    return res.data.data;
+    return decodeRule(res.data.data);
   },
 
   createRule: async (payload: DQRuleCreatePayload): Promise<DQRule> => {
@@ -54,11 +55,11 @@ export const dqService = {
   },
 
   updateRule: async (ruleId: string, payload: DQRuleUpdatePayload): Promise<DQRule> => {
-    const res = await apiClient.put<ApiResponse<DQRule>>(
+    const res = await apiClient.patch<ApiResponse<DQRule>>(
       ENDPOINTS.dq.rule(ruleId),
       payload,
     );
-    return res.data.data;
+    return decodeRule(res.data.data);
   },
 
   deleteRule: async (ruleId: string): Promise<void> => {
@@ -70,15 +71,18 @@ export const dqService = {
       ENDPOINTS.dq.ruleRun(ruleId),
       {},
     );
-    return res.data.data;
+    return decodeRun(res.data.data);
   },
 
-  runSuite: async (payload: RunSuitePayload = {}): Promise<DQRun> => {
+  runSuite: async (payload: RunSuitePayload): Promise<DQRun> => {
     const res = await apiClient.post<ApiResponse<DQRun>>(
       ENDPOINTS.dq.runSuite,
-      payload,
+      { ruleIds: payload.ruleIds },
     );
-    return res.data.data;
+    const value = suiteSchema.parse(res.data.data);
+    return { runId: value.runId, status: value.failedRules + value.erroredRules > 0 ? 'failed' : 'success',
+      startedAt: value.startedAt, finishedAt: value.finishedAt, durationMs: value.durationMs,
+      passedRules: value.passedRules, failedRules: value.failedRules + value.erroredRules, warningRules: 0, totalCheckedRows: value.totalRows };
   },
 
   getPresets: async (): Promise<ReadonlyArray<DQPreset>> => {
@@ -93,16 +97,16 @@ export const dqService = {
       ENDPOINTS.dq.runs,
       { params: { ...params } },
     );
-    return res.data.data;
+    return decodeItems(res.data.data).map(decodeRun);
   },
 
   getRun: async (runId: string): Promise<DQRun> => {
     const res = await apiClient.get<ApiResponse<DQRun>>(ENDPOINTS.dq.run(runId));
-    return res.data.data;
+    return decodeRun(res.data.data);
   },
 
   getSummary: async (): Promise<DQSummary> => {
     const res = await apiClient.get<ApiResponse<DQSummary>>(ENDPOINTS.dq.summary);
-    return res.data.data;
+    return decodeSummary(res.data.data);
   },
 };

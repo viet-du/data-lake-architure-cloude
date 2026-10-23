@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query';
-import { goldService, type AdHocQueryParams, type AggregateAllPayload, type AggregatePayload, type ListGoldTablesParams } from '../gold';
+import { goldService, type AdHocQueryParams, type AggregateAllPayload, type AggregatePayload, type ListGoldTablesResult, type ListGoldTablesParams } from '../gold';
 import { QUERY_KEYS } from '../query-keys';
 import type {
   GoldAggregateJob,
@@ -14,9 +14,9 @@ import type {
 
 export function useGoldTablesQuery(
   params?: ListGoldTablesParams,
-  options?: Omit<UseQueryOptions<unknown, Error>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<ListGoldTablesResult, Error>, 'queryKey' | 'queryFn'>,
 ) {
-  return useQuery<unknown, Error>({
+  return useQuery<ListGoldTablesResult, Error>({
     queryKey: QUERY_KEYS.gold.tables(params),
     queryFn: () => goldService.listTables(params),
     ...options,
@@ -157,10 +157,10 @@ export function useProductPerformanceQuery(
 }
 
 export function useAggregateMutation(
-  options?: UseMutationOptions<GoldAggregateResult, Error, { table: string; payload: AggregatePayload }>,
+  options?: UseMutationOptions<GoldAggregateJob, Error, { table: string; payload: AggregatePayload }>,
 ) {
   const qc = useQueryClient();
-  return useMutation<GoldAggregateResult, Error, { table: string; payload: AggregatePayload }>({
+  return useMutation<GoldAggregateJob, Error, { table: string; payload: AggregatePayload }>({
     mutationFn: ({ table, payload }) => goldService.aggregate(table, payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QUERY_KEYS.gold.all });

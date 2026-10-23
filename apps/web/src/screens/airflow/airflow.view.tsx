@@ -1,5 +1,6 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useDAGsQuery,
   useAirflowStatsQuery,
@@ -21,7 +22,8 @@ import {
 } from '@/components';
 import { useToast } from '@/hooks';
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined): string {
+  if (n === undefined) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -34,9 +36,9 @@ function formatPct(r: number): string {
 function StatsBar() {
   const statsQuery = useAirflowStatsQuery();
   const stats = statsQuery.data;
-  if (statsQuery.isLoading || stats === null || stats === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  if (statsQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (statsQuery.isError) return <ScreenError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} compact />;
+  if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
@@ -46,21 +48,21 @@ function StatsBar() {
         </p>
       </div>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Active</p>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.active" /></p>
         <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">
           {stats.activeDAGs}
         </p>
       </div>
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-sky-500">Running</p>
+        <p className="text-[10px] uppercase tracking-wider text-sky-500"><Trans i18nKey="labels.running" /></p>
         <p className="mt-1 text-xl font-bold text-sky-600 dark:text-sky-400">
           {stats.runningRuns}
         </p>
       </div>
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-amber-500">Success 24h</p>
+        <p className="text-[10px] uppercase tracking-wider text-amber-500"><Trans i18nKey="labels.success_24h" /></p>
         <p className="mt-1 text-base font-bold text-amber-600 dark:text-amber-400">
-          {formatPct(stats.successRate24h)}
+          {stats.successRate24h === undefined ? '—' : formatPct(stats.successRate24h)}
         </p>
       </div>
       <div className="col-span-2 flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 p-3 sm:col-span-4">
@@ -92,7 +94,7 @@ function DAGsList({
   const items = dagsQuery.data ?? [];
   const filtered = search === '' ? items : items.filter((d) => d.dagId.toLowerCase().includes(search.toLowerCase()));
   if (filtered.length === 0) {
-    return <EmptyState compact title="No DAGs" />;
+    return <EmptyState compact title={i18n.t('labels.no_dags')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

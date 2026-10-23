@@ -10,22 +10,22 @@ export interface BronzeTable {
   columns: ColumnMeta[];
   partitions: PartitionMeta[];
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
-  lastModified: string;
-  deltaHistoryVersion: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
+  lastModified: string | null;
+  deltaHistoryVersion: number | null;
   deltaHistory: BronzeHistoryEntry[];
 }
 
 export interface BronzeStats {
   table: string;
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
   columnCount: number;
   partitionCount: number;
-  lastModified: string;
-  deltaHistoryVersion: number;
+  lastModified: string | null;
+  deltaHistoryVersion: number | null;
 }
 
 export interface BronzeHistoryEntry {
@@ -40,6 +40,6 @@ export interface BronzeHistoryEntry {
 export interface BronzePartition {
   partition: string;
   rowCount: number;
-  sizeBytes: number;
-  lastModified: string;
+  sizeBytes: number | null;
+  lastModified: string | null;
 }

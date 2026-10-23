@@ -17,9 +17,9 @@ void i18n
       vi: { translation: vi },
     },
     fallbackLng: DEFAULT_LANGUAGE,
-    supportedLngs: SUPPORTED_LANGUAGES as unknown as string[],
+    supportedLngs: [...SUPPORTED_LANGUAGES],
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: STORAGE_KEY,
       caches: ['localStorage'],
     },

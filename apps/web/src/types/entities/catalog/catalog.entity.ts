@@ -6,12 +6,14 @@ export interface DatabaseEntity {
   id: string;
   name: string;
   catalogName: string;
+  systemSchema?: boolean;
+  source?: 'local' | 'databricks';
   location?: string;
-  layer: EMedallionLayer;
+  layers: ReadonlyArray<EMedallionLayer>;
   tableCount: number;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt: string | null;
 }
 
 export interface TableEntity {
@@ -19,14 +21,14 @@ export interface TableEntity {
   databaseId: string;
   databaseName: string;
   name: string;
-  format: 'delta' | 'parquet' | 'iceberg' | 'csv' | 'json';
-  layer: EMedallionLayer;
-  sizeBytes: number;
-  rowCount: number;
+  format: string;
+  layer: EMedallionLayer | null;
+  sizeBytes: number | null;
+  rowCount: number | null;
   partitionBy?: ReadonlyArray<string>;
-  columns: ReadonlyArray<TableColumn>;
-  createdAt: string;
-  updatedAt: string;
+  columns?: ReadonlyArray<TableColumn>;
+  createdAt?: string;
+  updatedAt: string | null;
   lastQueryAt?: string;
 }
 

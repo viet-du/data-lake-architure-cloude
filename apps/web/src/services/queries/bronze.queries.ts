@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query';
-import { bronzeService, type IngestCsvPayload, type IngestJsonPayload, type IngestStreamPayload, type ListBronzeTablesParams, type VacuumPayload } from '../bronze';
+import { bronzeService, type IngestCsvPayload, type IngestJsonPayload, type IngestStreamPayload, type ListBronzeTablesResult, type ListBronzeTablesParams, type VacuumPayload } from '../bronze';
 import { QUERY_KEYS } from '../query-keys';
 import type {
   BronzeIngestJob,
@@ -13,9 +13,9 @@ import type {
 
 export function useBronzeTablesQuery(
   params?: ListBronzeTablesParams,
-  options?: Omit<UseQueryOptions<unknown, Error>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<ListBronzeTablesResult, Error>, 'queryKey' | 'queryFn'>,
 ) {
-  return useQuery<unknown, Error>({
+  return useQuery<ListBronzeTablesResult, Error>({
     queryKey: QUERY_KEYS.bronze.tables(params),
     queryFn: () => bronzeService.listTables(params),
     ...options,

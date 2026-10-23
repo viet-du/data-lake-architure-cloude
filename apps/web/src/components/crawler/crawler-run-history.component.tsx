@@ -13,6 +13,7 @@ export interface CrawlerRunHistoryProps {
 }
 
 const RUN_STATUS_VARIANT: Readonly<Record<ECrawlerRunStatus, ETagVariant>> = {
+  partial: 'warning',
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -20,7 +21,8 @@ const RUN_STATUS_VARIANT: Readonly<Record<ECrawlerRunStatus, ETagVariant>> = {
   cancelled: 'neutral',
 };
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined): string {
+  if (n === undefined) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);

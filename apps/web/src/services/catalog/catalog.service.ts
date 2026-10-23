@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { decodeDatabase, decodeDatabases, decodeTable, decodeTables } from './catalog.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse, Pagination } from '@/types/commons';
@@ -26,22 +28,22 @@ export const catalogService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<DatabaseEntity>>>(
       ENDPOINTS.catalog.databases,
     );
-    return res.data.data;
+    return decodeDatabases(res.data.data);
   },
 
   getDatabase: async (name: string): Promise<DatabaseEntity> => {
     const res = await apiClient.get<ApiResponse<DatabaseEntity>>(
       ENDPOINTS.catalog.database(name),
     );
-    return res.data.data;
+    return decodeDatabase(res.data.data);
   },
 
   createDatabase: async (payload: { name: string; location?: string; description?: string }): Promise<DatabaseEntity> => {
     const res = await apiClient.post<ApiResponse<DatabaseEntity>>(
       ENDPOINTS.catalog.databases,
-      payload,
+      { database: payload.name, description: payload.description },
     );
-    return res.data.data;
+    return decodeDatabase(res.data.data);
   },
 
   deleteDatabase: async (name: string): Promise<void> => {
@@ -52,22 +54,23 @@ export const catalogService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<TableEntity>>>(
       ENDPOINTS.catalog.databaseTables(name),
     );
-    return res.data.data;
+    return decodeTables(res.data.data);
   },
 
   listTables: async (params: ListTablesParams = {}): Promise<ListTablesResult> => {
     const res = await apiClient.get<ApiResponse<ListTablesResult>>(
       ENDPOINTS.catalog.tables,
-      { params: { ...params } },
+      { params: { database: params.database, search: params.search, limit: params.pageSize ?? 50, offset: ((params.page ?? 1) - 1) * (params.pageSize ?? 50) } },
     );
-    return res.data.data;
+    const items = decodeTables(res.data.data);
+    return { items, pagination: { page: params.page ?? 1, pageSize: params.pageSize ?? 50, total: items.length } };
   },
 
   getTable: async (tableId: string): Promise<TableEntity> => {
     const res = await apiClient.get<ApiResponse<TableEntity>>(
       ENDPOINTS.catalog.table(tableId),
     );
-    return res.data.data;
+    return decodeTable(res.data.data);
   },
 
   updateTable: async (tableId: string, payload: Partial<TableEntity>): Promise<TableEntity> => {
@@ -75,18 +78,18 @@ export const catalogService = {
       ENDPOINTS.catalog.table(tableId),
       payload,
     );
-    return res.data.data;
+    return decodeTable(res.data.data);
   },
 
   deleteTable: async (tableId: string): Promise<void> => {
     await apiClient.delete<ApiResponse<null>>(ENDPOINTS.catalog.table(tableId));
   },
 
-  getTableSchema: async (tableId: string): Promise<ReadonlyArray<unknown>> => {
+  getTableSchema: async (tableId: string) => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<unknown>>>(
       ENDPOINTS.catalog.tableSchema(tableId),
     );
-    return res.data.data;
+    return z.object({ columns: z.array(z.object({ name: z.string(), type: z.string(), nullable: z.boolean() })) }).parse(res.data.data).columns;
   },
 
   getTableLineage: async (tableId: string): Promise<unknown> => {
@@ -96,11 +99,11 @@ export const catalogService = {
     return res.data.data;
   },
 
-  getTableSample: async (tableId: string): Promise<unknown> => {
+  getTableSample: async (tableId: string) => {
     const res = await apiClient.get<ApiResponse<unknown>>(
       ENDPOINTS.catalog.tableSample(tableId),
     );
-    return res.data.data;
+    return z.array(z.record(z.unknown())).parse(res.data.data);
   },
 
   syncTable: async (tableId: string): Promise<TableSyncResult> => {

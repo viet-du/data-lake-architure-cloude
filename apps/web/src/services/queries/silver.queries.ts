@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query';
-import { silverService, type ListSilverTablesParams, type TransformAllPayload, type TransformPayload } from '../silver';
+import { silverService, type ListSilverTablesResult, type ListSilverTablesParams, type TransformAllPayload, type TransformPayload } from '../silver';
 import { QUERY_KEYS } from '../query-keys';
 import type {
   SilverJobsStats,
@@ -14,9 +14,9 @@ import type {
 
 export function useSilverTablesQuery(
   params?: ListSilverTablesParams,
-  options?: Omit<UseQueryOptions<unknown, Error>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<ListSilverTablesResult, Error>, 'queryKey' | 'queryFn'>,
 ) {
-  return useQuery<unknown, Error>({
+  return useQuery<ListSilverTablesResult, Error>({
     queryKey: QUERY_KEYS.silver.tables(params),
     queryFn: () => silverService.listTables(params),
     ...options,

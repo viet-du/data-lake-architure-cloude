@@ -1,7 +1,5 @@
 import type { Worker } from 'bullmq';
-import { CsvWorker } from './ingest-csv.worker';
-import { JsonWorker } from './ingest-json.worker';
-import { StreamWorker } from './ingest-stream.worker';
+import { BronzeWorker } from './bronze.worker';
 import { logger } from '@/lib/logger';
 
 const workers: Worker[] = [];
@@ -9,9 +7,7 @@ const workers: Worker[] = [];
 export const BronzeWorkerManager = {
   startAll(): void {
     if (workers.length > 0) return;
-    workers.push(CsvWorker.start());
-    workers.push(JsonWorker.start());
-    workers.push(StreamWorker.start());
+    workers.push(BronzeWorker.start());
     logger.info({ count: workers.length }, 'Bronze workers started');
   },
 
@@ -28,4 +24,4 @@ export const BronzeWorkerManager = {
   },
 };
 
-export { CsvWorker, JsonWorker, StreamWorker };
+export { BronzeWorker as CsvWorker, BronzeWorker as JsonWorker, BronzeWorker as StreamWorker } from './bronze.worker';

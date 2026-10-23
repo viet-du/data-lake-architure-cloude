@@ -1,3 +1,4 @@
+import { REDIS_KEY_PREFIX } from '@/config';
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
 import { getCrawler } from '../adapters';
@@ -81,7 +82,7 @@ export const CrawlerRunWorker = {
       async (job: Job<CrawlerJobPayload>) => {
         return processCrawl(job.data);
       },
-      { connection: getQueueConnection(), concurrency: 4 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 4 },
     );
   },
 };

@@ -60,7 +60,7 @@ export type TTaskIdParam = z.infer<typeof TaskIdParamSchema>;
 export const TaskLogQuerySchema = z.object({
   tryNumber: z.coerce.number().int().min(1).default(1),
   fullContent: z.coerce.boolean().default(false),
-  mapIndex: z.coerce.number().int().min(0).default(-1),
+  mapIndex: z.coerce.number().int().min(-1).default(-1),
 });
 
 export type TTaskLogQuery = z.infer<typeof TaskLogQuerySchema>;

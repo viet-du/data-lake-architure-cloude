@@ -1,4 +1,6 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
+import { getErrorMessage } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 import {
   useDQRulesQuery,
@@ -40,7 +42,7 @@ function RulesList({
   const items = rulesQuery.data ?? [];
   const filtered = search === '' ? items : items.filter((r) => r.ruleName.toLowerCase().includes(search.toLowerCase()) || r.tableName.toLowerCase().includes(search.toLowerCase()));
   if (filtered.length === 0) {
-    return <EmptyState compact title="No DQ rules" />;
+    return <EmptyState compact title={i18n.t('labels.no_dq_rules')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -80,6 +82,8 @@ export function DQView() {
   const [suiteOpen, setSuiteOpen] = useState(false);
 
   const summaryQuery = useDQSummaryQuery();
+  const rulesQuery = useDQRulesQuery();
+  const sameError = summaryQuery.isError && rulesQuery.isError && getErrorMessage(summaryQuery.error) === getErrorMessage(rulesQuery.error);
   const runMut = useRunDQRuleMutation();
 
   function handleRun(ruleId: string): void {
@@ -108,13 +112,13 @@ export function DQView() {
             </Button>
           }
         />
-        <DQSummaryBar
+        {!sameError ? <DQSummaryBar
           summary={summaryQuery.data}
           isLoading={summaryQuery.isLoading}
           isError={summaryQuery.isError}
           error={summaryQuery.error}
           onRetry={() => void summaryQuery.refetch()}
-        />
+        /> : null}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
             {(['rules', 'runs'] as const).map((k) => (

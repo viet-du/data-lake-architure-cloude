@@ -6,33 +6,33 @@ export interface SilverTable {
   name: string;
   database: string;
   format: 'delta' | 'parquet';
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
   partitionBy: ReadonlyArray<string>;
   sourceTable?: string;
   transformRule?: string;
   lastTransformedAt?: string;
   status: EHealthStatus;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt: string | null;
 }
 
 export interface SilverTableStats {
   name: string;
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
-  fileCount: number;
+  fileCount: number | null;
   partitionCount: number;
-  avgFileSizeBytes: number;
-  dedupRate: number;
-  nullRate: number;
+  avgFileSizeBytes: number | null;
+  dedupRate?: number;
+  nullRate?: number;
 }
 
 export interface SilverTableHistory {
   version: number;
   timestamp: string;
-  operation: 'WRITE' | 'MERGE' | 'DELETE' | 'OPTIMIZE' | 'REFRESH';
-  recordsAffected: number;
+  operation: string;
+  recordsAffected?: number;
   transformRule?: string;
   userName?: string;
 }
@@ -41,7 +41,7 @@ export interface SilverTableSample {
   columns: ReadonlyArray<string>;
   rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
   totalRows: number;
-  sampledAt: string;
+  sampledAt?: string;
 }
 
 export interface SilverTransformJob {
@@ -50,9 +50,9 @@ export interface SilverTransformJob {
   status: ESilverJobStatus;
   transformRule?: string;
   recordsProcessed: number;
-  recordsInserted: number;
-  recordsUpdated: number;
-  recordsDeleted: number;
+  recordsInserted?: number;
+  recordsUpdated?: number;
+  recordsDeleted?: number;
   startedAt: string;
   finishedAt?: string;
   durationMs?: number;

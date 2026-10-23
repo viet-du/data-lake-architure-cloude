@@ -31,6 +31,7 @@ const ACCENT_RING: Readonly<Record<HomeModuleItem['accent'], string>> = {
 };
 
 const STATUS_TAG: Readonly<Record<EHealthStatus, { variant: 'success' | 'warning' | 'error'; labelKey: string }>> = {
+  unknown: { variant: 'warning', labelKey: 'health.unknown' },
   healthy: { variant: 'success', labelKey: 'home.active' },
   degraded: { variant: 'warning', labelKey: 'health.degraded' },
   unhealthy: { variant: 'error', labelKey: 'home.inactive' },

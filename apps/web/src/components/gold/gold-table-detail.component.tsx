@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -31,7 +31,8 @@ export interface GoldTableDetailProps {
 
 type DetailTab = 'overview' | 'sample' | 'history' | 'lineage' | 'stats';
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`;
   if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(2)} KB`;
@@ -57,7 +58,7 @@ export function GoldTableDetail({ table, onClose }: GoldTableDetailProps) {
   const sampleQuery = useGoldTableSampleQuery(table ?? '', 50);
   const statsQuery = useGoldTableStatsQuery(table ?? '');
   const historyQuery = useGoldTableHistoryQuery(table ?? '');
-  const lineageQuery = useGoldTableLineageQuery(table ?? '');
+  const lineageQuery = useGoldTableLineageQuery(table ?? '', { enabled: table !== null && tab === 'lineage' });
   const refreshMutation = useRefreshGoldMutation();
 
   return (
@@ -89,57 +90,57 @@ export function GoldTableDetail({ table, onClose }: GoldTableDetailProps) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Tag size="sm" variant="warning">
-              {tableQuery.data.aggregateType ?? 'group_by'}
+              {tableQuery.data.aggregateType ?? tableQuery.data.format}
             </Tag>
             <Tag size="sm" variant="neutral">
-              {tableQuery.data.sourceLayer}
+              {tableQuery.data.sourceLayer ?? '—'}
             </Tag>
             <Tag size="sm" variant={tableQuery.data.status === 'healthy' ? 'success' : 'warning'}>
-              {tableQuery.data.status}
+              {t(`health.${tableQuery.data.status}`)}
             </Tag>
             <span className="text-[10px] text-neutral-500">{tableQuery.data.database}</span>
           </div>
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="sample">Sample</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-              <TabsTrigger value="lineage">Lineage</TabsTrigger>
-              <TabsTrigger value="stats">Stats</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="sample"><Trans i18nKey="labels.sample" /></TabsTrigger>
+              <TabsTrigger value="history"><Trans i18nKey="labels.history" /></TabsTrigger>
+              <TabsTrigger value="lineage"><Trans i18nKey="labels.lineage" /></TabsTrigger>
+              <TabsTrigger value="stats"><Trans i18nKey="labels.stats" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Rows</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.rows" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatNumber(tableQuery.data.rowCount)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Size</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.size" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                     {formatBytes(tableQuery.data.sizeBytes)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Source layer</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.source_layer" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                    {tableQuery.data.sourceLayer}
+                    {tableQuery.data.sourceLayer ?? '—'}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Sources</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.sources" /></p>
                   <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
-                    {tableQuery.data.sourceTables.length}
+                    {tableQuery.data.sourceTables?.length ?? '—'}
                   </p>
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-[10px] uppercase tracking-wider text-neutral-500">Source tables</p>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.source_tables" /></p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {tableQuery.data.sourceTables.map((s) => (
+                  {(tableQuery.data.sourceTables ?? []).map((s) => (
                     <Tag key={s} size="sm" variant="info">
                       {s}
                     </Tag>
@@ -148,7 +149,7 @@ export function GoldTableDetail({ table, onClose }: GoldTableDetailProps) {
               </div>
               {tableQuery.data.refreshSchedule !== undefined ? (
                 <div className="mt-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Schedule</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.schedule" /></p>
                   <p className="mt-1 font-mono text-xs text-neutral-300">
                     {tableQuery.data.refreshSchedule}
                   </p>
@@ -208,13 +209,13 @@ export function GoldTableDetail({ table, onClose }: GoldTableDetailProps) {
               ) : statsQuery.data === undefined ? null : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-neutral-500">Files</p>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.files" /></p>
                     <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                       {statsQuery.data.fileCount}
                     </p>
                   </div>
                   <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-neutral-500">Last status</p>
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.last_status" /></p>
                     <p className="mt-1 text-lg font-bold text-neutral-900 dark:text-neutral-50">
                       {statsQuery.data.lastRefreshStatus}
                     </p>

@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { Tag, EmptyState, ScreenLoading, ScreenError } from '@/components';
 
 export interface QueryResultProps {
@@ -28,7 +29,7 @@ export function QueryResult({
     return <ScreenError error={error ?? new Error('Unknown error')} onRetry={onRetry} compact />;
   }
   if (columns.length === 0 || rows.length === 0) {
-    return <EmptyState compact title="No rows" />;
+    return <EmptyState compact title={i18n.t('labels.no_rows')} />;
   }
   const shown = rows.slice(0, maxRows);
   return (

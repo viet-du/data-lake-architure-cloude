@@ -1,5 +1,6 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   useCrawlerJobsQuery,
   useCrawlerStatsQuery,
@@ -24,6 +25,7 @@ import { cn } from '@/theme';
 import type { ECrawlerStatus } from '@/types/entities';
 
 const STATUS_VARIANT: Readonly<Record<ECrawlerStatus, ETagVariant>> = {
+  unknown: 'neutral',
   running: 'info',
   paused: 'warning',
   idle: 'neutral',
@@ -31,7 +33,8 @@ const STATUS_VARIANT: Readonly<Record<ECrawlerStatus, ETagVariant>> = {
   failed: 'error',
 };
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined): string {
+  if (n === undefined) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
@@ -40,29 +43,29 @@ function formatNumber(n: number): string {
 function StatsBar() {
   const statsQuery = useCrawlerStatsQuery();
   const stats = statsQuery.data;
-  if (statsQuery.isLoading || stats === null || stats === undefined) {
-    return <ScreenLoading rows={1} />;
-  }
+  if (statsQuery.isLoading) return <ScreenLoading rows={1} />;
+  if (statsQuery.isError) return <ScreenError error={statsQuery.error} onRetry={() => void statsQuery.refetch()} compact />;
+  if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Jobs</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.jobs" /></p>
         <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
           {stats.totalJobs}
         </p>
       </div>
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-sky-500">Running</p>
+        <p className="text-[10px] uppercase tracking-wider text-sky-500"><Trans i18nKey="labels.running" /></p>
         <p className="mt-1 text-xl font-bold text-sky-600 dark:text-sky-400">{stats.runningJobs}</p>
       </div>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Records 24h</p>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.records_all_time" /></p>
         <p className="mt-1 text-base font-bold text-emerald-600 dark:text-emerald-400">
           {formatNumber(stats.totalRecords24h)}
         </p>
       </div>
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-red-500">Failed 24h</p>
+        <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.failed_all_time" /></p>
         <p className="mt-1 text-base font-bold text-red-600 dark:text-red-400">
           {formatNumber(stats.failedRecords24h)}
         </p>
@@ -94,7 +97,7 @@ function JobsList({
   const items = jobsQuery.data ?? [];
   const filtered = search === '' ? items : items.filter((j) => j.name.toLowerCase().includes(search.toLowerCase()));
   if (filtered.length === 0) {
-    return <EmptyState compact title="No crawler jobs" />;
+    return <EmptyState compact title={i18n.t('labels.no_crawler_jobs')} />;
   }
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -122,7 +125,7 @@ function JobsSummaryTable() {
   }
   const items = jobsQuery.data ?? [];
   if (items.length === 0) {
-    return <EmptyState compact title="No crawler jobs" />;
+    return <EmptyState compact title={i18n.t('labels.no_crawler_jobs')} />;
   }
   return (
     <div className="flex flex-col gap-2">

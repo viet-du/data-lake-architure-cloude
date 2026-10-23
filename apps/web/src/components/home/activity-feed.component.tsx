@@ -16,7 +16,7 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
           {t('home.activity')}
         </h3>
         <span className="text-[10px] text-black dark:text-white">
-          {items.length} {items.length === 1 ? 'event' : 'events'}
+          {t('home.events', { count: items.length })}
         </span>
       </div>
       <div className="flex-1 overflow-y-auto">

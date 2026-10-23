@@ -16,7 +16,8 @@ function formatNumber(n: number): string {
   return String(n);
 }
 
-function formatBytes(n: number): string {
+function formatBytes(n: number | null): string {
+  if (n === null) return '—';
   if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`;
   if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(2)} KB`;
@@ -38,10 +39,10 @@ export function GoldTableCard({ table, onClick, onRefresh, refreshing }: GoldTab
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <Tag size="sm" variant="warning">
-            {table.aggregateType ?? 'group_by'}
+            {table.aggregateType ?? table.format}
           </Tag>
           <Tag size="sm" variant="neutral">
-            {table.sourceLayer}
+            {table.sourceLayer ?? table.database}
           </Tag>
         </div>
         <span
@@ -54,10 +55,10 @@ export function GoldTableCard({ table, onClick, onRefresh, refreshing }: GoldTab
       <h3 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">
         {table.name}
       </h3>
-      <p className="truncate text-[10px] text-neutral-500">
-        from {table.sourceTables.slice(0, 2).join(', ')}
-        {table.sourceTables.length > 2 ? ` +${table.sourceTables.length - 2}` : ''}
-      </p>
+      {table.sourceTables?.length ? <p className="truncate text-[10px] text-neutral-500">
+        from {(table.sourceTables ?? []).slice(0, 2).join(', ')}
+        {(table.sourceTables ?? []).length > 2 ? ` +${(table.sourceTables ?? []).length - 2}` : ''}
+      </p> : null}
       <div className="mt-1 flex items-center justify-between border-t border-white/5 pt-2 text-[10px] text-neutral-500">
         <span>
           {formatNumber(table.rowCount)} rows · {formatBytes(table.sizeBytes)}

@@ -7,7 +7,7 @@ export interface ApiError {
 }
 
 export interface ApiResponse<T> {
-  success: boolean;
+  success?: boolean;
   data: T;
   error?: ApiError;
   meta?: {
@@ -28,7 +28,7 @@ export interface DateRange {
   to: string;
 }
 
-export type EHealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+export type EHealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
 export interface HealthCheck {
   name: string;

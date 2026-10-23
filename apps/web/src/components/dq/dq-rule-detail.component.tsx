@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -25,6 +25,7 @@ export interface DQRuleDetailProps {
 type DetailTab = 'overview' | 'expression' | 'runs';
 
 const STATUS_VARIANT: Readonly<Record<EDQStatus, 'success' | 'error' | 'warning'>> = {
+  unknown: 'warning',
   pass: 'success',
   fail: 'error',
   warning: 'warning',
@@ -128,9 +129,9 @@ export function DQRuleDetail({ ruleId, onClose }: DQRuleDetailProps) {
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="expression">Expression</TabsTrigger>
-              <TabsTrigger value="runs">Runs</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="expression"><Trans i18nKey="labels.expression" /></TabsTrigger>
+              <TabsTrigger value="runs"><Trans i18nKey="labels.runs" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">

@@ -1,3 +1,4 @@
+import { REDIS_KEY_PREFIX } from '@/config';
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
 import { SilverJobRepository } from '../repositories';
@@ -64,7 +65,7 @@ export const SilverTransformWorker = {
           throw err;
         }
       },
-      { connection: getQueueConnection(), concurrency: 2 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 2 },
     );
   },
 };

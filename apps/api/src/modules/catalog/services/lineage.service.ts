@@ -1,3 +1,4 @@
+import { remoteReadOnly } from '@/lib/infra/databricks/client';
 import { NotFoundError } from '@/errors';
 import { TableRepository } from '../repositories';
 import { TableService } from './table.service';
@@ -18,6 +19,7 @@ function docToNode(doc: Record<string, unknown> | null): LineageNode | null {
 
 export const LineageService = {
   async getLineage(tableId: string): Promise<LineageGraph> {
+    remoteReadOnly();
     const doc = await TableRepository.findById(tableId);
     if (!doc) throw new NotFoundError('Table', tableId);
 
@@ -36,6 +38,7 @@ export const LineageService = {
   },
 
   async setUpstream(tableId: string, upstreamTableIds: string[]): Promise<void> {
+    remoteReadOnly();
     for (const upstreamId of upstreamTableIds) {
       const upstreamDoc = await TableRepository.findById(upstreamId);
       if (!upstreamDoc) throw new NotFoundError('Upstream table', upstreamId);

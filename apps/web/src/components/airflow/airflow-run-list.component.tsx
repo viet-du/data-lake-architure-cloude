@@ -12,7 +12,7 @@ export interface AirflowRunListProps {
   selectedRunId?: string | undefined;
 }
 
-const STATE_VARIANT: Readonly<Record<EDagState, ETagVariant>> = {
+const STATE_VARIANT: Readonly<Partial<Record<EDagState, ETagVariant>>> = {
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -70,7 +70,7 @@ export function AirflowRunList({
               <span className="text-[10px] text-neutral-500">
                 {formatDuration(run.durationMs)}
               </span>
-              <Tag size="sm" variant={STATE_VARIANT[run.state]}>
+              <Tag size="sm" variant={STATE_VARIANT[run.state] ?? 'neutral'}>
                 {run.state}
               </Tag>
             </div>

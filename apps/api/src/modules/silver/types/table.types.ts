@@ -10,22 +10,22 @@ export interface SilverTable {
   columns: ColumnMeta[];
   partitions: PartitionMeta[];
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
-  lastModified: string;
-  deltaHistoryVersion: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
+  lastModified: string | null;
+  deltaHistoryVersion: number | null;
   deltaHistory: SilverHistoryEntry[];
 }
 
 export interface SilverStats {
   table: string;
   rowCount: number;
-  fileCount: number;
-  sizeBytes: number;
+  fileCount: number | null;
+  sizeBytes: number | null;
   columnCount: number;
   partitionCount: number;
-  lastModified: string;
-  deltaHistoryVersion: number;
+  lastModified: string | null;
+  deltaHistoryVersion: number | null;
 }
 
 export interface SilverHistoryEntry {
@@ -40,8 +40,8 @@ export interface SilverHistoryEntry {
 export interface SilverPartition {
   partition: string;
   rowCount: number;
-  sizeBytes: number;
-  lastModified: string;
+  sizeBytes: number | null;
+  lastModified: string | null;
 }
 
 export interface TimeTravelData {

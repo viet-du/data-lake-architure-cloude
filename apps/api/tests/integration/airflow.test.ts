@@ -39,3 +39,9 @@ describe('airflow — Zod schemas', () => {
     expect(ok.state).toBe('success');
   });
 });
+describe('task log defaults', () => {
+  it('accepts the default map index for non-mapped tasks', async () => {
+    const { TaskLogQuerySchema } = await import('@/modules/airflow/schemas');
+    expect(TaskLogQuerySchema.parse({}).mapIndex).toBe(-1);
+  });
+});

@@ -4,7 +4,7 @@ const KAFKA_CLIENT_ID = 'lakehouse-api';
 const KAFKA_DEFAULT_BROKERS = ['localhost:9092'];
 
 function getBrokers(): string[] {
-  const raw = process.env.KAFKA_BOOTSTRAP_SERVERS ?? process.env.KAFKA_BROKERS ?? KAFKA_DEFAULT_BROKERS.join(',');
+  const raw = process.env.KAFKA_BOOTSTRAP ?? process.env.KAFKA_BOOTSTRAP_SERVERS ?? process.env.KAFKA_BROKERS ?? KAFKA_DEFAULT_BROKERS.join(',');
   return raw.split(',').map((b) => b.trim()).filter(Boolean);
 }
 

@@ -1,3 +1,4 @@
+import { remoteReadOnly } from '@/lib/infra/databricks/client';
 import { GoldJobRepository } from '../repositories/gold-job.repository';
 import { GoldQueue } from '../queues/gold.queue';
 import { GoldJobService } from './job.service';
@@ -24,6 +25,7 @@ export const GoldAggregateService = {
     params: TTableParams,
     body: TAggregateBody,
   ): Promise<GoldJob> {
+    remoteReadOnly();
     const parsed = parseDatabaseTable(params.table);
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
     const sources = body.sourceTables ?? [parsed.name];
@@ -52,6 +54,7 @@ export const GoldAggregateService = {
   },
 
   async aggregateAll(body: TAggregateAllBody): Promise<{ total: number; items: GoldJob[] }> {
+    remoteReadOnly();
     const tables = await GoldDuckDBRepository.listTables({});
     const sliced = tables.slice(0, 200);
     const items: GoldJob[] = [];
@@ -87,6 +90,7 @@ export const GoldAggregateService = {
     params: TTableParams,
     body: TRefreshBody,
   ): Promise<GoldJob> {
+    remoteReadOnly();
     const parsed = parseDatabaseTable(params.table);
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
     const jobId = GoldJobService.generateJobId();

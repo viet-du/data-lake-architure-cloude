@@ -5,7 +5,7 @@ export const TableParamsSchema = z.object({
     .string()
     .min(1)
     .max(120)
-    .regex(/^[a-z0-9_]+$/, 'table name must be lowercase alphanumeric + underscore'),
+    .regex(/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*){0,2}$/, 'Use table, database.table or catalog.schema.table identifiers'),
 });
 
 export type TTableParams = z.infer<typeof TableParamsSchema>;

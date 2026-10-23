@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import { Tag, type ETagVariant } from '@/components';
 import { cn } from '@/theme';
 import type { AirflowDAG, EDagState } from '@/types/entities';
@@ -11,12 +12,13 @@ export interface AirflowDAGCardProps {
 }
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, ETagVariant>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
 };
 
-const STATE_VARIANT: Readonly<Record<EDagState, ETagVariant>> = {
+const STATE_VARIANT: Readonly<Partial<Record<EDagState, ETagVariant>>> = {
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -56,7 +58,7 @@ export function AirflowDAGCard({
           </Tag>
         </div>
         {dag.lastRunState !== undefined ? (
-          <Tag size="sm" variant={STATE_VARIANT[dag.lastRunState]}>
+          <Tag size="sm" variant={STATE_VARIANT[dag.lastRunState] ?? 'neutral'}>
             {dag.lastRunState}
           </Tag>
         ) : null}
@@ -69,23 +71,23 @@ export function AirflowDAGCard({
       ) : null}
       <div className="grid grid-cols-2 gap-1 text-[10px] text-neutral-500">
         <div>
-          <p>Schedule</p>
+          <p><Trans i18nKey="labels.schedule" /></p>
           <p className="font-mono text-xs text-neutral-300">
             {dag.scheduleInterval ?? '—'}
           </p>
         </div>
         <div>
-          <p>Tags</p>
+          <p><Trans i18nKey="labels.tags" /></p>
           <p className="truncate font-mono text-xs text-neutral-300">
             {dag.tags.length === 0 ? '—' : dag.tags.join(', ')}
           </p>
         </div>
         <div>
-          <p>Last run</p>
+          <p><Trans i18nKey="labels.last_run" /></p>
           <p className="font-mono text-[10px] text-neutral-300">{formatTime(dag.lastRunAt)}</p>
         </div>
         <div>
-          <p>Next run</p>
+          <p><Trans i18nKey="labels.next_run" /></p>
           <p className="font-mono text-[10px] text-neutral-300">{formatTime(dag.nextRunAt)}</p>
         </div>
       </div>

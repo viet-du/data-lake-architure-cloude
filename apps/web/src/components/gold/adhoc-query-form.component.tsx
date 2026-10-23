@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -40,7 +41,8 @@ export function AdHocQueryForm({ open, onClose }: AdHocQueryFormProps) {
         ? { sql: form.values.sql }
         : { sql: form.values.sql, limit: form.values.limit };
 
-  const query = useAdHocQuery(queryParams);
+  const [submitted, setSubmitted] = useState<{ sql: string; limit?: number }>({ sql: '' });
+  const query = useAdHocQuery(submitted, { enabled: open && enabled && submitted.sql.length > 0 });
 
   function handleSubmit(): void {
     if (!form.validate()) return;
@@ -48,12 +50,15 @@ export function AdHocQueryForm({ open, onClose }: AdHocQueryFormProps) {
       toast.error(t('adhoc.errors.sqlRequired'));
       return;
     }
+    setSubmitted(queryParams);
     setEnabled(true);
+    if (submitted.sql === queryParams.sql && submitted.limit === queryParams.limit) void query.refetch();
   }
 
   function handleClose(): void {
     form.reset();
     setEnabled(false);
+    setSubmitted({ sql: '' });
     onClose();
   }
 
@@ -95,7 +100,7 @@ export function AdHocQueryForm({ open, onClose }: AdHocQueryFormProps) {
             className="font-mono"
           />
         </Field>
-        <Field label="Row limit">
+        <Field label={i18n.t('labels.row_limit')}>
           <NumberField
             value={form.values.limit}
             onChange={(v) => form.setField('limit', v)}

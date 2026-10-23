@@ -6,34 +6,34 @@ export interface GoldTable {
   name: string;
   database: string;
   format: 'delta' | 'parquet';
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
-  sourceLayer: 'silver' | 'bronze';
-  sourceTables: ReadonlyArray<string>;
+  sourceLayer?: 'silver' | 'bronze';
+  sourceTables?: ReadonlyArray<string>;
   aggregateType?: 'sum' | 'avg' | 'count' | 'min' | 'max' | 'group_by';
   refreshSchedule?: string;
   lastRefreshedAt?: string;
   status: EHealthStatus;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt: string | null;
 }
 
 export interface GoldTableStats {
   name: string;
-  sizeBytes: number;
+  sizeBytes: number | null;
   rowCount: number;
-  fileCount: number;
+  fileCount: number | null;
   refreshDurationMs?: number;
-  lastRefreshStatus: EGoldJobStatus;
+  lastRefreshStatus?: EGoldJobStatus;
   consumerLagSeconds?: number;
 }
 
 export interface GoldTableHistory {
   version: number;
   timestamp: string;
-  operation: 'WRITE' | 'APPEND' | 'REFRESH' | 'OPTIMIZE';
-  recordsAffected: number;
-  sourceLayer: 'silver' | 'bronze';
+  operation: string;
+  recordsAffected?: number;
+  sourceLayer?: 'silver' | 'bronze';
   userName?: string;
 }
 
@@ -41,7 +41,7 @@ export interface GoldTableSample {
   columns: ReadonlyArray<string>;
   rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
   totalRows: number;
-  sampledAt: string;
+  sampledAt?: string;
 }
 
 export interface GoldAggregateResult {
@@ -70,7 +70,7 @@ export interface GoldJobsStats {
   success: number;
   failed: number;
   totalRecordsProcessed: number;
-  avgRefreshDurationMs: number;
+  avgRefreshDurationMs?: number;
 }
 
 export interface GoldQueryResult {
@@ -79,5 +79,5 @@ export interface GoldQueryResult {
   rows: ReadonlyArray<Readonly<Record<string, unknown>>>;
   totalRows: number;
   executionMs: number;
-  ranAt: string;
+  ranAt?: string;
 }

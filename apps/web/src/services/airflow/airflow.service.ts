@@ -1,3 +1,5 @@
+import { decodeTask, decodeLogs, decodeGantt } from './airflow.adapter';
+import { decodeDAG, decodeDAGRun, decodeAirflowStats, decodeAirflowItems } from './airflow.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
 import type { ApiResponse } from '@/types/commons';
@@ -29,20 +31,20 @@ export const airflowService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<AirflowDAG>>>(
       ENDPOINTS.airflow.dags,
     );
-    return res.data.data;
+    return decodeAirflowItems(res.data.data).map(decodeDAG);
   },
 
   getDAG: async (dagId: string): Promise<AirflowDAG> => {
     const res = await apiClient.get<ApiResponse<AirflowDAG>>(
       ENDPOINTS.airflow.dag(dagId),
     );
-    return res.data.data;
+    return decodeDAG(res.data.data);
   },
 
   triggerDAG: async (dagId: string, payload: TriggerDAGPayload = {}): Promise<AirflowTriggerResult> => {
     const res = await apiClient.post<ApiResponse<AirflowTriggerResult>>(
       ENDPOINTS.airflow.dagTrigger(dagId),
-      payload,
+      { conf: payload.conf ?? {}, logicalDate: payload.executionDate },
     );
     return res.data.data;
   },
@@ -61,16 +63,16 @@ export const airflowService = {
   ): Promise<ReadonlyArray<AirflowDAGRun>> => {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<AirflowDAGRun>>>(
       ENDPOINTS.airflow.dagRuns(dagId),
-      { params: { ...params } },
+      { params: { limit: params.limit, offset: params.offset, state: params.state, startDateGte: params.startDate, startDateLte: params.endDate } },
     );
-    return res.data.data;
+    return decodeAirflowItems(res.data.data).map(decodeDAGRun);
   },
 
   getDAGRun: async (dagId: string, runId: string): Promise<AirflowDAGRun> => {
     const res = await apiClient.get<ApiResponse<AirflowDAGRun>>(
       ENDPOINTS.airflow.dagRun(dagId, runId),
     );
-    return res.data.data;
+    return decodeDAGRun(res.data.data);
   },
 
   deleteDAGRun: async (dagId: string, runId: string): Promise<void> => {
@@ -86,7 +88,7 @@ export const airflowService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<AirflowTaskInstance>>>(
       ENDPOINTS.airflow.dagRunTasks(dagId, runId),
     );
-    return res.data.data;
+    return decodeAirflowItems(res.data.data).map(decodeTask);
   },
 
   getTaskLogs: async (
@@ -99,7 +101,7 @@ export const airflowService = {
       ENDPOINTS.airflow.dagRunTaskLogs(dagId, runId, taskId),
       { params: { tryNumber } },
     );
-    return res.data.data;
+    return decodeLogs(res.data.data);
   },
 
   getDAGRunGantt: async (
@@ -109,7 +111,7 @@ export const airflowService = {
     const res = await apiClient.get<ApiResponse<ReadonlyArray<AirflowGanttEntry>>>(
       ENDPOINTS.airflow.dagRunGantt(dagId, runId),
     );
-    return res.data.data;
+    return decodeGantt(res.data.data);
   },
 
   getHealth: async (): Promise<unknown> => {
@@ -119,6 +121,6 @@ export const airflowService = {
 
   getStats: async (): Promise<AirflowStats> => {
     const res = await apiClient.get<ApiResponse<AirflowStats>>(ENDPOINTS.airflow.stats);
-    return res.data.data;
+    return decodeAirflowStats(res.data.data);
   },
 };

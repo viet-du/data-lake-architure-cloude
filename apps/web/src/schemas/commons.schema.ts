@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const healthStatusSchema = z.enum(['healthy', 'degraded', 'unhealthy']);
+export const healthStatusSchema = z.enum(['healthy', 'degraded', 'unhealthy', 'unknown']);
 
 export const dateRangeSchema = z.object({
   from: z.string(),
@@ -21,7 +21,7 @@ export const apiErrorSchema = z.object({
 
 export const apiResponseSchema = <T extends z.ZodTypeAny>(data: T) =>
   z.object({
-    success: z.boolean(),
+    success: z.boolean().optional(),
     data,
     error: apiErrorSchema.optional(),
     meta: z

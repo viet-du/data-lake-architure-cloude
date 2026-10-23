@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   environment: (import.meta.env.VITE_ENV ?? 'development') as 'development' | 'staging' | 'production',
   enableMockData: import.meta.env.VITE_ENABLE_MOCK === 'true',
   language: {

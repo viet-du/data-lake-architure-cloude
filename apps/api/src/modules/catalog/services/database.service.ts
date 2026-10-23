@@ -1,3 +1,5 @@
+import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
+import { DatabricksRepository } from '../repositories/databricks.repository';
 import { ConflictError, NotFoundError } from '@/errors';
 import { DatabaseRepository } from '../repositories';
 import type { DatabaseMeta } from '../types';
@@ -23,17 +25,24 @@ function toMeta(input: {
 
 export const DatabaseService = {
   async list(): Promise<DatabaseMeta[]> {
+    if (usesDatabricks()) return DatabricksRepository.databases();
     const docs = await DatabaseRepository.list();
     return docs.map((d) => toMeta(d));
   },
 
   async getOrFail(database: string): Promise<DatabaseMeta> {
+    if (usesDatabricks()) {
+      const databaseMeta = (await DatabricksRepository.databases()).find((item) => item.database === database);
+      if (!databaseMeta) throw new NotFoundError('Database', database);
+      return databaseMeta;
+    }
     const doc = await DatabaseRepository.findByName(database);
     if (!doc) throw new NotFoundError('Database', database);
     return toMeta(doc);
   },
 
   async create(input: TCreateDatabase): Promise<DatabaseMeta> {
+    remoteReadOnly();
     const exists = await DatabaseRepository.findByName(input.database);
     if (exists) throw new ConflictError(`Database '${input.database}' already exists`);
     const doc = await DatabaseRepository.create({
@@ -45,6 +54,7 @@ export const DatabaseService = {
   },
 
   async delete(database: string): Promise<void> {
+    remoteReadOnly();
     const doc = await DatabaseRepository.findByName(database);
     if (!doc) throw new NotFoundError('Database', database);
     await DatabaseRepository.delete(database);

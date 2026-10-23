@@ -1,122 +1,33 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Modal,
-  Field,
-  Textarea,
-  SelectField,
-  Button,
-} from '@/components';
-import { useFormZod, useToast } from '@/hooks';
-import { silverTransformPayloadSchema } from '@/schemas';
+import { z } from 'zod';
+import { Modal, Field, Input, Select, Button, ScreenError } from '@/components';
 import { useTransformMutation } from '@/services/queries';
+import { useToast } from '@/hooks';
 
-type Values = {
-  sourceTable: string;
-  transformRule: string;
-  mode: 'full' | 'incremental';
-};
-
-const INITIAL: Values = {
-  sourceTable: '',
-  transformRule: '',
-  mode: 'incremental',
-};
-
-export interface TransformFormProps {
-  open: boolean;
-  table: string;
-  onClose: () => void;
-}
-
-export function TransformForm({ open, table, onClose }: TransformFormProps) {
+export interface TransformFormProps { open: boolean; table: string; onClose: () => void; onResult?: () => void }
+export function TransformForm({ open, table, onClose, onResult }: TransformFormProps) {
   const { t } = useTranslation();
   const toast = useToast();
-  const form = useFormZod<Values>(silverTransformPayloadSchema, INITIAL);
-  const mut = useTransformMutation();
-
-  async function handleSubmit(): Promise<void> {
-    if (!form.validate()) return;
+  const mutation = useTransformMutation();
+  const [source, setSource] = useState('');
+  const [kind, setKind] = useState('full');
+  const [error, setError] = useState<Error | null>(null);
+  async function submit() {
+    setError(null);
     try {
-      await mut.mutateAsync({
-        table,
-        payload: {
-          sourceTable: form.values.sourceTable,
-          transformRule: form.values.transformRule,
-          mode: form.values.mode,
-        },
-      });
+      const mode = z.enum(['full','incremental','refresh']).parse(kind);
+      const sources = z.array(z.string().min(1).max(120).regex(/^[a-z0-9_]+$/)).min(1).max(1).parse(source.split(',').map((s) => s.trim()));
+      await mutation.mutateAsync({ table, payload: { kind: mode, sourceTable: sources[0] } });
       toast.success(t('transform.success'));
-      handleClose();
-    } catch (e) {
-      toast.error(t('transform.error.submit'), e instanceof Error ? e.message : '');
-    }
+      onResult?.(); onClose();
+    } catch (e) { setError(e instanceof Error ? e : new Error(String(e))); }
   }
-
-  function handleClose(): void {
-    form.reset();
-    onClose();
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={handleClose}
-      title={t('transform.title')}
-      description={t('transform.description', { table })}
-      size="md"
-      footer={
-        <>
-          <Button variant="ghost" size="sm" onClick={handleClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void handleSubmit()}
-            disabled={mut.isPending}
-          >
-            {mut.isPending ? t('transform.submitting') : t('transform.submit')}
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-3">
-        <Field
-          label="Source table"
-          required
-          error={form.errors.sourceTable ?? undefined}
-        >
-          <Textarea
-            value={form.values.sourceTable}
-            onChange={(e) => form.setField('sourceTable', e.target.value)}
-            placeholder="bronze.events"
-          />
-        </Field>
-        <Field
-          label="Transform rule"
-          required
-          error={form.errors.transformRule ?? undefined}
-          hint={t('transform.hint')}
-        >
-          <Textarea
-            value={form.values.transformRule}
-            onChange={(e) => form.setField('transformRule', e.target.value)}
-            rows={6}
-            placeholder='SELECT id, name FROM {{source}} WHERE status = "active"'
-            className="font-mono"
-          />
-        </Field>
-        <Field label="Mode" required>
-          <SelectField
-            value={form.values.mode}
-            onChange={(v) => form.setField('mode', v as Values['mode'])}
-            options={[
-              { value: 'incremental', label: 'incremental' },
-              { value: 'full', label: 'full' },
-            ]}
-          />
-        </Field>
-      </div>
-    </Modal>
-  );
+  return <Modal open={open} onClose={onClose} title={t('transform.title')} description={t('transform.description', { table })} footer={<><Button onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" disabled={mutation.isPending} onClick={() => void submit()}>{t('transform.submit')}</Button></>}>
+    <div className="flex flex-col gap-3">
+      <Field label={t('form.sourceTables')}><Input value={source} onChange={(e) => setSource(e.target.value)} /></Field>
+      <Field label={t('form.mode')}><Select value={kind} onChange={(e) => setKind(e.target.value)} options={[{value:'full',label:t('form.full')},{value:'incremental',label:t('form.incremental')},{value:'refresh',label:t('common.refresh')}]} /></Field>
+      {error ? <ScreenError error={error} compact /> : null}
+    </div>
+  </Modal>;
 }

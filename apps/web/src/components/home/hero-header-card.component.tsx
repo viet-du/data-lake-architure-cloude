@@ -6,12 +6,13 @@ import { cn } from '@/theme';
 export interface HeroHeaderCardProps {
   appName: string;
   tagline: string;
-  systemStatus: 'healthy' | 'degraded' | 'unhealthy';
-  uptimeSeconds: number;
+  systemStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+  uptimeSeconds: number | null;
   iconName?: EIconName;
 }
 
-const STATUS_MAP: Readonly<Record<'healthy' | 'degraded' | 'unhealthy', { variant: 'success' | 'warning' | 'error'; labelKey: string }>> = {
+const STATUS_MAP: Readonly<Record<'healthy' | 'degraded' | 'unhealthy' | 'unknown', { variant: 'success' | 'warning' | 'error'; labelKey: string }>> = {
+  unknown: { variant: 'warning', labelKey: 'health.unknown' },
   healthy: { variant: 'success', labelKey: 'home.live' },
   degraded: { variant: 'warning', labelKey: 'health.degraded' },
   unhealthy: { variant: 'error', labelKey: 'health.unhealthy' },
@@ -51,7 +52,7 @@ export function HeroHeaderCard({ appName, tagline, systemStatus, uptimeSeconds, 
         )}
       />
 
-      <div className="relative flex items-start justify-between gap-4">
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -79,13 +80,13 @@ export function HeroHeaderCard({ appName, tagline, systemStatus, uptimeSeconds, 
         <h2 className="text-4xl font-semibold leading-tight text-black dark:text-white md:text-5xl">
           {tagline}
         </h2>
-        <div className="mt-4 flex items-center gap-4 text-sm text-black dark:text-white">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-black dark:text-white">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>{t('home.system_status')}: {t(`health.${systemStatus}`)}</span>
           </div>
           <span className="h-1 w-1 rounded-full bg-neutral-400" />
-          <span>{t('home.uptime')}: {formatUptime(uptimeSeconds)}</span>
+          <span>{t('home.uptime')}: {uptimeSeconds === null ? '—' : formatUptime(uptimeSeconds)}</span>
         </div>
       </div>
     </GlassCard>

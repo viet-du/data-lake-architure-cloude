@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Drawer,
   TabsRoot,
@@ -35,7 +35,7 @@ export interface AirflowDAGDetailProps {
 
 type DetailTab = 'overview' | 'runs' | 'tasks' | 'gantt';
 
-const STATE_VARIANT: Readonly<Record<EDagState, 'success' | 'error' | 'info' | 'warning'>> = {
+const STATE_VARIANT: Readonly<Partial<Record<EDagState, 'success' | 'error' | 'info' | 'warning'>>> = {
   success: 'success',
   failed: 'error',
   running: 'info',
@@ -43,6 +43,7 @@ const STATE_VARIANT: Readonly<Record<EDagState, 'success' | 'error' | 'info' | '
 };
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, 'success' | 'warning' | 'error'>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
@@ -141,7 +142,7 @@ export function AirflowDAGDetail({ dagId, onClose }: AirflowDAGDetailProps) {
               {dagQuery.data.status}
             </Tag>
             {dagQuery.data.lastRunState !== undefined ? (
-              <Tag size="sm" variant={STATE_VARIANT[dagQuery.data.lastRunState]}>
+              <Tag size="sm" variant={STATE_VARIANT[dagQuery.data.lastRunState] ?? 'neutral'}>
                 last: {dagQuery.data.lastRunState}
               </Tag>
             ) : null}
@@ -157,36 +158,36 @@ export function AirflowDAGDetail({ dagId, onClose }: AirflowDAGDetailProps) {
 
           <TabsRoot value={tab} onValueChange={(v) => setTab(v as DetailTab)}>
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="runs">Runs</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="gantt">Gantt</TabsTrigger>
+              <TabsTrigger value="overview"><Trans i18nKey="labels.overview" /></TabsTrigger>
+              <TabsTrigger value="runs"><Trans i18nKey="labels.runs" /></TabsTrigger>
+              <TabsTrigger value="tasks"><Trans i18nKey="labels.tasks" /></TabsTrigger>
+              <TabsTrigger value="gantt"><Trans i18nKey="labels.gantt" /></TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Tags</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.tags" /></p>
                   <p className="mt-1 text-base font-bold text-neutral-900 dark:text-neutral-50">
                     {dagQuery.data.tags.length}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Last run</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.last_run" /></p>
                   <p className="mt-1 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                     {formatTime(dagQuery.data.lastRunAt)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Next run</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.next_run" /></p>
                   <p className="mt-1 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                     {formatTime(dagQuery.data.nextRunAt)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-neutral-500">Owners</p>
+                  <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.owners" /></p>
                   <p className="mt-1 text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    {Object.keys(dagQuery.data.ownerLinks).length}
+                    {Object.keys(dagQuery.data.ownerLinks ?? {}).length}
                   </p>
                 </div>
               </div>

@@ -9,7 +9,7 @@ import type { ColumnMeta } from '@/modules/catalog/types';
 import type { TTableParams, TTableListQuery, TSampleQuery } from '../schemas';
 
 export const GoldTableController = {
-  async list(query: TTableListQuery): Promise<{ table: string; database: string; name: string; kind: 'fact' | 'dimension' | 'metric' }[]> {
+  async list(query: TTableListQuery): Promise<{ table: string; database: string; name: string; kind: 'fact' | 'dimension' | 'metric' | null }[]> {
     return GoldTableService.list(query);
   },
 

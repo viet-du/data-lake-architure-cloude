@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { GlassCard, Icon, Tag } from '@/components';
+import { GlassCard, Icon } from '@/components';
 import { PIPELINE_NODES } from './schematic.constants';
 import type { EPipelineNodeKind, PipelineNode } from './schematic.types';
 
@@ -17,7 +17,7 @@ export function StorageInspector({ activeKind, onClose }: StorageInspectorProps)
   return (
     <GlassCard
       elevation={3}
-      className="pointer-events-auto absolute right-4 top-4 w-72 border border-white/10 p-4 backdrop-blur-2xl"
+      className="pointer-events-auto absolute right-4 top-4 w-[min(18rem,calc(100%-2rem))] border border-white/10 p-4 backdrop-blur-2xl"
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -41,23 +41,8 @@ export function StorageInspector({ activeKind, onClose }: StorageInspectorProps)
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-white/5 bg-white/5 p-2">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-500">{node.recordsLabel}</p>
-          <p className="mt-0.5 text-lg font-bold text-neutral-50">{node.recordsValue}</p>
-        </div>
-        <div className="rounded-lg border border-white/5 bg-white/5 p-2">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-500">{node.latencyLabel}</p>
-          <p className="mt-0.5 text-lg font-bold text-neutral-50">{node.latencyValue}</p>
-        </div>
-      </div>
+      <p className="mt-3 text-xs text-neutral-300">{t('schematic.static')}</p>
 
-      <div className="mt-3 flex items-center gap-2">
-        <Tag size="sm" variant="success" dot>
-          online
-        </Tag>
-        <span className="text-[10px] text-neutral-500">stream healthy</span>
-      </div>
     </GlassCard>
   );
 }

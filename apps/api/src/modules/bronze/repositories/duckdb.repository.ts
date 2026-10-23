@@ -24,7 +24,7 @@ export const BronzeDuckDBRepository = {
     const conn = await instance.connect();
     const res = await conn.runAndReadAll(`
       SELECT file
-      FROM glob('s3://${BRONZE_BUCKET}/${BRONZE_LAYER}/*/_delta_log/00000000000000000000.json')
+      FROM glob('s3://${BRONZE_BUCKET}/${BRONZE_LAYER}/*/*/_delta_log/00000000000000000000.json')
       ORDER BY file
     `);
     const rows = res.getRowObjects() as Array<{ file: string }>;

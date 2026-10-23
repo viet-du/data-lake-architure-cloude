@@ -1,3 +1,4 @@
+import { remoteReadOnly } from '@/lib/infra/databricks/client';
 import { SilverJobRepository } from '../repositories/silver-job.repository';
 import { SilverQueue } from '../queues/silver.queue';
 import { SilverJobService } from './job.service';
@@ -19,6 +20,7 @@ export const SilverTransformService = {
     params: TTableParams,
     body: TTransformBody,
   ): Promise<SilverJob> {
+    remoteReadOnly();
     const parsed = parseDatabaseTable(params.table);
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
     const jobId = SilverJobService.generateJobId();
@@ -46,6 +48,7 @@ export const SilverTransformService = {
   },
 
   async transformAll(body: TTransformAllBody): Promise<{ total: number; items: SilverJob[] }> {
+    remoteReadOnly();
     const tables = await SilverDuckDBRepository.listTables({});
     const sliced = tables.slice(0, 200);
     const items: SilverJob[] = [];
@@ -79,6 +82,7 @@ export const SilverTransformService = {
     params: TTableParams,
     body: TRefreshBody,
   ): Promise<SilverJob> {
+    remoteReadOnly();
     const parsed = parseDatabaseTable(params.table);
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
     const jobId = SilverJobService.generateJobId();

@@ -1,3 +1,5 @@
+import { TableService } from '../services/table.service';
+import { usesDatabricks } from '@/lib/infra/databricks/client';
 import { DatabaseService } from '../services/database.service';
 import { TableRepository } from '../repositories';
 import type { DatabaseMeta, TableMeta } from '../types';
@@ -22,6 +24,7 @@ export const DatabaseController = {
 
   async listTables(params: TDatabaseParams): Promise<TableMeta[]> {
     await DatabaseService.getOrFail(params.db);
+    if (usesDatabricks()) return TableService.list({ database: params.db, limit: 1000, offset: 0 });
     const docs = await TableRepository.listByDatabase(params.db);
     return docs
       .map((d) => {

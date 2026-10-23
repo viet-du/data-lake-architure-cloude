@@ -1,3 +1,4 @@
+import { Trans } from 'react-i18next';
 import { Tag, type ETagVariant } from '@/components';
 import { cn } from '@/theme';
 import type { KafkaTopic } from '@/types/entities';
@@ -11,18 +12,21 @@ export interface KafkaTopicCardProps {
 }
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, ETagVariant>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
 };
 
-function formatNumber(n: number): string {
+function formatNumber(n: number | undefined | null): string {
+  if (n == null) return '—';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
-function formatRetention(ms: number): string {
+function formatRetention(ms: number | null): string {
+  if (ms === null) return '—';
   if (ms >= 86_400_000) return `${Math.round(ms / 86_400_000)}d`;
   if (ms >= 3_600_000) return `${Math.round(ms / 3_600_000)}h`;
   if (ms >= 60_000) return `${Math.round(ms / 60_000)}m`;
@@ -60,17 +64,17 @@ export function KafkaTopicCard({ topic, onClick, onProduce, onDelete }: KafkaTop
       </h3>
       <div className="grid grid-cols-3 gap-1 text-[10px] text-neutral-500">
         <div>
-          <p>Rate</p>
+          <p><Trans i18nKey="labels.rate" /></p>
           <p className="font-mono text-xs text-neutral-300">
             {formatNumber(topic.messagesPerSec)}/s
           </p>
         </div>
         <div>
-          <p>Lag</p>
+          <p><Trans i18nKey="labels.lag" /></p>
           <p className="font-mono text-xs text-neutral-300">{formatNumber(topic.lag)}</p>
         </div>
         <div>
-          <p>Retain</p>
+          <p><Trans i18nKey="labels.retain" /></p>
           <p className="font-mono text-xs text-neutral-300">
             {formatRetention(topic.retentionMs)}
           </p>

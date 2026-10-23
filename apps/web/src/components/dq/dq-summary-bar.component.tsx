@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Tag, type ETagVariant } from '@/components';
 import type { EHealthStatus } from '@/types/commons';
 import type { DQSummary } from '@/types/entities';
@@ -12,6 +12,7 @@ export interface DQSummaryBarProps {
 }
 
 const HEALTH_VARIANT: Readonly<Record<EHealthStatus, ETagVariant>> = {
+  unknown: 'warning',
   healthy: 'success',
   degraded: 'warning',
   unhealthy: 'error',
@@ -31,7 +32,7 @@ export function DQSummaryBar({
   error,
   onRetry,
 }: DQSummaryBarProps) {
-  const { t: _t } = useTranslation();
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -45,10 +46,10 @@ export function DQSummaryBar({
   if (isError || summary === undefined) {
     return (
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-500">
-        {error?.message ?? 'error'}
+        {error?.message ?? t('common.error')}
         {onRetry !== undefined ? (
           <button type="button" onClick={onRetry} className="ml-2 underline">
-            retry
+            {t('common.retry')}
           </button>
         ) : null}
       </div>
@@ -57,25 +58,25 @@ export function DQSummaryBar({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Total rules</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500"><Trans i18nKey="labels.total_rules" /></p>
         <p className="mt-1 text-xl font-bold text-neutral-900 dark:text-neutral-50">
           {summary.totalRules}
         </p>
       </div>
       <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-emerald-500">Passing</p>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-500"><Trans i18nKey="labels.passing" /></p>
         <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">
           {summary.passing}
         </p>
       </div>
       <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-red-500">Failing</p>
+        <p className="text-[10px] uppercase tracking-wider text-red-500"><Trans i18nKey="labels.failing" /></p>
         <p className="mt-1 text-xl font-bold text-red-600 dark:text-red-400">{summary.failing}</p>
       </div>
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-amber-500">Warning</p>
+        <p className="text-[10px] uppercase tracking-wider text-amber-500"><Trans i18nKey="labels.warning" /></p>
         <p className="mt-1 text-xl font-bold text-amber-600 dark:text-amber-400">
-          {summary.warning}
+          {summary.warning ?? '—'}
         </p>
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-white/5 bg-white/5 p-3 sm:col-span-4">
@@ -85,10 +86,7 @@ export function DQSummaryBar({
         <span className="text-[10px] text-neutral-500">
           Last run: {formatTime(summary.lastRunAt)}
         </span>
-        <span className="text-[10px] text-neutral-500">
-          low {summary.bySeverity.low} · med {summary.bySeverity.medium} · high{' '}
-          {summary.bySeverity.high} · crit {summary.bySeverity.critical}
-        </span>
+
       </div>
     </div>
   );

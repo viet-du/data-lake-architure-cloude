@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n';
 import { useTranslation } from 'react-i18next';
 import { Modal, Field, Input, Textarea, NumberField, Button } from '@/components';
 import { useFormZod, useToast } from '@/hooks';
@@ -104,14 +105,14 @@ export function KafkaProduceForm({ open, topic, onClose }: KafkaProduceFormProps
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label="Key" hint={t('kafka.hint.key')}>
+        <Field label={i18n.t('labels.key')} hint={t('kafka.hint.key')}>
           <Input
             value={form.values.key}
             onChange={(e) => form.setField('key', e.target.value)}
             placeholder="user-123"
           />
         </Field>
-        <Field label="Value" required hint={t('kafka.hint.value')}>
+        <Field label={i18n.t('labels.value')} required hint={t('kafka.hint.value')}>
           <Textarea
             value={form.values.value}
             onChange={(e) => form.setField('value', e.target.value)}
@@ -121,7 +122,7 @@ export function KafkaProduceForm({ open, topic, onClose }: KafkaProduceFormProps
           />
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Partition" hint={t('kafka.hint.partition')}>
+          <Field label={i18n.t('labels.partition')} hint={t('kafka.hint.partition')}>
             <NumberField
               value={form.values.partition}
               onChange={(v) => form.setField('partition', v)}
@@ -130,7 +131,7 @@ export function KafkaProduceForm({ open, topic, onClose }: KafkaProduceFormProps
             />
           </Field>
         </div>
-        <Field label="Headers" hint={t('kafka.hint.headers')}>
+        <Field label={i18n.t('labels.headers')} hint={t('kafka.hint.headers')}>
           <Textarea
             value={form.values.headersText}
             onChange={(e) => form.setField('headersText', e.target.value)}

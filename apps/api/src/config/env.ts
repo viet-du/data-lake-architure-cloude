@@ -1,6 +1,19 @@
 import { z } from 'zod';
 
 const EnvSchema = z.object({
+  LAKEHOUSE_DATA_SOURCE: z.enum(['local', 'databricks']).default('local'),
+  DATABRICKS_HOST: z.string().url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.pathname === '/' && !url.search && !url.username && !url.password;
+  }, 'Use an HTTPS workspace origin without path, query or credentials').optional(),
+  DATABRICKS_TOKEN: z.string().min(1).optional(),
+  DATABRICKS_WORKSPACE_ID: z.string().regex(/^\d+$/).optional(),
+  DATABRICKS_WAREHOUSE_ID: z.string().regex(/^[a-z0-9]+$/).optional(),
+  DATABRICKS_HTTP_PATH: z.string().regex(/^\/sql\/1\.0\/warehouses\/[a-z0-9]+$/).optional(),
+  DATABRICKS_CATALOG: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('workspace'),
+  DATABRICKS_BRONZE_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('bronze'),
+  DATABRICKS_SILVER_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('silver'),
+  DATABRICKS_GOLD_SCHEMA: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/).default('gold'),
   ENV: z.enum(['local', 'dev', 'staging', 'prod']).default('local'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
@@ -83,6 +96,14 @@ const EnvSchema = z.object({
         message: `Set ${name} (or its MINIO_* compatibility variable)`,
       });
     }
+  }
+
+  if (value.LAKEHOUSE_DATA_SOURCE !== 'databricks') return;
+  for (const key of ['DATABRICKS_HOST', 'DATABRICKS_TOKEN', 'DATABRICKS_WAREHOUSE_ID'] as const) {
+    if (!value[key]) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Required for Databricks data source' });
+  }
+  if (value.DATABRICKS_HTTP_PATH && value.DATABRICKS_HTTP_PATH.split('/').at(-1) !== value.DATABRICKS_WAREHOUSE_ID) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['DATABRICKS_HTTP_PATH'], message: 'Warehouse ID and HTTP path must match' });
   }
 }).transform((value) => {
   const configuredEndpoint = value.S3_ENDPOINT ?? value.MINIO_ENDPOINT ?? '';

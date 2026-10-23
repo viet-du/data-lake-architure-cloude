@@ -1,3 +1,5 @@
+import { AppError } from '@/errors';
+
 const DEFAULT_BASE_URL = 'http://localhost:8080/api/v1';
 const DEFAULT_TIMEOUT = 15_000;
 
@@ -81,9 +83,16 @@ export class AirflowClient {
           (data && typeof data === 'object' && 'detail' in data
             ? String((data as { detail: unknown }).detail)
             : null) ?? res.statusText;
-        throw new Error(`Airflow ${opts.method} ${opts.path} -> ${res.status}: ${detail}`);
+        const status = res.status === 401 || res.status === 403 ? res.status : res.status >= 500 ? 503 : 502;
+        throw new AppError(status, 'AIRFLOW_UPSTREAM_ERROR', `Airflow ${opts.method} ${opts.path} -> ${res.status}: ${detail}`);
       }
       return data as T;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      if (error instanceof TypeError || (error instanceof Error && error.name === 'AbortError')) {
+        throw new AppError(503, 'AIRFLOW_UNREACHABLE', 'Airflow is unavailable or the request timed out');
+      }
+      throw error;
     } finally {
       clearTimeout(timer);
     }

@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, created } from '@/lib/http';
 import { DqRuleController } from '@/modules/dq/controllers';
 import { RuleListQuerySchema, CreateRuleBodySchema } from '@/modules/dq/schemas';
@@ -28,8 +28,8 @@ const handlePost: RouteHandler = async (req: NextRequest) => {
   return created(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const GET = withSecurity(handleGet);
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

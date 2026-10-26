@@ -70,3 +70,15 @@ export const TaskListQuerySchema = z.object({
 });
 
 export type TTaskListQuery = z.infer<typeof TaskListQuerySchema>;
+
+/**
+ * The preflight body.
+ *
+ * The `conf` is the *proposed* conf. The preflight never mutates anything;
+ * it only reports whether the proposed conf would be accepted.
+ */
+export const PreflightBodySchema = z.object({
+  conf: z.record(z.string(), z.unknown()).default({}),
+});
+
+export type TPreflightBody = z.infer<typeof PreflightBodySchema>;

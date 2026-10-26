@@ -1,18 +1,48 @@
 import { useTranslation } from 'react-i18next';
-import { GlassCard, Icon } from '@/components';
+import { GlassCard, Icon, Tag } from '@/components';
 import { PIPELINE_NODES } from './schematic.constants';
+import { nodeHealth, type SchematicOverlay } from './schematic.overlay';
 import type { EPipelineNodeKind, PipelineNode } from './schematic.types';
 
 export interface StorageInspectorProps {
   activeKind: EPipelineNodeKind | null;
   onClose: () => void;
+  /** The live state of the inspected node. */
+  overlay: SchematicOverlay | null;
 }
 
-export function StorageInspector({ activeKind, onClose }: StorageInspectorProps) {
+const HEALTH_TAG: Readonly<
+  Record<
+    ReturnType<typeof nodeHealth>,
+    { variant: 'success' | 'warning' | 'error' | 'info'; labelKey: string }
+  >
+> = {
+  idle: { variant: 'info', labelKey: 'schematic.overlay.idle' },
+  running: { variant: 'warning', labelKey: 'schematic.overlay.running' },
+  healthy: { variant: 'success', labelKey: 'schematic.overlay.healthy' },
+  degraded: { variant: 'error', labelKey: 'schematic.overlay.degraded' },
+};
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return 'now';
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  return `${Math.floor(hr / 24)}d`;
+}
+
+export function StorageInspector({ activeKind, onClose, overlay }: StorageInspectorProps) {
   const { t } = useTranslation();
   if (activeKind === null) return null;
   const node: PipelineNode | undefined = PIPELINE_NODES.find((n) => n.kind === activeKind);
   if (node === undefined) return null;
+
+  const health = overlay === null ? 'idle' : nodeHealth(overlay);
+  const tag = HEALTH_TAG[health];
 
   return (
     <GlassCard
@@ -41,8 +71,45 @@ export function StorageInspector({ activeKind, onClose }: StorageInspectorProps)
         </button>
       </div>
 
-      <p className="mt-3 text-xs text-neutral-300">{t('schematic.static')}</p>
+      {overlay === null || overlay.unavailable ? (
+        <p className="mt-3 text-xs text-neutral-300">{t('schematic.overlay.unavailable')}</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Tag variant={tag.variant} dot size="sm">
+              {t(tag.labelKey)}
+            </Tag>
+            {overlay.running > 0 ? (
+              <span className="text-[10px] text-neutral-300">
+                {t('schematic.overlay.running_count', { count: overlay.running })}
+              </span>
+            ) : null}
+          </div>
 
+          {overlay.lastOperation === null ? (
+            <p className="text-xs text-neutral-400">{t('schematic.overlay.no_operation')}</p>
+          ) : (
+            <dl className="space-y-1 text-[11px] text-neutral-300">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-neutral-400">{t('schematic.overlay.last_operation')}</dt>
+                <dd className="truncate font-medium text-neutral-100">
+                  {overlay.lastOperation.kind}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-neutral-400">{t('schematic.overlay.status')}</dt>
+                <dd className="font-medium text-neutral-100">{overlay.lastOperation.status}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-neutral-400">{t('schematic.overlay.ago')}</dt>
+                <dd className="font-medium text-neutral-100">
+                  {formatRelative(overlay.lastOperation.at)}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </div>
+      )}
     </GlassCard>
   );
 }

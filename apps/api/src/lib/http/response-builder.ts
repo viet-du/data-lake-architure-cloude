@@ -38,3 +38,32 @@ export async function unwrapParams<T>(
   const resolved = params instanceof Promise ? await params : params;
   return schema.parse(resolved);
 }
+
+/**
+ * Merge the query string into the parsed path parameters.
+ *
+ * MASTER PLAN §02.2: a request addresses exactly one provider. The path
+ * carries the resource identity, so the provider selector travels in the
+ * query string — `?provider=local` reads the local Delta lakehouse,
+ * `?provider=databricks` reads Unity Catalog.
+ *
+ * The merge is deliberately *additive*: an unknown query parameter is
+ * ignored rather than rejected, so an existing client that sends extra
+ * parameters keeps working.
+ */
+export async function unwrapParamsWithQuery<T>(
+  req: Request,
+  ctx: unknown,
+  schema: { parse: (input: unknown) => T },
+): Promise<T> {
+  const params = await unwrapParams(ctx, schema as { parse: (input: unknown) => unknown }) as Record<
+    string,
+    unknown
+  >;
+  const url = new URL(req.url);
+  const provider = url.searchParams.get('provider');
+  if (provider) {
+    return schema.parse({ ...params, provider });
+  }
+  return schema.parse(params);
+}

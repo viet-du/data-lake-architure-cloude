@@ -1,5 +1,6 @@
 import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
 import { DatabricksRepository } from '@/modules/catalog/repositories/databricks.repository';
+import { canonicalStoragePath } from '@/modules/datasets/types';
 import { NotFoundError } from '@/errors';
 import { BronzeDuckDBRepository } from '../repositories/duckdb.repository';
 import type { BronzePartition, BronzeStats, BronzeTable, BronzeHistoryEntry } from '../types';
@@ -51,7 +52,7 @@ export const BronzeTableService = {
       database: parsed.database,
       name: parsed.name,
       fullName: `bronze.${parsed.database}.${parsed.name}`,
-      s3Path: `s3://lakehouse/bronze/${parsed.database}/${parsed.name}`,
+      s3Path: canonicalStoragePath('bronze', parsed.database, parsed.name),
       columns,
       partitions,
       rowCount,

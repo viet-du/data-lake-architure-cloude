@@ -1,3 +1,11 @@
 node_modules
 .next
 *.tsbuildinfo
+
+# Local configuration files must never enter the Docker build context.
+# `apps/api/.env.local` contains real Databricks credentials and the local
+# service endpoints; the container receives its configuration from the
+# Compose `environment:` block instead.
+.env
+.env.local
+.env.*.local

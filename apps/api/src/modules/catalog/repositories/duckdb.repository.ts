@@ -1,4 +1,5 @@
 import { getDuckDB } from '@/lib/infra/duckdb';
+import { LAKEHOUSE_BUCKET, canonicalStoragePath } from '@/modules/datasets/types';
 import type { ColumnMeta, Layer } from '../types';
 
 export interface DeltaTableInfo {
@@ -24,7 +25,7 @@ export const DuckDBRepository = {
     await this.ensureConnection();
     const instance = await getDuckDB();
     const conn = await instance.connect();
-    const bucket = 'lakehouse';
+    const bucket = LAKEHOUSE_BUCKET;
     const prefix = `${layer}/${database}/`;
     const safePrefix = escapeS3Path(prefix);
     const res = await conn.runAndReadAll(`
@@ -54,7 +55,7 @@ export const DuckDBRepository = {
     await this.ensureConnection();
     const instance = await getDuckDB();
     const conn = await instance.connect();
-    const bucket = 'lakehouse';
+    const bucket = LAKEHOUSE_BUCKET;
     const s3Path = `s3://${bucket}/${layer}/${database}/${name}`;
     const safeS3 = escapeS3Path(s3Path);
 
@@ -106,7 +107,7 @@ export const DuckDBRepository = {
     await this.ensureConnection();
     const instance = await getDuckDB();
     const conn = await instance.connect();
-    const safeS3 = escapeS3Path(`s3://lakehouse/${layer}/${database}/${name}`);
+    const safeS3 = escapeS3Path(canonicalStoragePath(layer, database, name));
     const res = await conn.runAndReadAll(`SELECT * FROM '${safeS3}' LIMIT ${limit}`);
     return res.getRowObjects() as Array<Record<string, unknown>>;
   },

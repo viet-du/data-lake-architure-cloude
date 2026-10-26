@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { AirflowDagController } from '@/modules/airflow/controllers';
 import { DagIdParamSchema, RunsListQuerySchema } from '@/modules/airflow/schemas';
@@ -23,7 +23,7 @@ const handleGet: RouteHandler = async (req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

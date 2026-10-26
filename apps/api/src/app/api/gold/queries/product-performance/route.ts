@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok } from '@/lib/http';
 import { GoldQueriesController } from '@/modules/gold-queries/controllers';
 import { ProductPerformanceQuerySchema } from '@/modules/gold-queries/schemas';
@@ -17,7 +17,7 @@ const handleGet: RouteHandler = async (req: NextRequest) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

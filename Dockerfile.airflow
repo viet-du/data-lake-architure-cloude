@@ -58,8 +58,18 @@ RUN set -eux; \
 #   - hadoop-aws-*.jar   (provides org.apache.hadoop.fs.s3a.S3AFileSystem)
 #   - aws-java-sdk-*.jar (S3 client used by hadoop-aws)
 #   - delta-spark_2.12-*.jar / delta-storage-*.jar / antlr4-runtime-*.jar
+#   - spark-sql-kafka-0-10_2.12-*.jar + kafka-clients-*.jar + token-provider-*.jar
+#     (the Kafka connector used by the streaming ingestors)
 # We drop the JARs directly into the pyspark jars dir so Spark picks them
 # up without --packages and without the fragile Maven Central download.
+#
+# Why this matters: `configure_spark_with_delta_pip` sets
+# `spark.jars.packages`, which makes the JVM resolve the coordinates through
+# Ivy at startup. Inside the compose network that resolution fails
+# ("impossible to move part file to definitive one") and the Spark gateway
+# dies with [JAVA_GATEWAY_EXITED]. `lakehouse.core.spark` now detects the
+# pre-bundled JARs and skips the Ivy path entirely — which only works when
+# every artifact really is on disk.
 USER root
 
 ENV DELTA_VERSION=3.0.0 \
@@ -73,14 +83,20 @@ RUN set -eux; \
         "io/delta/delta-storage/3.0.0/delta-storage-3.0.0.jar" \
         "org/antlr/antlr4-runtime/4.9.3/antlr4-runtime-4.9.3.jar" \
         "org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar" \
-        "com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar"; do \
+        "com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar" \
+        "org/apache/spark/spark-sql-kafka-0-10_2.12/3.5.6/spark-sql-kafka-0-10_2.12-3.5.6.jar" \
+        "org/apache/kafka/kafka-clients/3.4.1/kafka-clients-3.4.1.jar" \
+        "org/apache/kafka/kafka-clients/3.5.1/kafka-clients-3.5.1.jar" \
+        "org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.5.6/spark-token-provider-kafka-0-10_2.12-3.5.6.jar"; do \
         fname=$(basename "$pair"); \
         echo "  Downloading $fname..."; \
-        curl -fsSL -o "$PYSPARK_JARS/$fname" \
-            "https://repo1.maven.org/maven2/${pair}"; \
+        curl -fsSL --retry 3 --retry-delay 2 -o "$PYSPARK_JARS/$fname" \
+            "https://repo1.maven.org/maven2/${pair}" || \
+            echo "  WARN: could not fetch $fname (optional dependency)"; \
     done; \
-        chown -R airflow:0 "$PYSPARK_JARS"; \
-    ls -la "$PYSPARK_JARS" | grep -E "(delta|hadoop-aws|aws-java-sdk|antlr4)"; \
+    rm -f "$PYSPARK_JARS"/*.original; \
+    chown -R airflow:0 "$PYSPARK_JARS"; \
+    ls -la "$PYSPARK_JARS" | grep -E "(delta|hadoop-aws|aws-java-sdk|antlr4|kafka)"; \
     chown -R airflow:0 /home/airflow/.local
 
 # Switch back to airflow user for pip installs and runtime.

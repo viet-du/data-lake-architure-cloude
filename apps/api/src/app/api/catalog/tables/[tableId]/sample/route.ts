@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
-import { ok, unwrapParams } from '@/lib/http';
+import { withSecurity, type RouteHandler } from '@/middlewares';
+import { ok, unwrapParamsWithQuery } from '@/lib/http';
 import { TableController } from '@/modules/catalog';
 import { TableIdParamsSchema, SampleQuerySchema } from '@/modules/catalog';
 
 export const runtime = 'nodejs';
 
 const handleGet: RouteHandler = async (req: NextRequest, ctx) => {
-  const params = await unwrapParams(ctx, TableIdParamsSchema);
+  const params = await unwrapParamsWithQuery(req, ctx, TableIdParamsSchema);
   const url = new URL(req.url);
   const query = SampleQuerySchema.parse({
     limit: url.searchParams.get('limit') ?? undefined,
@@ -16,7 +16,7 @@ const handleGet: RouteHandler = async (req: NextRequest, ctx) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

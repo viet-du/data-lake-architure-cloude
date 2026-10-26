@@ -13,6 +13,15 @@ export interface PartitionMeta {
 }
 
 export interface TableMeta {
+  /**
+   * Which store the row came from.
+   *
+   * MASTER PLAN §02.2: Databricks and the local Delta lakehouse are two
+   * distinct stores, so a table listing must say which one each row belongs
+   * to. `databricks` = Unity Catalog, `local` = the Delta lakehouse on
+   * MinIO.
+   */
+  provider?: 'databricks' | 'local';
   source?: 'databricks' | 'local';
   catalogName?: string;
   schemaName?: string;

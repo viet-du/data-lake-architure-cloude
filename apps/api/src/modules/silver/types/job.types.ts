@@ -9,6 +9,10 @@ export interface SilverJob {
   sourceTable?: string;
   rowCount: number;
   bytesProcessed: number;
+  /** Delta snapshot version produced by the transform, when known. */
+  deltaVersion?: number;
+  /** Canonical dataset id of the produced dataset. */
+  datasetId?: string;
   errorMessage?: string;
   startedAt: string;
   finishedAt?: string;

@@ -60,7 +60,7 @@ function meta(value: RemoteTable): TableMeta {
     tableId: value.full_name, fullName: value.full_name, database: `${value.catalog_name}.${value.schema_name}`,
     name: value.name, layer: layerFor(value.schema_name), catalogName: value.catalog_name,
     schemaName: value.schema_name, format: (value.data_source_format ?? value.table_type).toLowerCase(),
-    source: 'databricks', description: value.comment, owner: value.owner,
+    source: 'databricks', provider: 'databricks', description: value.comment, owner: value.owner,
     tags: [], partitions: [], columnCount: value.columns.length, rowCount: null, sizeBytes: null,
     lastModified: date(value.updated_at ?? value.created_at), s3Path: value.storage_location ?? '',
     deltaHistoryVersion: null, syncedAt: new Date().toISOString(),

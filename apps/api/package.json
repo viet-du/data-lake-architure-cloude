@@ -4,7 +4,12 @@
   "private": true,
   "description": "Lakehouse API service (Next.js) - Control Plane",
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "concurrently --kill-others-on-fail --names api,worker \"next dev -p 3001\" \"tsx src/workers/main.ts\"",
+    "dev:api": "next dev -p 3001",
+    "dev:worker": "tsx src/workers/main.ts",
+    "kafka:smoke": "tsx src/modules/kafka/scripts/smoke-init.ts",
+    "security:bootstrap": "tsx src/modules/security/scripts/bootstrap-admin.ts",
+    "env:check": "node -e \"const l=require('./env-loader.js');const r=l.loadLocalEnv();console.log(JSON.stringify({file:r.file,mode:r.mode,applied:r.applied.length,minio:process.env.MINIO_ENDPOINT,kafka:process.env.KAFKA_BOOTSTRAP,mongo:process.env.MONGO_DB,redis:process.env.REDIS_PORT},null,2))\"",
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
@@ -14,7 +19,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.654.0",
     "@duckdb/node-api": "^1.5.6-r.1",
-    "bullmq": "^5.21.0",
+    "bullmq": "^5.81.5",
     "ioredis": "^5.4.1",
     "kafkajs": "^2.2.4",
     "mongoose": "^8.7.0",
@@ -31,12 +36,13 @@
     "@types/node": "22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/swagger-ui-react": "^5.18.0",
+    "@types/swagger-ui-react": "5.18.0",
     "@vitest/coverage-v8": "^2.1.8",
+    "concurrently": "9.2.1",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.1.0",
+    "tsx": "4.20.6",
     "typescript": "5.5.3",
-    "vitest": "^2.1.8",
-    "@types/swagger-ui-react": "5.18.0"
+    "vitest": "^2.1.8"
   }
 }

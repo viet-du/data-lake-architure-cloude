@@ -15,3 +15,11 @@ export type { SchematicLegendProps } from './schematic-legend.component';
 
 export { PIPELINE_NODES, PIPELINE_LINKS } from './schematic.constants';
 export type { PipelineNode, PipelineLink, EPipelineNodeKind } from './schematic.types';
+
+export {
+  overlayForNode,
+  nodeHealth,
+  pipelineQuality,
+  stageForNode,
+} from './schematic.overlay';
+export type { SchematicOverlay, ESchematicNodeHealth } from './schematic.overlay';

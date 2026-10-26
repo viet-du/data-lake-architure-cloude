@@ -12,8 +12,12 @@ export async function processBronzeJob(payload: BronzeJobPayload, attemptsMade: 
     if (!executor) throw new Error(`Unsupported Bronze ingest kind: ${payload.kind}`);
     const result = await executor(payload);
     await BronzeJobRepository.update(payload.jobId, {
-      status: 'completed', rowCount: result.rowsIngested,
-      bytesProcessed: result.bytesProcessed, finishedAt: new Date().toISOString(),
+      status: 'completed',
+      rowCount: result.rowsIngested,
+      bytesProcessed: result.bytesProcessed,
+      ...(result.deltaVersion !== undefined ? { deltaVersion: result.deltaVersion } : {}),
+      ...(result.datasetId ? { datasetId: result.datasetId } : {}),
+      finishedAt: new Date().toISOString(),
     });
     return result;
   } catch (error) {

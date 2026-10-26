@@ -13,6 +13,7 @@ const DEFAULT_ITEMS: ReadonlyArray<NavRailItem> = [
   { key: 'kafka', path: ROUTES.KAFKA, iconName: 'Kafka', labelKey: 'nav.kafka' },
   { key: 'airflow', path: ROUTES.AIRFLOW, iconName: 'Airflow', labelKey: 'nav.airflow' },
   { key: 'dq', path: ROUTES.DQ, iconName: 'Analyst', labelKey: 'nav.dq' },
+  { key: 'eda', path: ROUTES.EDA, iconName: 'Analyst', labelKey: 'nav.eda' },
   { key: 'health', path: ROUTES.HEALTH, iconName: 'Cloud', labelKey: 'nav.health' },
   { key: 'schematic', path: ROUTES.SCHEMATIC, iconName: 'Cloud', labelKey: 'nav.schematic' },
 ];

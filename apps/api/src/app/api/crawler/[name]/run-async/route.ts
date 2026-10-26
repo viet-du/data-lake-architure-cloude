@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { accepted, unwrapParams } from '@/lib/http';
 import { CrawlerRunController } from '@/modules/crawler/controllers';
 import { CrawlerNameParamSchema, CrawlerRunRequestBodySchema } from '@/modules/crawler/schemas';
@@ -15,7 +15,7 @@ const handlePost: RouteHandler = async (req: NextRequest, ctx: unknown) => {
   return accepted(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

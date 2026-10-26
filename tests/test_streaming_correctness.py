@@ -386,12 +386,17 @@ class TestCheckpointIsolation:
         bronze_ckpt = paths.checkpoint(Layer.BRONZE, "clickstream/events")
         silver_ckpt = paths.checkpoint(Layer.SILVER, "clickstream/events")
         gold_ckpt = paths.checkpoint(Layer.GOLD, "clickstream/page_views_5min")
-        assert bronze_ckpt.startswith("s3a://bronze/")
-        assert silver_ckpt.startswith("s3a://silver/")
-        assert gold_ckpt.startswith("s3a://gold/")
-        # Checkpoint must end with the standard Spark _checkpoints/ marker.
+        # Every layer lives under the single canonical `lakehouse` bucket, so
+        # the checkpoints are isolated from each other but still addressable
+        # by the control plane (MASTER PLAN §10.2).
+        assert bronze_ckpt.startswith("s3a://lakehouse/bronze/")
+        assert silver_ckpt.startswith("s3a://lakehouse/silver/")
+        assert gold_ckpt.startswith("s3a://lakehouse/gold/")
+        # The `_checkpoints/` marker separates the checkpoint namespace from
+        # the dataset namespace, so a streaming checkpoint can never be
+        # mistaken for a Delta table directory.
         for ckpt in (bronze_ckpt, silver_ckpt, gold_ckpt):
-            assert ckpt.endswith("/_checkpoints/")
+            assert "/_checkpoints/" in ckpt
 
     def test_write_delta_streaming_uses_paths_checkpoint_by_default(self) -> None:
         from lakehouse.storage.delta_writer import write_delta_streaming

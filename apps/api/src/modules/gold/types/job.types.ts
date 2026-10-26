@@ -9,6 +9,10 @@ export interface GoldJob {
   sourceTables: string[];
   rowCount: number;
   bytesProcessed: number;
+  /** Delta snapshot version produced by the aggregation, when known. */
+  deltaVersion?: number;
+  /** Canonical dataset id of the produced dataset. */
+  datasetId?: string;
   errorMessage?: string;
   startedAt: string;
   finishedAt?: string;

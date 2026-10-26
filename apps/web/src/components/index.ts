@@ -19,3 +19,4 @@ export * from './kafka';
 export * from './airflow';
 export * from './dq';
 export * from './ambient';
+export * from './dataset-picker';

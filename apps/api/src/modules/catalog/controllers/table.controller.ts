@@ -25,7 +25,7 @@ export const TableController = {
   },
 
   async getSchema(params: TTableIdParams): Promise<{ tableId: string; columns: ColumnMeta[] }> {
-    return TableService.getSchema(params.tableId);
+    return TableService.getSchema(params.tableId, params.provider);
   },
 
   async getLineage(params: TTableIdParams): Promise<LineageGraph & { inferred: boolean }> {
@@ -44,11 +44,11 @@ export const TableController = {
   },
 
   async getStats(params: TTableIdParams): Promise<TableStats> {
-    return TableService.getStats(params.tableId);
+    return TableService.getStats(params.tableId, params.provider);
   },
 
   async getSample(params: TTableIdParams, query: TSampleQuery): Promise<Array<Record<string, unknown>>> {
-    return TableService.getSample(params.tableId, query);
+    return TableService.getSample(params.tableId, query, params.provider);
   },
 
   async updateMetadata(

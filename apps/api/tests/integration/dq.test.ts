@@ -31,6 +31,20 @@ describe('dq — Zod schemas', () => {
     expect(ok.enabled).toBe(true);
   });
 
+  it('CreateRuleBodySchema rejects a table reference the executor cannot resolve', () => {
+    const base = { name: 'r', type: 'null_check', layer: 'bronze', column: 'id' } as const;
+    expect(() => CreateRuleBodySchema.parse({ ...base, table: 'workspace.bronze.customers_test' })).toThrow();
+    expect(() => CreateRuleBodySchema.parse({ ...base, table: 'crm.' })).toThrow();
+    expect(() => CreateRuleBodySchema.parse({ ...base, table: 'a/b/c' })).toThrow();
+    expect(CreateRuleBodySchema.parse({ ...base, table: 'crm.customers' }).table).toBe('crm.customers');
+    expect(CreateRuleBodySchema.parse({ ...base, table: 'orders' }).table).toBe('orders');
+  });
+
+  it('UpdateRuleBodySchema validates the table reference when it is provided', () => {
+    expect(() => UpdateRuleBodySchema.parse({ table: 'workspace.bronze.customers_test' })).toThrow();
+    expect(UpdateRuleBodySchema.parse({ enabled: false }).enabled).toBe(false);
+  });
+
   it('UpdateRuleBodySchema is strict (extra keys rejected)', () => {
     expect(() =>
       UpdateRuleBodySchema.parse({ name: 'x', unknownKey: 'y' }),

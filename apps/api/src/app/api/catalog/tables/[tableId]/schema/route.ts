@@ -1,17 +1,18 @@
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
-import { ok, unwrapParams } from '@/lib/http';
+import type { NextRequest } from 'next/server';
+import { withSecurity, type RouteHandler } from '@/middlewares';
+import { ok, unwrapParamsWithQuery } from '@/lib/http';
 import { TableController } from '@/modules/catalog';
 import { TableIdParamsSchema } from '@/modules/catalog';
 
 export const runtime = 'nodejs';
 
-const handleGet: RouteHandler = async (_req, ctx) => {
-  const params = await unwrapParams(ctx, TableIdParamsSchema);
+const handleGet: RouteHandler = async (req: NextRequest, ctx) => {
+  const params = await unwrapParamsWithQuery(req, ctx, TableIdParamsSchema);
   const data = await TableController.getSchema(params);
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

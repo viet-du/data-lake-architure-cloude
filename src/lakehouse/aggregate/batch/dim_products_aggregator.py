@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 class DimProductsAggregator:
     GOLD_TABLE = "dim_products"
+    #: Silver source tables — overridden by the control plane (MASTER PLAN §05.1).
+    SILVER_PRODUCTS = "products"
+    SILVER_ORDERS = "orders"
 
     def __init__(
         self, spark: SparkSession | None = None, *, paths: LakePaths | None = None
@@ -24,9 +27,9 @@ class DimProductsAggregator:
 
     def build(self) -> int:
         logger.info(" Build: dim_products")
-        products = self.spark.read.format("delta").load(self.paths.silver("products"))
+        products = self.spark.read.format("delta").load(self.paths.silver(self.SILVER_PRODUCTS))
         orders = (
-            self.spark.read.format("delta").load(self.paths.silver("orders"))
+            self.spark.read.format("delta").load(self.paths.silver(self.SILVER_ORDERS))
             # Only completed orders count toward revenue metrics.
             .filter(F.col("status") == "completed")
         )

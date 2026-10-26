@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, noContent, unwrapParams } from '@/lib/http';
 import { BronzeJobController } from '@/modules/bronze/controllers';
 import { JobIdParamsSchema } from '@/modules/bronze/schemas';
@@ -20,8 +20,8 @@ const handleDelete: RouteHandler = async (_req: NextRequest, ctx: unknown) => {
   return noContent();
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
-export const DELETE = withRequestId(withErrorHandler(handleDelete));
+export const GET = withSecurity(handleGet);
+export const DELETE = withSecurity(handleDelete);
 
 /**
  * @openapi

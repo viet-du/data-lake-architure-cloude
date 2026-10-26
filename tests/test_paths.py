@@ -20,20 +20,22 @@ class TestLakePaths:
         self.paths = LakePaths(env=StorageEnv.LOCAL)
 
     def test_bronze_path(self) -> None:
-        assert self.paths.bronze("crm/customers") == "s3a://bronze/crm/customers/"
+        assert self.paths.bronze("crm/customers") == "s3a://lakehouse/bronze/crm/customers/"
 
     def test_silver_path(self) -> None:
-        assert self.paths.silver("customers") == "s3a://silver/customers/"
+        # A bare table name resolves through the canonical table→database
+        # mapping, so `customers` means `crm/customers` (MASTER PLAN §10.2).
+        assert self.paths.silver("customers") == "s3a://lakehouse/silver/crm/customers/"
 
     def test_gold_path(self) -> None:
-        assert self.paths.gold("fact_orders") == "s3a://gold/fact_orders/"
+        assert self.paths.gold("fact_orders") == "s3a://lakehouse/gold/retail/fact_orders/"
 
     def test_bronze_no_subpath(self) -> None:
-        assert self.paths.bronze() == "s3a://bronze/"
+        assert self.paths.bronze() == "s3a://lakehouse/bronze/"
 
     def test_checkpoint_path(self) -> None:
         ckpt = self.paths.checkpoint(Layer.BRONZE, "clickstream/events")
-        assert ckpt == "s3a://bronze/clickstream/events/_checkpoints/"
+        assert ckpt == "s3a://lakehouse/bronze/_checkpoints/clickstream/events/"
 
     def test_gcp_protocol(self) -> None:
         gcp_paths = LakePaths(env=StorageEnv.GCP)

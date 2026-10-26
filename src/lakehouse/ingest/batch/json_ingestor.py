@@ -9,7 +9,13 @@ from pyspark.sql import DataFrame, SparkSession
 from lakehouse.core.constants import Layer
 from lakehouse.core.paths import LakePaths
 from lakehouse.core.spark import get_spark_session
-from lakehouse.storage.delta_writer import write_delta_table
+from lakehouse.ingest.batch.source_resolver import (
+    SourceResolutionError,
+    materialize_source,
+    source_display_name,
+)
+from lakehouse.core.datasets import NATURAL_KEY_BY_TABLE as _NATURAL_KEY_BY_TABLE
+from lakehouse.storage.delta_writer import merge_delta_table, write_delta_table
 
 logger = logging.getLogger(__name__)
 
@@ -56,28 +62,59 @@ class JsonIngestor:
         # count is not used downstream.
         with open(json_path, encoding="utf-8") as f:
             approx_count = max(sum(1 for _ in f) - 2, 0)  # json is "[\n  {...},\n  ...]"
-        write_delta_table(
-            df,
-            layer=Layer.BRONZE,
-            table_name=target_table,
-            paths=self.paths,
-            mode="append",
-            partition_by=None,
-            merge_schema=True,
-        )
+        if key_col and key_col in df.columns:
+            merge_delta_table(
+                df,
+                layer=Layer.BRONZE,
+                table_name=target_table,
+                paths=self.paths,
+                merge_keys=[key_col],
+                partition_by=None,
+                merge_schema=True,
+            )
+        else:
+            write_delta_table(
+                df,
+                layer=Layer.BRONZE,
+                table_name=target_table,
+                paths=self.paths,
+                mode="append",
+                partition_by=None,
+                merge_schema=True,
+            )
         df.unpersist(blocking=False)
         logger.info(" Ingested ~%d rows → bronze/%s", approx_count, target_table)
         return approx_count
 
+    def ingest_source(self, source: str, target_table: str) -> int:
+        """Ingest a source that may live on S3, HTTP or the local filesystem."""
+        with materialize_source(source) as local_path:
+            logger.info(
+                " Materialized source %s → %s", source_display_name(source), local_path
+            )
+            return self.ingest_file(local_path, target_table)
+
+    def ingest_directory(self, sub_dir: str = "") -> dict[str, int]:
+        search_dir = self.source_dir / sub_dir if sub_dir else self.source_dir
+        if not search_dir.exists():
+            logger.warning("  %s does not exist", search_dir)
+            return {}
+        results: dict[str, int] = {}
+        for json_file in sorted(search_dir.rglob("*.json")):
+            rel = json_file.relative_to(search_dir).with_suffix("")
+            count = self.ingest_file(json_file, str(rel).replace("\\", "/"))
+            results[str(rel)] = count
+        return results
+
 
 def _derive_natural_key(target_table: str) -> str | None:
-    """Derive the natural primary-key column from the target table path."""
-    table_key_map = {
-        "crm/customers": "customer_id",
-        "erp/products": "product_id",
-        "erp/orders": "order_id",
-    }
-    return table_key_map.get(target_table)
+    """Derive the natural primary-key column from the target table name.
+
+    Mirrors :func:`lakehouse.ingest.batch.csv_ingestor._derive_natural_key`:
+    the key belongs to the dataset, not to the database segment.
+    """
+    name = (target_table or "").strip().lower().split("/")[-1]
+    return _NATURAL_KEY_BY_TABLE.get(name)
 
 
 def main() -> None:
@@ -89,5 +126,6 @@ def main() -> None:
         ingestor.ingest_file(json_file, str(rel).replace("\\", "/"))
 
 
+__all__ = ["JsonIngestor", "SourceResolutionError"]
 if __name__ == "__main__":
     main()

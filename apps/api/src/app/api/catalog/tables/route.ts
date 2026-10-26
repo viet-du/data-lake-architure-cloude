@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok } from '@/lib/http';
 import { TableController } from '@/modules/catalog';
 import { TableLayerQuerySchema } from '@/modules/catalog';
@@ -12,6 +12,7 @@ const handleGet: RouteHandler = async (req: NextRequest) => {
     layer: url.searchParams.get('layer') ?? undefined,
     database: url.searchParams.get('database') ?? undefined,
     search: url.searchParams.get('search') ?? undefined,
+    provider: url.searchParams.get('provider') ?? undefined,
     limit: url.searchParams.get('limit') ?? undefined,
     offset: url.searchParams.get('offset') ?? undefined,
   });
@@ -19,7 +20,7 @@ const handleGet: RouteHandler = async (req: NextRequest) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

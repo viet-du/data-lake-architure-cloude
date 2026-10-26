@@ -9,6 +9,8 @@ import type {
   AirflowTaskInstance,
   AirflowTaskLogs,
   AirflowTriggerResult,
+  AirflowPreflightResult,
+  AirflowConfSpec,
 } from '@/types/entities';
 
 export function useDAGsQuery(
@@ -119,6 +121,44 @@ export function useTriggerDAGMutation(
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: QUERY_KEYS.airflow.all });
     },
+    ...options,
+  });
+}
+
+/**
+ * The preflight.
+ *
+ * It is a *mutation* rather than a query because it carries the proposed
+ * `conf` in its body and because it must never be cached: a preflight that
+ * was evaluated before the operator changed a field says nothing about the
+ * field they just changed.
+ */
+export function usePreflightMutation(
+  options?: UseMutationOptions<
+    AirflowPreflightResult,
+    Error,
+    { dagId: string; conf?: Readonly<Record<string, unknown>> }
+  >,
+) {
+  return useMutation<
+    AirflowPreflightResult,
+    Error,
+    { dagId: string; conf?: Readonly<Record<string, unknown>> }
+  >({
+    mutationFn: ({ dagId, conf }) => airflowService.preflight(dagId, conf ?? {}),
+    ...options,
+  });
+}
+
+/** The typed conf specification, used to render the trigger form. */
+export function useConfSpecQuery(
+  dagId: string,
+  options?: Omit<UseQueryOptions<AirflowConfSpec, Error>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery<AirflowConfSpec, Error>({
+    queryKey: [...QUERY_KEYS.airflow.dag(dagId), 'conf-spec'],
+    queryFn: () => airflowService.getConfSpec(dagId),
+    enabled: dagId.length > 0,
     ...options,
   });
 }

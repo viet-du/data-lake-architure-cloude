@@ -15,7 +15,15 @@ export const DELTA_RETENTION_DAYS = 7;
 export const DELTA_HISTORY_LIMIT = 100;
 
 export const REQUEST_ID_HEADER = 'x-request-id';
-export const CORS_DEFAULT_HEADERS = ['Content-Type', 'Authorization', REQUEST_ID_HEADER];
+export const CORS_DEFAULT_HEADERS = [
+  'Content-Type',
+  'Authorization',
+  REQUEST_ID_HEADER,
+  'X-Service-Key',
+  'X-User-Key',
+  'X-Confirm-Token',
+  'Idempotency-Key',
+];
 
 export const HEALTH_CACHE_TTL_MS = 5_000;
 

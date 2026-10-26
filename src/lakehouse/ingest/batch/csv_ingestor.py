@@ -6,9 +6,16 @@ from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession
 
+from lakehouse.core.constants import Layer
 from lakehouse.core.paths import LakePaths
 from lakehouse.core.spark import get_spark_session
-from lakehouse.storage.delta_writer import write_delta_table
+from lakehouse.ingest.batch.source_resolver import (
+    SourceResolutionError,
+    materialize_source,
+    source_display_name,
+)
+from lakehouse.core.datasets import NATURAL_KEY_BY_TABLE as _NATURAL_KEY_BY_TABLE
+from lakehouse.storage.delta_writer import merge_delta_table
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +44,11 @@ class CsvIngestor:
         self.source_name = source_name
 
     def ingest_file(self, csv_path: Path, target_table: str) -> int:
+        """Ingest one CSV file into the Bronze table ``target_table``.
+
+        ``target_table`` is a ``database/table`` fragment; it resolves to the
+        canonical path through :meth:`LakePaths.resolve_path`.
+        """
         if not csv_path.exists():
             logger.warning("  %s not found, skipping", csv_path)
             return 0
@@ -64,21 +76,49 @@ class CsvIngestor:
         # approximation is close enough for the "Ingested N rows" log.
         with open(csv_path, encoding="utf-8") as f:
             approx_count = max(sum(1 for _ in f) - 1, 0)
-        write_delta_table(
-            df,
-            layer=self._layer(),
-            table_name=target_table,
-            paths=self.paths,
-            mode="append",
-            partition_by=None,
-            merge_schema=True,
-        )
+        if key_col and key_col in df.columns:
+            # MERGE on the natural key keeps the Bronze table idempotent: a
+            # retried job converges instead of appending the same rows again.
+            merge_delta_table(
+                df,
+                layer=Layer.BRONZE,
+                table_name=target_table,
+                paths=self.paths,
+                merge_keys=[key_col],
+                partition_by=None,
+                merge_schema=True,
+            )
+        else:
+            from lakehouse.storage.delta_writer import write_delta_table
+
+            write_delta_table(
+                df,
+                layer=Layer.BRONZE,
+                table_name=target_table,
+                paths=self.paths,
+                mode="append",
+                partition_by=None,
+                merge_schema=True,
+            )
         # Force materialization without an extra count() job. cache() + a
         # single .count() only works if memory is plentiful; instead we
         # just unpersist the dataframe so the next file can start clean.
         df.unpersist(blocking=False)
         logger.info(" Ingested ~%d rows → bronze/%s", approx_count, target_table)
         return approx_count
+
+    def ingest_source(self, source: str, target_table: str) -> int:
+        """Ingest a source that may live on S3, HTTP or the local filesystem.
+
+        This is the entry point used by the control plane (MASTER PLAN
+        §05.2): the worker submits a *source reference*, never a local path
+        that only exists inside the API container.
+        """
+        with materialize_source(source) as local_path:
+            logger.info(
+                " Materialized source %s → %s", source_display_name(source), local_path
+            )
+            return self.ingest_file(local_path, target_table)
 
     def ingest_directory(self, sub_dir: str = "") -> dict[str, int]:
         search_dir = self.source_dir / sub_dir if sub_dir else self.source_dir
@@ -101,19 +141,20 @@ class CsvIngestor:
 
     @staticmethod
     def _layer():
-        from lakehouse.core.constants import Layer
-
         return Layer.BRONZE
 
 
 def _derive_natural_key(target_table: str) -> str | None:
-    """Derive the natural primary-key column from the target table path."""
-    table_key_map = {
-        "crm/customers": "customer_id",
-        "erp/products": "product_id",
-        "erp/orders": "order_id",
-    }
-    return table_key_map.get(target_table)
+    """Derive the natural primary-key column from the target table name.
+
+    The key is a property of the *dataset*, not of the database segment: an
+    ``orders`` table is keyed by ``order_id`` whether it lives in ``erp`` or in
+    a QA segment. The previous lookup matched the full ``database/table``
+    fragment, so a dataset written under any other segment silently lost its
+    idempotent MERGE and was appended on every retry.
+    """
+    name = (target_table or "").strip().lower().split("/")[-1]
+    return _NATURAL_KEY_BY_TABLE.get(name)
 
 
 def main() -> None:
@@ -144,5 +185,6 @@ def main() -> None:
         ingestor.ingest_directory()
 
 
+__all__ = ["CsvIngestor", "SourceResolutionError"]
 if __name__ == "__main__":
     main()

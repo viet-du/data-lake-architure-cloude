@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { BronzeTableController } from '@/modules/bronze/controllers';
 import { PartitionDateParamsSchema } from '@/modules/bronze/schemas';
@@ -14,7 +14,7 @@ const handleDelete: RouteHandler = async (_req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const DELETE = withRequestId(withErrorHandler(handleDelete));
+export const DELETE = withSecurity(handleDelete);
 
 /**
  * @openapi

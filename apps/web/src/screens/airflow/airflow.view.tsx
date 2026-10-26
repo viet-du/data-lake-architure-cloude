@@ -4,7 +4,6 @@ import { useTranslation, Trans } from 'react-i18next';
 import {
   useDAGsQuery,
   useAirflowStatsQuery,
-  useTriggerDAGMutation,
   usePauseDAGMutation,
   useUnpauseDAGMutation,
 } from '@/services/queries';
@@ -19,6 +18,7 @@ import {
   SearchInput,
   AirflowDAGCard,
   AirflowDAGDetail,
+  AirflowTriggerWizard,
 } from '@/components';
 import { useToast } from '@/hooks';
 
@@ -116,26 +116,13 @@ export function AirflowView() {
   const toast = useToast();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
-  const [triggeringKey, setTriggeringKey] = useState<string | null>(null);
+  const [wizardDagId, setWizardDagId] = useState<string | null>(null);
 
-  const triggerMut = useTriggerDAGMutation();
   const pauseMut = usePauseDAGMutation();
   const unpauseMut = useUnpauseDAGMutation();
 
   const dagsQuery = useDAGsQuery();
   const dags = dagsQuery.data ?? [];
-  function handleTrigger(dagId: string): void {
-    setTriggeringKey(dagId);
-    triggerMut.mutate(
-      { dagId, payload: {} },
-      {
-        onSuccess: (r) =>
-          toast.success(t('airflow.triggered', { runId: r.runId.slice(0, 12) })),
-        onError: (e) => toast.error(t('airflow.error.trigger'), e.message),
-        onSettled: () => setTriggeringKey(null),
-      },
-    );
-  }
 
   function handleTogglePause(dagId: string): void {
     const dag = dags.find((d) => d.dagId === dagId);
@@ -165,10 +152,10 @@ export function AirflowView() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => selected !== null && handleTrigger(selected)}
-              disabled={selected === null || triggeringKey !== null}
+              onClick={() => selected !== null && setWizardDagId(selected)}
+              disabled={selected === null}
             >
-              {triggeringKey !== null ? t('airflow.triggering') : t('airflow.trigger')}
+              {t('airflow.trigger')}
             </Button>
           }
         />
@@ -187,13 +174,21 @@ export function AirflowView() {
               <DAGsList
                 search={search}
                 onSelect={setSelected}
-                onTrigger={handleTrigger}
+                onTrigger={setWizardDagId}
                 onTogglePause={handleTogglePause}
               />
             </div>
           </ScreenSection>
         </div>
         <AirflowDAGDetail dagId={selected} onClose={() => setSelected(null)} />
+        <AirflowTriggerWizard
+          dagId={wizardDagId}
+          open={wizardDagId !== null}
+          onClose={() => setWizardDagId(null)}
+          onTriggered={(runId) =>
+            toast.success(t('airflow.triggered', { runId: runId.slice(0, 12) }))
+          }
+        />
       </div>
     </ErrorBoundary>
   );

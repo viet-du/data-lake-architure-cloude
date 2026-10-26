@@ -1,7 +1,54 @@
 import { z } from 'zod';
 
+// The environment schema only *parses* `process.env`. It deliberately does
+// NOT import the loader (`./load-env`) because this module is reachable from
+// the Edge middleware (`@/middlewares/with-cors` → `@/config`), and the loader
+// uses `node:fs`, which the Edge runtime cannot load.
+//
+// The canonical configuration is applied by the entry points, before any
+// module reads `process.env`:
+//   - `apps/api/next.config.ts`      → `next dev` / `next start`
+//   - `apps/api/src/workers/main.ts` → the BullMQ worker process
+//   - `apps/api/tests/setup.ts`      → the test harness
+// See `load-env.ts` for the ownership rules and the measured evidence.
+
 const EnvSchema = z.object({
+  /**
+   * Default **read** source for browsing/catalog screens.
+   *
+   * MASTER PLAN §02.2: "Databricks and MinIO are not automatically one
+   * unified data store." This variable only decides where the control plane
+   * *reads* a dataset from by default. It never decides where a mutation
+   * executes — that is `LAKEHOUSE_EXECUTION_TARGET` below.
+   */
   LAKEHOUSE_DATA_SOURCE: z.enum(['local', 'databricks']).default('local'),
+  /**
+   * Where ETL/ELT mutations execute.
+   *
+   * MASTER PLAN §02.2 / §09 (executionTarget field) requires the read source
+   * and the execution target to be configured **separately**:
+   *
+   * - `local_delta_minio` — Spark jobs write Delta tables into MinIO at
+   *   `s3://lakehouse/{layer}/{database}/{table}` (the default, and the only
+   *   target that is actually provisioned in this deployment).
+   * - `databricks_uc` — reserved for a remote Databricks Jobs/Workflows
+   *   pipeline. It is **not** implemented here, so every mutation against it
+   *   is rejected with `DATABRICKS_READ_ONLY` instead of silently falling
+   *   back to MinIO.
+   */
+  LAKEHOUSE_EXECUTION_TARGET: z
+    .enum(['local_delta_minio', 'databricks_uc'])
+    .default('local_delta_minio'),
+  /**
+   * Canonical bucket that holds every medallion layer.
+   *
+   * MASTER PLAN §05.1 / §10.2: there must be exactly one storage location.
+   * The Python lakehouse reads `LAKEHOUSE_BUCKET` (default `lakehouse`) and
+   * addresses `s3a://<bucket>/<layer>/<database>/<table>`. The TypeScript
+   * control plane must use the same bucket, so it is resolved from the same
+   * environment variable instead of being hard-coded in five repositories.
+   */
+  LAKEHOUSE_BUCKET: z.string().min(1).default('lakehouse'),
   DATABRICKS_HOST: z.string().url().refine((value) => {
     const url = new URL(value);
     return url.protocol === 'https:' && url.pathname === '/' && !url.search && !url.username && !url.password;
@@ -61,6 +108,49 @@ const EnvSchema = z.object({
     .transform((v) => v === 'true')
     .default('true'),
 
+  /**
+   * MASTER PLAN §13.1: identity/RBAC is a blocking requirement before broad
+   * rollout. The switch defaults to `false` so a local checkout keeps working,
+   * but a non-local environment must never start without authentication.
+   */
+  API_AUTH_ENABLED: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .default('false'),
+  /** HMAC secret for session and confirmation tokens (min 32 characters). */
+  API_JWT_SECRET: z.string().min(32).default('local-development-only-secret-change-me-32ch'),
+  API_SESSION_TTL_SECONDS: z.coerce.number().int().min(60).default(3600),
+  API_CONFIRM_TOKEN_TTL_SECONDS: z.coerce.number().int().min(10).default(120),
+  /**
+   * JSON array of service credentials:
+   * `[{"keyId":"...","secretHash":"<sha256 hex>","principalId":"...","role":"operator","scopes":["retail.*"]}]`
+   */
+  API_SERVICE_KEYS: z.string().default(''),
+  /**
+   * JSON array of human credentials:
+   * `[{"principalId":"...","secretHash":"<sha256 hex>","role":"analyst","scopes":[]}]`
+   *
+   * Service credentials stay in `API_SERVICE_KEYS` — the plan requires the
+   * machine identity and the user identity to remain separate.
+   */
+  API_USER_CREDENTIALS: z.string().default(''),
+  API_AUDIT_ENABLED: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .default('true'),
+  /**
+   * Rate-limit failure mode.
+   *
+   * The default is fail-open so an unavailable Redis cannot take the whole
+   * control plane down — MASTER PLAN §13.10 requires failure isolation, and
+   * the Home dashboard must stay readable when a dependency flaps. Set to
+   * `false` to fail closed and reject traffic with 503 instead.
+   */
+  API_RATE_LIMIT_FAIL_OPEN: z
+    .union([z.literal('true'), z.literal('false')])
+    .transform((v) => v === 'true')
+    .default('true'),
+
   DUCKDB_MEMORY_LIMIT: z.string().default('4GB'),
   DUCKDB_THREADS: z.coerce.number().int().default(4),
 
@@ -98,9 +188,15 @@ const EnvSchema = z.object({
     }
   }
 
-  if (value.LAKEHOUSE_DATA_SOURCE !== 'databricks') return;
+  // Databricks credentials are required as soon as *either* the read source
+  // or the execution target is Databricks. The two are independent settings,
+  // so the check can no longer be derived from the read source alone.
+  const needsDatabricks =
+    value.LAKEHOUSE_DATA_SOURCE === 'databricks' ||
+    value.LAKEHOUSE_EXECUTION_TARGET === 'databricks_uc';
+  if (!needsDatabricks) return;
   for (const key of ['DATABRICKS_HOST', 'DATABRICKS_TOKEN', 'DATABRICKS_WAREHOUSE_ID'] as const) {
-    if (!value[key]) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Required for Databricks data source' });
+    if (!value[key]) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Required for Databricks data source or execution target' });
   }
   if (value.DATABRICKS_HTTP_PATH && value.DATABRICKS_HTTP_PATH.split('/').at(-1) !== value.DATABRICKS_WAREHOUSE_ID) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['DATABRICKS_HTTP_PATH'], message: 'Warehouse ID and HTTP path must match' });

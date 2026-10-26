@@ -11,6 +11,7 @@ import {
   ConsumerGroupListQuerySchema,
 } from '@/modules/kafka/schemas/consumer-group.schema';
 import { ResetOffsetBodySchema } from '@/modules/kafka/schemas/consumer-group.schema';
+import { KafkaConsumerGroupRepository } from '@/modules/kafka/repositories/kafka.repository';
 
 describe('kafka — Zod schemas', () => {
   it('TopicNameParamSchema rejects invalid topic name', () => {
@@ -51,5 +52,29 @@ describe('kafka — Zod schemas', () => {
     expect(() => ResetOffsetBodySchema.parse({})).toThrow();
     const ok = ResetOffsetBodySchema.parse({ topic: 'orders', reset: 'earliest' });
     expect(ok.reset).toBe('earliest');
+  });
+
+  it('decodes Kafka binary member assignments', () => {
+    const topic = Buffer.from('orders');
+    const assignment = Buffer.alloc(2 + 4 + 2 + topic.length + 4 + 2 * 4);
+    let offset = 0;
+    assignment.writeInt16BE(0, offset);
+    offset += 2;
+    assignment.writeInt32BE(1, offset);
+    offset += 4;
+    assignment.writeInt16BE(topic.length, offset);
+    offset += 2;
+    topic.copy(assignment, offset);
+    offset += topic.length;
+    assignment.writeInt32BE(2, offset);
+    offset += 4;
+    assignment.writeInt32BE(0, offset);
+    offset += 4;
+    assignment.writeInt32BE(2, offset);
+
+    expect(KafkaConsumerGroupRepository.parseAssignmentTopics(assignment)).toEqual([
+      { topic: 'orders', partition: 0 },
+      { topic: 'orders', partition: 2 },
+    ]);
   });
 });

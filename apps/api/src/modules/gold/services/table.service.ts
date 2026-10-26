@@ -1,5 +1,6 @@
 import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
 import { DatabricksRepository } from '@/modules/catalog/repositories/databricks.repository';
+import { canonicalStoragePath } from '@/modules/datasets/types';
 import { NotFoundError } from '@/errors';
 import { GoldDuckDBRepository, inferTableKind } from '../repositories/duckdb.repository';
 import type { ColumnMeta } from '@/modules/catalog/types';
@@ -61,7 +62,7 @@ export const GoldTableService = {
       database: parsed.database,
       name: parsed.name,
       fullName: `gold.${parsed.database}.${parsed.name}`,
-      s3Path: `s3://lakehouse/gold/${parsed.database}/${parsed.name}`,
+      s3Path: canonicalStoragePath('gold', parsed.database, parsed.name),
       kind: inferTableKind(parsed.name),
       columns,
       partitions,

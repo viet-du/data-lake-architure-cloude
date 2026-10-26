@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok } from '@/lib/http';
 import { HealthController } from '@/modules/health';
 
@@ -10,7 +10,7 @@ const handler: RouteHandler = async () => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handler));
+export const GET = withSecurity(handler);
 
 export async function HEAD(_req: NextRequest) {
   return new NextResponse(null, { status: 200 });

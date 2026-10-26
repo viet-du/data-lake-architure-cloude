@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class OrdersTransformer:
     BRONZE_TABLE = "erp/orders"
     SILVER_TABLE = "orders"
+    #: Write mode — "overwrite" for a full refresh, "append" for incremental.
+    MODE = "overwrite"
 
     def __init__(
         self, spark: SparkSession | None = None, *, paths: LakePaths | None = None
@@ -40,7 +42,7 @@ class OrdersTransformer:
             layer=Layer.SILVER,
             table_name=self.SILVER_TABLE,
             paths=self.paths,
-            mode="overwrite",
+            mode=self.MODE,
             partition_by="order_date",
         )
         count = silver_df.count()

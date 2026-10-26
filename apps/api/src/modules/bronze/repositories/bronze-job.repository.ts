@@ -12,6 +12,8 @@ type PlainJob = {
   topic: string | null | undefined;
   rowCount: number;
   bytesProcessed: number;
+  deltaVersion: number | null | undefined;
+  datasetId: string | null | undefined;
   errorMessage: string | null | undefined;
   bullJobId: string | null | undefined;
   startedAt: string;
@@ -34,6 +36,8 @@ function toPlain(doc: BronzeJobDoc | null): PlainJob | null {
     topic: doc.topic,
     rowCount: doc.rowCount,
     bytesProcessed: doc.bytesProcessed,
+    deltaVersion: doc.deltaVersion,
+    datasetId: doc.datasetId,
     errorMessage: doc.errorMessage,
     bullJobId: doc.bullJobId,
     startedAt: doc.startedAt,
@@ -56,6 +60,10 @@ function plainToJob(plain: PlainJob): BronzeJob {
     ...(plain.topic ? { topic: plain.topic } : {}),
     rowCount: plain.rowCount,
     bytesProcessed: plain.bytesProcessed,
+    ...(plain.deltaVersion !== null && plain.deltaVersion !== undefined
+      ? { deltaVersion: plain.deltaVersion }
+      : {}),
+    ...(plain.datasetId ? { datasetId: plain.datasetId } : {}),
     ...(plain.errorMessage ? { errorMessage: plain.errorMessage } : {}),
     startedAt: plain.startedAt,
     ...(plain.finishedAt ? { finishedAt: plain.finishedAt } : {}),
@@ -114,6 +122,8 @@ export const BronzeJobRepository = {
     if (patch.status !== undefined) set.status = patch.status;
     if (patch.rowCount !== undefined) set.rowCount = patch.rowCount;
     if (patch.bytesProcessed !== undefined) set.bytesProcessed = patch.bytesProcessed;
+    if (patch.deltaVersion !== undefined) set.deltaVersion = patch.deltaVersion;
+    if (patch.datasetId !== undefined) set.datasetId = patch.datasetId;
     if (patch.errorMessage !== undefined) set.errorMessage = patch.errorMessage;
     if (patch.finishedAt !== undefined) set.finishedAt = patch.finishedAt;
     if (patch.durationMs !== undefined) set.durationMs = patch.durationMs;

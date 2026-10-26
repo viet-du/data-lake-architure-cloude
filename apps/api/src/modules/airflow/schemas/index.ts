@@ -7,6 +7,7 @@ export {
   TaskIdParamSchema,
   TaskLogQuerySchema,
   TaskListQuerySchema,
+  PreflightBodySchema,
   type TDagIdParam,
   type TDagListQuery,
   type TTriggerDagBody,
@@ -15,4 +16,5 @@ export {
   type TTaskIdParam,
   type TTaskLogQuery,
   type TTaskListQuery,
+  type TPreflightBody,
 } from './airflow.schema';

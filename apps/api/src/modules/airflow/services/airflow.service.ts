@@ -5,6 +5,8 @@ import {
   AirflowClusterRepository,
   AirflowClientSingleton,
 } from '../repositories';
+import { filterConf, validateConfValues } from '../types/dag-conf';
+import { evaluatePreflight, describeConfSpec } from './preflight.service';
 import type {
   Dag,
   DagDetail,
@@ -14,6 +16,7 @@ import type {
   AirflowHealth,
   AirflowStats,
   DagRunState,
+  PreflightResult,
 } from '../types';
 import { AppError } from '@/errors';
 
@@ -45,6 +48,22 @@ export const AirflowDagService = {
     dagId: string,
     body: { conf: Record<string, unknown>; note?: string; logicalDate?: string; runId?: string },
   ): Promise<DagRun> {
+    // The conf allowlist is enforced *before* the run is created. A rejected
+    // key is an error the operator must see: silently dropping a field the
+    // user typed would produce a run that quietly did something else.
+    const { rejected } = filterConf(dagId, body.conf);
+    if (rejected.length > 0) {
+      throw new AppError(
+        400,
+        'CONF_KEY_NOT_ALLOWED',
+        `These conf keys are not allowed for "${dagId}": ${rejected.join(', ')}.`,
+      );
+    }
+    const { errors } = validateConfValues(dagId, body.conf);
+    if (errors.length > 0) {
+      throw new AppError(400, 'INVALID_CONF_VALUE', errors.join(' '));
+    }
+
     try {
       return await AirflowRunRepository.trigger(dagId, {
         conf: body.conf,
@@ -62,6 +81,36 @@ export const AirflowDagService = {
       }
       throw err;
     }
+  },
+
+  /**
+   * Evaluate the preflight for a DAG.
+   *
+   * Read-only: nothing is triggered, paused or otherwise mutated.
+   */
+  async preflight(dagId: string, conf: Record<string, unknown> = {}): Promise<PreflightResult> {
+    return evaluatePreflight(dagId, conf);
+  },
+
+  /**
+   * The typed conf specification for a DAG.
+   *
+   * The wizard renders a form from this; it never asks the operator to type
+   * raw JSON.
+   */
+  async confSpec(dagId: string): Promise<ReturnType<typeof describeConfSpec>> {
+    // A DAG that does not exist must not advertise a conf spec: the wizard
+    // would then offer fields for a DAG that cannot run.
+    try {
+      await AirflowDagRepository.detail(dagId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('-> 404')) {
+        throw new AppError(404, 'DAG_NOT_FOUND', `DAG not found: ${dagId}`);
+      }
+      throw err;
+    }
+    return describeConfSpec(dagId);
   },
 
   async pause(dagId: string): Promise<{ dagId: string; isPaused: boolean }> {

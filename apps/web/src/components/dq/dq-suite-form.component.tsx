@@ -1,12 +1,12 @@
-import { z } from 'zod';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Field, Textarea, Button } from '@/components';
-import { useFormZod, useToast } from '@/hooks';
-import { useRunDQSuiteMutation } from '@/services/queries';
+import { Modal, Field, Button } from '@/components';
+import { RulePicker } from '@/components/dq';
+import { useToast } from '@/hooks';
+import { useDQRulesQuery, useRunDQSuiteMutation } from '@/services/queries';
+import { getErrorMessage } from '@/services/api';
 
-const valuesSchema = z.object({ ruleIdsText: z.string().trim().min(1) });
-const ruleIdsSchema = z.array(z.string().min(1).max(120)).min(1).max(200);
-const INITIAL = { ruleIdsText: '' };
+const MAX_RULES = 200;
 
 export interface DQSuiteFormProps {
   open: boolean;
@@ -16,31 +16,65 @@ export interface DQSuiteFormProps {
 export function DQSuiteForm({ open, onClose }: DQSuiteFormProps) {
   const { t } = useTranslation();
   const toast = useToast();
-  const form = useFormZod(valuesSchema, INITIAL);
+  const [selectedIds, setSelectedIds] = useState<ReadonlyArray<string>>([]);
+  const rulesQuery = useDQRulesQuery();
   const mutation = useRunDQSuiteMutation();
 
   function close(): void {
-    form.reset();
+    setSelectedIds([]);
     onClose();
   }
 
   async function submit(): Promise<void> {
-    if (!form.validate()) return;
+    if (selectedIds.length === 0) {
+      toast.error(t('dq.error.noRulesSelected'));
+      return;
+    }
+    if (selectedIds.length > MAX_RULES) {
+      toast.error(t('dq.error.tooManyRules', { max: MAX_RULES }));
+      return;
+    }
     try {
-      const ruleIds = ruleIdsSchema.parse(form.values.ruleIdsText.split(/[,\n]/).map((id) => id.trim()).filter(Boolean));
-      const result = await mutation.mutateAsync({ ruleIds });
+      const result = await mutation.mutateAsync({ ruleIds: [...selectedIds] });
       toast.success(t('dq.suiteStarted', { runId: result.runId }));
       close();
     } catch (error) {
-      toast.error(t('dq.error.suite'), error instanceof Error ? error.message : '');
+      toast.error(t('dq.error.suite'), getErrorMessage(error));
     }
   }
 
   return (
-    <Modal open={open} onClose={close} title={t('dq.suiteTitle')} description={t('dq.suiteDescription')}
-      footer={<><Button variant="ghost" onClick={close}>{t('common.cancel')}</Button><Button variant="primary" disabled={mutation.isPending} onClick={() => void submit()}>{t(mutation.isPending ? 'dq.running' : 'dq.runSuite')}</Button></>}>
-      <Field label={t('labels.rule_ids')} hint={t('dq.hint.ruleIds')} error={form.errors.ruleIdsText}>
-        <Textarea value={form.values.ruleIdsText} onChange={(event) => form.setField('ruleIdsText', event.target.value)} rows={3} />
+    <Modal
+      open={open}
+      onClose={close}
+      size="lg"
+      title={t('dq.suiteTitle')}
+      description={t('dq.suiteDescription')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={close}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={mutation.isPending || selectedIds.length === 0}
+            onClick={() => void submit()}
+          >
+            {t(mutation.isPending ? 'dq.running' : 'dq.runSuite')}
+          </Button>
+        </>
+      }
+    >
+      <Field label={t('labels.rule_ids')} hint={t('dq.hint.ruleIds')}>
+        <RulePicker
+          rules={rulesQuery.data}
+          isLoading={rulesQuery.isLoading}
+          isError={rulesQuery.isError}
+          error={rulesQuery.error}
+          onRetry={() => void rulesQuery.refetch()}
+          selectedIds={selectedIds}
+          onChange={setSelectedIds}
+        />
       </Field>
     </Modal>
   );

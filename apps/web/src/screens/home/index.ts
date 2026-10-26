@@ -1,2 +1,2 @@
 export { HomeView } from './home.view';
-export { HOME_ACTIVITY, HOME_MODULES, buildHomeQuickStats } from './home.constants';
+export { HOME_MODULES, buildHomeQuickStats, formatMetricValue } from './home.constants';

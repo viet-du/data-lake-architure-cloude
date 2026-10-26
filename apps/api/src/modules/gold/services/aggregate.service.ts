@@ -1,4 +1,5 @@
 import { remoteReadOnly } from '@/lib/infra/databricks/client';
+import { GOLD_AGGREGATE_SOURCES } from '@/modules/datasets/types';
 import { GoldJobRepository } from '../repositories/gold-job.repository';
 import { GoldQueue } from '../queues/gold.queue';
 import { GoldJobService } from './job.service';
@@ -20,6 +21,24 @@ function parseDatabaseTable(table: string): { database: string; name: string } |
   return { database, name };
 }
 
+/**
+ * Resolve the Silver sources a Gold aggregate reads from.
+ *
+ * The default is the canonical mapping (`daily_revenue` ← `orders`,
+ * `fact_orders` ← `orders`, `customers`, `products`). The previous default
+ * was the Gold table's own name, which is not a Silver dataset at all, so
+ * the aggregation either failed or read the wrong table.
+ */
+function resolveSourceTables(table: string, requested?: string[]): string[] {
+  if (requested && requested.length > 0) return requested;
+  const canonical = GOLD_AGGREGATE_SOURCES[table];
+  if (canonical && canonical.length > 0) return [...canonical];
+  throw new Error(
+    `No canonical Silver source is defined for the Gold aggregate "${table}". ` +
+      'Specify sourceTables explicitly.',
+  );
+}
+
 export const GoldAggregateService = {
   async aggregateOne(
     params: TTableParams,
@@ -28,7 +47,7 @@ export const GoldAggregateService = {
     remoteReadOnly();
     const parsed = parseDatabaseTable(params.table);
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
-    const sources = body.sourceTables ?? [parsed.name];
+    const sources = resolveSourceTables(parsed.name, body.sourceTables);
     const jobId = GoldJobService.generateJobId();
     const job = await GoldJobRepository.create({
       jobId,
@@ -61,20 +80,28 @@ export const GoldAggregateService = {
     for (const table of sliced) {
       const parsed = parseDatabaseTable(table);
       if (!parsed) continue;
+      // Only aggregates with a canonical Silver source can be refreshed; a
+      // Gold table without one would silently read the wrong dataset.
+      let sources: string[];
+      try {
+        sources = resolveSourceTables(parsed.name);
+      } catch {
+        continue;
+      }
       const jobId = GoldJobService.generateJobId();
       const job = await GoldJobRepository.create({
         jobId,
         database: parsed.database,
         table: parsed.name,
         kind: body.kind,
-        sourceTables: [parsed.name],
+        sourceTables: sources,
       });
       await GoldQueue.add({
         jobId,
         database: parsed.database,
         table: parsed.name,
         kind: body.kind,
-        sourceTables: [parsed.name],
+        sourceTables: sources,
         startedAt: job.startedAt,
       });
       items.push(job);
@@ -95,19 +122,20 @@ export const GoldAggregateService = {
     if (!parsed) throw new Error(`Invalid table identifier: ${params.table}`);
     const jobId = GoldJobService.generateJobId();
     const kind: GoldAggregateKind = body.preserveHistory ? 'incremental' : 'refresh';
+    const sources = resolveSourceTables(parsed.name);
     const job = await GoldJobRepository.create({
       jobId,
       database: parsed.database,
       table: parsed.name,
       kind,
-      sourceTables: [parsed.name],
+      sourceTables: sources,
     });
     await GoldQueue.add({
       jobId,
       database: parsed.database,
       table: parsed.name,
       kind,
-      sourceTables: [parsed.name],
+      sourceTables: sources,
       ...(body.partition ? { partition: body.partition } : {}),
       preserveHistory: body.preserveHistory,
       startedAt: job.startedAt,

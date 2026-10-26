@@ -14,7 +14,15 @@ const DqRuleRunSchemaDef = new Schema(
     severity: { type: String, enum: DQ_SEVERITY, required: true, default: 'medium' },
     totalRows: { type: Number, required: true, default: 0 },
     failedRows: { type: Number, required: true, default: 0 },
-    passRate: { type: Number, required: true, default: 0 },
+    evaluatedRows: { type: Number, required: true, default: 0 },
+    skippedRows: { type: Number, required: true, default: 0 },
+    /**
+     * Rule pass rate over the evaluated rows. `null` means the rule could
+     * not be evaluated (never "100%" for an unevaluated rule).
+     */
+    passRate: { type: Number, default: null },
+    coverageRate: { type: Number, default: 0 },
+    dataVersion: { type: Number, default: null },
     errorMessage: { type: String, default: null },
     durationMs: { type: Number, required: true, default: 0 },
     startedAt: { type: String, required: true, index: true },

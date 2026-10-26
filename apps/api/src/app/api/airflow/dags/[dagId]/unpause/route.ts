@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { AirflowDagController } from '@/modules/airflow/controllers';
 import { DagIdParamSchema } from '@/modules/airflow/schemas';
@@ -14,7 +14,7 @@ const handlePost: RouteHandler = async (_req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

@@ -21,23 +21,34 @@ it('marks system schemas separately from business inventory', () => {
 
 
 afterEach(() => { vi.restoreAllMocks(); });
-it('counts business tables separately from information_schema without inventing processed-record metrics', async () => {
+it('reads the dashboard summary instead of re-deriving per-layer counters in the browser', async () => {
   const services = await import('..');
-  const base = { catalogName: 'workspace', source: 'databricks' as const, updatedAt: null };
-  vi.spyOn(services.catalogService, 'listDatabases').mockResolvedValue([
-    { ...base, id: 'bronze', name: 'workspace.bronze', layers: ['bronze'], tableCount: 3 },
-    { ...base, id: 'silver', name: 'workspace.silver', layers: ['silver'], tableCount: 5 },
-    { ...base, id: 'gold', name: 'workspace.gold', layers: ['gold'], tableCount: 3 },
-    { ...base, id: 'raw', name: 'workspace.raw_elt', layers: [], tableCount: 2 },
-    { ...base, id: 'system', name: 'workspace.information_schema', layers: [], tableCount: 29, systemSchema: true },
-  ]);
-  vi.spyOn(services.bronzeService, 'getJobStats').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.silverService, 'getJobStats').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.goldService, 'getJobStats').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.kafkaService, 'getStats').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.airflowService, 'getStats').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.dqService, 'getSummary').mockRejectedValue(new Error('separate service'));
-  vi.spyOn(services.healthService, 'getHealth').mockRejectedValue(new Error('separate service'));
+  vi.spyOn(services.dashboardService, 'getSummary').mockResolvedValue({
+    asOf: '2026-10-20T00:00:00Z',
+    scope: 'databricks_uc',
+    metrics: {
+      totalTables: { value: 13, status: 'ok', source: 'catalog:databricks_uc', window: 'all-time', asOf: '2026-10-20T00:00:00Z', coverage: 1 },
+      runningJobs: { value: 0, status: 'ok', source: 'operations.registry', window: 'live', asOf: '2026-10-20T00:00:00Z', coverage: 1 },
+      activeTopics: { value: 0, status: 'ok', source: 'kafka.admin.listTopics', window: 'live', asOf: '2026-10-20T00:00:00Z', coverage: 1 },
+      activeDAGs: { value: 0, status: 'ok', source: 'airflow.dags.activeUnpaused', window: 'live', asOf: '2026-10-20T00:00:00Z', coverage: 1 },
+      recordsProcessed: { value: null, status: 'unavailable', source: 'bronze.jobs.committed', window: 'all-time', asOf: '2026-10-20T00:00:00Z', coverage: null, reason: 'No Bronze ingestion job has committed yet.' },
+      recordsByStage: {
+        bronze: { value: null, status: 'unavailable', source: 'bronze.jobs.committed', window: 'all-time', asOf: '2026-10-20T00:00:00Z', coverage: null },
+        silver: { value: null, status: 'unavailable', source: 'silver.jobs.committed', window: 'all-time', asOf: '2026-10-20T00:00:00Z', coverage: null },
+        gold: { value: null, status: 'unavailable', source: 'gold.jobs.committed', window: 'all-time', asOf: '2026-10-20T00:00:00Z', coverage: null },
+      },
+      qualityPassRate: { value: null, status: 'not_evaluated', source: 'dq.runs.passRate', window: 'all-evaluated-runs', asOf: '2026-10-20T00:00:00Z', coverage: 0 },
+      totalLag: { value: 0, status: 'ok', source: 'kafka.admin.consumerOffsets', window: 'live', asOf: '2026-10-20T00:00:00Z', coverage: 1 },
+    },
+    serviceHealth: [],
+    stageStates: [],
+    partialFailures: [],
+    partial: false,
+    freshnessSeconds: 1,
+    systemStatus: 'ok',
+    uptimeSeconds: 120,
+  });
   const { fetchHomeStats } = await import('../queries/home.queries');
-  expect(await fetchHomeStats()).toMatchObject({ totalTables: 13, layerTables: { bronze: 3, silver: 5, gold: 3 }, records24h: null });
+  const result = await fetchHomeStats();
+  expect(result).toMatchObject({ totalTables: 13, scope: 'databricks_uc', recordsProcessed: null, qualityScore: null });
 });

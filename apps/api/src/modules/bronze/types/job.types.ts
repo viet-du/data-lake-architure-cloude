@@ -10,6 +10,10 @@ export interface BronzeJob {
   topic?: string;
   rowCount: number;
   bytesProcessed: number;
+  /** Delta snapshot version produced by the ingestion, when known. */
+  deltaVersion?: number;
+  /** Canonical dataset id of the produced dataset (provider/layer.database.table). */
+  datasetId?: string;
   errorMessage?: string;
   startedAt: string;
   finishedAt?: string;

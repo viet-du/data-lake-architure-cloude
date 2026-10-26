@@ -22,9 +22,15 @@ def write_delta_table(
     partition_by: str | list[str] | None = DEFAULT_PARTITION_BY,
     merge_schema: bool = True,
 ) -> None:
+    """Write ``df`` to the canonical Delta location for ``layer``/``table_name``.
+
+    ``table_name`` may be a bare table name (``"orders"``) or a
+    ``database/table`` fragment (``"erp/orders"``). Both resolve through
+    :meth:`LakePaths.resolve_path` so the physical layout always matches the
+    canonical dataset identity used by the control plane.
+    """
     paths = paths or LakePaths()
-    base_path = _layer_path(paths, layer)
-    full_path = f"{base_path}{table_name}/"
+    full_path = paths.resolve_path(layer, table_name)
     writer = df.write.format("delta").mode(mode)
     if partition_by:
         if isinstance(partition_by, str):
@@ -34,6 +40,78 @@ def write_delta_table(
         writer = writer.option("mergeSchema", "true")
     writer.save(full_path)
     logger.info(" Written to %s", full_path)
+
+
+def merge_delta_table(
+    df: DataFrame,
+    layer: Layer,
+    table_name: str,
+    *,
+    paths: LakePaths | None = None,
+    merge_keys: list[str],
+    partition_by: str | list[str] | None = DEFAULT_PARTITION_BY,
+    merge_schema: bool = True,
+) -> str:
+    """Merge ``df`` into the canonical Delta location using natural keys.
+
+    Returns ``"merge"`` when the rows were merged and ``"append"`` when the
+    table did not exist yet.
+
+    MASTER PLAN §11 PHASE 1 / test P0-BR-02: "Job under duplicate submit /
+    retry → no duplicate ledger rows or unintended duplicate Delta ingestion".
+    A plain ``append`` cannot satisfy that: re-running the same source
+    appends the same rows again. This helper performs a Delta ``MERGE`` on the
+    natural key so a retry converges to the same table content.
+
+    When the key columns are absent from the incoming frame the merge is
+    skipped and the caller falls back to append (documented in the log).
+    """
+    paths = paths or LakePaths()
+    full_path = paths.resolve_path(layer, table_name)
+    keys = [k for k in merge_keys if k in df.columns]
+    if len(keys) != len(merge_keys):
+        logger.warning(
+            " Merge skipped for %s: key columns %s missing from the incoming frame",
+            table_name,
+            sorted(set(merge_keys) - set(keys)),
+        )
+        write_delta_table(
+            df,
+            layer=layer,
+            table_name=table_name,
+            paths=paths,
+            mode="append",
+            partition_by=partition_by,
+            merge_schema=merge_schema,
+        )
+        return "append"
+
+    if not DeltaTable.isDeltaTable(df.sparkSession, full_path):
+        write_delta_table(
+            df,
+            layer=layer,
+            table_name=table_name,
+            paths=paths,
+            mode="append",
+            partition_by=partition_by,
+            merge_schema=merge_schema,
+        )
+        return "append"
+
+    target = DeltaTable.forPath(df.sparkSession, full_path)
+    condition = " AND ".join(f"target.`{key}` = source.`{key}`" for key in keys)
+    update_expr = {
+        col: f"source.`{col}`"
+        for col in df.columns
+        if not col.startswith("_")
+    }
+    (target.alias("target")
+        .merge(df.alias("source"), condition)
+        .whenMatchedUpdate(set=update_expr)
+        .whenNotMatchedInsertAll()
+        .execute())
+    logger.info(" Merged %d rows into %s on %s", df.count(), full_path, keys)
+    return "merge"
 
 
 def quarantine_bad_records(
@@ -83,7 +161,7 @@ def quarantine_bad_records(
     paths = paths or LakePaths()
     import datetime
     today = datetime.date.today().isoformat()
-    q_path = f"{_layer_path(paths, layer)}{table_name}/_quarantine/{today}/"
+    q_path = f"{paths.resolve_path(layer, table_name)}_quarantine/{today}/"
     q_df = (
         df.filter(f"{error_col} = True")
         .withColumn("_quarantine_reason", __import__("pyspark.sql.functions").lit(reason))
@@ -120,8 +198,7 @@ def write_delta_streaming(
     checkpoint_dir: str | None = None,
 ) -> StreamingQuery:
     paths = paths or LakePaths()
-    base_path = _layer_path(paths, layer)
-    full_path = f"{base_path}{table_name}/"
+    full_path = paths.resolve_path(layer, table_name)
     ckpt = checkpoint_dir or paths.checkpoint(layer, table_name)
     from pyspark.sql import functions as F
 
@@ -164,11 +241,3 @@ def write_delta_streaming(
     else:
         writer = writer.trigger(processingTime="10 seconds")
     return writer.start()
-
-
-def _layer_path(paths: LakePaths, layer: Layer) -> str:
-    if layer == Layer.BRONZE:
-        return paths.bronze("")
-    if layer == Layer.SILVER:
-        return paths.silver("")
-    return paths.gold("")

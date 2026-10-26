@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config', () => ({ env: {
-  LAKEHOUSE_DATA_SOURCE: 'databricks', DATABRICKS_HOST: 'https://fixture.cloud.databricks.com',
+  LAKEHOUSE_DATA_SOURCE: 'databricks', LAKEHOUSE_EXECUTION_TARGET: 'databricks_uc',
+  DATABRICKS_HOST: 'https://fixture.cloud.databricks.com',
   DATABRICKS_TOKEN: 'test-only-secret', DATABRICKS_WAREHOUSE_ID: 'fixture', DATABRICKS_CATALOG: 'workspace',
   DATABRICKS_BRONZE_SCHEMA: 'bronze', DATABRICKS_SILVER_SCHEMA: 'silver', DATABRICKS_GOLD_SCHEMA: 'gold',
 } }));

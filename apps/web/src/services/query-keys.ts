@@ -104,6 +104,23 @@ export const QUERY_KEYS = {
       [...QUERY_KEYS.crawler.all, 'job', name, 'run', runId] as const,
     stats: () => [...QUERY_KEYS.crawler.all, 'stats'] as const,
   },
+  eda: {
+    all: ['eda'] as const,
+    profiles: (params?: object) =>
+      [...QUERY_KEYS.eda.all, 'profiles', params ?? {}] as const,
+    profile: (profileId: string) =>
+      [...QUERY_KEYS.eda.all, 'profile', profileId] as const,
+    profileColumns: (profileId: string) =>
+      [...QUERY_KEYS.eda.all, 'profile', profileId, 'columns'] as const,
+    profileCharts: (profileId: string) =>
+      [...QUERY_KEYS.eda.all, 'profile', profileId, 'charts'] as const,
+    profileChart: (profileId: string, chartId: string) =>
+      [...QUERY_KEYS.eda.all, 'profile', profileId, 'chart', chartId] as const,
+    profileSample: (profileId: string) =>
+      [...QUERY_KEYS.eda.all, 'profile', profileId, 'sample'] as const,
+    comparison: (profileId: string, baselineProfileId: string) =>
+      [...QUERY_KEYS.eda.all, 'compare', profileId, baselineProfileId] as const,
+  },
   dq: {
     all: ['dq'] as const,
     rules: (params?: object) =>
@@ -112,7 +129,11 @@ export const QUERY_KEYS = {
     runs: (params?: object) =>
       [...QUERY_KEYS.dq.all, 'runs', params ?? {}] as const,
     run: (runId: string) => [...QUERY_KEYS.dq.all, 'run', runId] as const,
+    runSamples: (runId: string) =>
+      [...QUERY_KEYS.dq.all, 'run', runId, 'samples'] as const,
     presets: () => [...QUERY_KEYS.dq.all, 'presets'] as const,
+    presetCheck: (presetId: string, target: object) =>
+      [...QUERY_KEYS.dq.all, 'preset', presetId, 'check', target] as const,
     summary: () => [...QUERY_KEYS.dq.all, 'summary'] as const,
   },
   health: {
@@ -120,5 +141,13 @@ export const QUERY_KEYS = {
     root: () => [...QUERY_KEYS.health.all, 'root'] as const,
     deep: () => [...QUERY_KEYS.health.all, 'deep'] as const,
     info: () => [...QUERY_KEYS.health.all, 'info'] as const,
+  },
+  dashboard: {
+    all: ['dashboard'] as const,
+    summary: (params?: object) =>
+      [...QUERY_KEYS.dashboard.all, 'summary', params ?? {}] as const,
+    activity: (params?: object) =>
+      [...QUERY_KEYS.dashboard.all, 'activity', params ?? {}] as const,
+    dependencies: () => [...QUERY_KEYS.dashboard.all, 'dependencies'] as const,
   },
 } as const;

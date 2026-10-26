@@ -1,0 +1,28 @@
+export {
+  DATASET_PROVIDERS,
+  DATASET_LAYERS,
+  DEFAULT_DATABASE,
+  GOLD_AGGREGATE_SOURCES,
+  LAKEHOUSE_BUCKET,
+  TABLE_DATABASE,
+  activeProvider,
+  assertReadable,
+  assertWritable,
+  canonicalStoragePath,
+  canonicalTableId,
+  defaultDatabaseFor,
+  isDatasetLayer,
+  isDatasetProvider,
+  layerRootPath,
+  resolveDataset,
+  resolveFromDatasetId,
+  resolveGoldSource,
+} from './dataset.types';
+export type {
+  DataAccessMode,
+  DatasetCapabilities,
+  DatasetLayer,
+  DatasetProvider,
+  DatasetQuery,
+  DatasetRef,
+} from './dataset.types';

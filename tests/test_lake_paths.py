@@ -14,34 +14,34 @@ class TestLakePathsLocal:
         assert self.paths.protocol == "s3a"
 
     def test_bronze_with_subpath(self) -> None:
-        assert self.paths.bronze("crm/customers") == "s3a://bronze/crm/customers/"
+        assert self.paths.bronze("crm/customers") == "s3a://lakehouse/bronze/crm/customers/"
 
     def test_silver_with_subpath(self) -> None:
-        assert self.paths.silver("customers") == "s3a://silver/customers/"
+        assert self.paths.silver("customers") == "s3a://lakehouse/silver/crm/customers/"
 
     def test_gold_with_subpath(self) -> None:
-        assert self.paths.gold("fact_orders") == "s3a://gold/fact_orders/"
+        assert self.paths.gold("fact_orders") == "s3a://lakehouse/gold/retail/fact_orders/"
 
     def test_bronze_root(self) -> None:
-        assert self.paths.bronze() == "s3a://bronze/"
+        assert self.paths.bronze() == "s3a://lakehouse/bronze/"
 
     def test_silver_root(self) -> None:
-        assert self.paths.silver() == "s3a://silver/"
+        assert self.paths.silver() == "s3a://lakehouse/silver/"
 
     def test_gold_root(self) -> None:
-        assert self.paths.gold() == "s3a://gold/"
+        assert self.paths.gold() == "s3a://lakehouse/gold/"
 
     def test_checkpoint_bronze(self) -> None:
         ckpt = self.paths.checkpoint(Layer.BRONZE, "clickstream/events")
-        assert ckpt == "s3a://bronze/clickstream/events/_checkpoints/"
+        assert ckpt == "s3a://lakehouse/bronze/_checkpoints/clickstream/events/"
 
     def test_checkpoint_silver(self) -> None:
         ckpt = self.paths.checkpoint(Layer.SILVER, "ecommerce/products")
-        assert ckpt == "s3a://silver/ecommerce/products/_checkpoints/"
+        assert ckpt == "s3a://lakehouse/silver/_checkpoints/ecommerce/products/"
 
     def test_checkpoint_gold(self) -> None:
         ckpt = self.paths.checkpoint(Layer.GOLD, "fact_orders")
-        assert ckpt == "s3a://gold/fact_orders/_checkpoints/"
+        assert ckpt == "s3a://lakehouse/gold/_checkpoints/fact_orders/"
 
 
 class TestLakePathsDatabricksVolume:
@@ -68,13 +68,13 @@ class TestLakePathsDatabricksVolume:
     def test_silver_path(self) -> None:
         assert (
             self.paths.silver("customers")
-            == "/Volumes/workspace/silver/silver_data/customers/"
+            == "/Volumes/workspace/silver/silver_data/crm/customers/"
         )
 
     def test_gold_path(self) -> None:
         assert (
             self.paths.gold("fact_orders")
-            == "/Volumes/workspace/gold/gold_data/fact_orders/"
+            == "/Volumes/workspace/gold/gold_data/retail/fact_orders/"
         )
 
     def test_bronze_root(self) -> None:
@@ -116,7 +116,7 @@ class TestLakePathsDatabricksDbfsLegacy:
         assert self.paths.protocol == "dbfs"
 
     def test_bronze_uses_dbfs(self) -> None:
-        assert self.paths.bronze("crm") == "dbfs:/lakehouse/bronze/crm/"
+        assert self.paths.bronze("crm") == "dbfs:/lakehouse/bronze/default/crm/"
 
     def test_checkpoint_uses_dbfs(self) -> None:
         ckpt = self.paths.checkpoint(Layer.SILVER, "events")

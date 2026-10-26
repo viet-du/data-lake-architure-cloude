@@ -57,28 +57,52 @@ export const dqRunSchema = z.object({
   errorMessage: z.string().optional(),
 });
 
+/**
+ * The preset template.
+ *
+ * The API returns a *template* catalogue — `rules` is kept optional for
+ * backward compatibility with the legacy multi-rule shape.
+ */
 export const dqPresetSchema = z.object({
   presetId: z.string(),
   name: z.string(),
   description: z.string(),
-  rules: z.array(
-    dqRuleSchema.omit({ ruleId: true, tableName: true, createdAt: true, updatedAt: true }),
-  ),
+  layer: z.enum(['bronze', 'silver', 'gold']).optional(),
+  tableHint: z.string().nullable().optional(),
+  type: z.enum(['not_null', 'unique', 'range', 'regex', 'custom', 'in_set']).optional(),
+  params: z.record(z.unknown()).optional(),
+  severity: dqSeveritySchema.optional(),
+  tags: z.array(z.string()).optional(),
+  rules: z
+    .array(
+      dqRuleSchema.omit({ ruleId: true, tableName: true, createdAt: true, updatedAt: true }),
+    )
+    .optional(),
 });
 
+/**
+ * The summary.
+ *
+ * `passRate` is `null` when no rule has been evaluated — never a fake 0 or
+ * a fake 100% (MASTER PLAN §06.1 DQ-007).
+ */
 export const dqSummarySchema = z.object({
   totalRules: z.number().int().nonnegative(),
   passing: z.number().int().nonnegative(),
   failing: z.number().int().nonnegative(),
-  warning: z.number().int().nonnegative(),
+  warning: z.number().int().nonnegative().optional(),
   lastRunAt: z.string().optional(),
   overallStatus: healthStatusSchema,
-  bySeverity: z.object({
-    low: z.number().int().nonnegative(),
-    medium: z.number().int().nonnegative(),
-    high: z.number().int().nonnegative(),
-    critical: z.number().int().nonnegative(),
-  }),
+  passRate: z.number().nullable().optional(),
+  status: z.enum(['pass', 'fail', 'warn', 'error', 'not_evaluated']).optional(),
+  bySeverity: z
+    .object({
+      low: z.number().int().nonnegative(),
+      medium: z.number().int().nonnegative(),
+      high: z.number().int().nonnegative(),
+      critical: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export const listRulesParamsSchema = z.object({

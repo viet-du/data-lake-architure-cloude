@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { KafkaConsumerGroupController } from '@/modules/kafka/controllers';
 import { ConsumerGroupParamsSchema, ResetOffsetBodySchema } from '@/modules/kafka/schemas';
@@ -15,7 +15,7 @@ const handlePost: RouteHandler = async (req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

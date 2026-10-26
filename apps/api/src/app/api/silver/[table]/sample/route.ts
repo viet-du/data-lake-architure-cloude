@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { SilverTableController } from '@/modules/silver/controllers';
 import { TableParamsSchema, SampleQuerySchema } from '@/modules/silver/schemas';
@@ -18,7 +18,7 @@ const handleGet: RouteHandler = async (req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

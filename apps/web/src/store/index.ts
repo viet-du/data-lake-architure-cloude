@@ -12,3 +12,6 @@ export type { I18nState } from './i18n.store';
 
 export { useToastStore } from './toast.store';
 export type { EToastVariant, ToastMessage, ToastState } from './toast.store';
+
+export { useDashboardStore } from './dashboard.store';
+export type { DashboardState, EDashboardQualityWindow } from './dashboard.store';

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from urllib.parse import urlparse
 
-from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 
 from lakehouse.core.constants import (
     AWS_JAVA_SDK_PACKAGE,
+    DELTA_PACKAGE,
     HADOOP_AWS_PACKAGE,
     KAFKA_PACKAGE,
     StorageEnv,
@@ -73,6 +75,110 @@ def _get_delta_configs() -> dict[str, str]:
     }
 
 
+def _local_jars_dirs() -> list[Path]:
+    """Return every directory that already holds Spark JARs.
+
+    Two locations matter:
+
+    - ``pyspark/jars`` inside the installed package — the Airflow image
+      pre-bundles Delta / hadoop-aws / aws-sdk there;
+    - ``$SPARK_HOME/jars`` — the Bitnami Spark image ships its JAR set
+      there, and ``spark-submit`` puts that directory on the classpath.
+
+    Both are searched because the runtime image and the Airflow image stage
+    the very same artifacts under different roots.
+    """
+    dirs: list[Path] = []
+    try:
+        import pyspark
+
+        dirs.append(Path(pyspark.__file__).resolve().parent / "jars")
+    except Exception:  # pragma: no cover - pyspark is a hard dependency
+        pass
+
+    spark_home = os.environ.get("SPARK_HOME")
+    if spark_home:
+        dirs.append(Path(spark_home) / "jars")
+
+    return [d for d in dirs if d.is_dir()]
+
+
+def _has_local_jar(jars_dirs: list[Path], artifact: str) -> bool:
+    """True when a JAR for ``artifact`` is present in one of the JAR dirs.
+
+    ``artifact`` is a Maven artifact id such as ``delta-spark_2.12`` or
+    ``hadoop-aws``. The match is intentionally loose on the version so a
+    slightly different patch release still counts as "already bundled"
+    (the Airflow image ships ``aws-java-sdk-bundle-1.12.367`` while the
+    pinned coordinate is ``1.12.262``).
+    """
+    prefix = f"{artifact.lower()}-"
+    for jars_dir in jars_dirs:
+        try:
+            for entry in jars_dir.iterdir():
+                name = entry.name.lower()
+                if name.endswith(".jar") and name.startswith(prefix):
+                    return True
+        except OSError:  # pragma: no cover - defensive
+            continue
+    return False
+
+
+def _resolve_package_artifacts(jars_dirs: list[Path]) -> list[str]:
+    """Return the Maven coordinates that still need to be downloaded.
+
+    Every artifact this project uses is pre-bundled into the runtime images
+    (see ``Dockerfile.airflow`` and ``Dockerfile.spark-runtime``). Checking
+    first keeps Spark from setting ``spark.jars.packages`` at all, because
+    that setting makes the JVM resolve the coordinates through Ivy — which
+    fails inside the compose network (the download of the *descriptor* fails
+    with "impossible to move part file to definitive one") and kills the
+    Spark gateway with ``[JAVA_GATEWAY_EXITED]``.
+    """
+    requested = [DELTA_PACKAGE, HADOOP_AWS_PACKAGE, AWS_JAVA_SDK_PACKAGE]
+    if not jars_dirs:
+        return requested
+    missing: list[str] = []
+    for coordinate in requested:
+        parts = coordinate.split(":")
+        artifact = parts[-2] if len(parts) >= 2 else parts[-1]
+        if not _has_local_jar(jars_dirs, artifact):
+            missing.append(coordinate)
+    return missing
+
+
+def _kafka_jar_available(jars_dirs: list[Path]) -> bool:
+    """True when the Spark Kafka connector is already bundled."""
+    return _has_local_jar(jars_dirs, "spark-sql-kafka")
+
+
+def _resolve_master(explicit: str | None) -> str | None:
+    """Resolve the Spark master, or ``None`` to keep the launcher's choice.
+
+    Under ``spark-submit`` the launcher has already resolved the master
+    (the ``--master`` flag) and the JVM is bootstrapped by the launcher.
+    Overriding it here silently redirects the driver to a *different*
+    cluster:
+
+    - the retail DAG passes ``--master local[1]`` on purpose, so the batch
+      job stays inside the ``lake-spark-master`` container;
+    - but the Bitnami image exports ``SPARK_MASTER=spark://spark-master:7077``,
+      and ``build_spark_session`` used that value as an explicit master, so
+      the job was scheduled on the shared 2-core worker instead;
+    - that worker runs its executors with ``-Xmx2048M`` while two jobs
+      overlap, and the kernel OOM-killed the executor ("Command exited with
+      code 137").
+
+    ``PYSPARK_GATEWAY_PORT`` is set by the launcher in the driver process,
+    so it is the reliable signal that a master was already chosen.
+    """
+    if explicit:
+        return explicit
+    if os.environ.get("PYSPARK_GATEWAY_PORT"):
+        return None
+    return get_env("SPARK_MASTER", "local[*]")
+
+
 def build_spark_session(
     app_name: str,
     *,
@@ -80,8 +186,8 @@ def build_spark_session(
     extra_configs: dict[str, str] | None = None,
     with_kafka: bool = False,
 ) -> SparkSession:
-    master = master or get_env("SPARK_MASTER", "local[*]")
-    logger.info(" Building SparkSession: %s | master=%s", app_name, master)
+    master = _resolve_master(master)
+    logger.info(" Building SparkSession: %s | master=%s", app_name, master or "<launcher>")
     # In the airflow webserver/scheduler containers we have a 2GB heap by
     # default and several local Spark jobs run inside a single BashOperator
     # process. We tune the driver down to 768m to avoid the JVM getting
@@ -91,10 +197,11 @@ def build_spark_session(
     #
     # spark.driver.maxResultSize is set to 0 (unlimited) so we don't blow
     # the budget when collect() returns a large result.
+    builder = SparkSession.builder.appName(app_name)
+    if master:
+        builder = builder.master(master)
     builder = (
-        SparkSession.builder.appName(app_name)
-        .master(master)
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        builder.config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"
         )
@@ -110,10 +217,28 @@ def build_spark_session(
     if extra_configs:
         for k, v in extra_configs.items():
             builder = builder.config(k, v)
-    extra_packages = [HADOOP_AWS_PACKAGE, AWS_JAVA_SDK_PACKAGE]
-    if with_kafka:
-        extra_packages.append(KAFKA_PACKAGE)
-    return configure_spark_with_delta_pip(builder, extra_packages=extra_packages).getOrCreate()
+
+    jars_dirs = _local_jars_dirs()
+    missing = _resolve_package_artifacts(jars_dirs)
+    if with_kafka and not _kafka_jar_available(jars_dirs):
+        missing.append(KAFKA_PACKAGE)
+
+    if missing:
+        # Only fall back to Ivy/Maven when a JAR is genuinely absent. The
+        # coordinate list keeps the exact same artifacts as before, so a
+        # machine without the pre-bundled JARs still resolves them.
+        logger.info(" Resolving missing Spark packages via Ivy: %s", missing)
+        try:
+            from delta import configure_spark_with_delta_pip
+
+            builder = configure_spark_with_delta_pip(builder, extra_packages=missing)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(" Could not configure Delta via pip helper: %s", exc)
+            builder = builder.config("spark.jars.packages", ",".join(missing))
+    else:
+        logger.info(" All Spark packages are pre-bundled; skipping Ivy resolution")
+
+    return builder.getOrCreate()
 
 
 _SPARK_SESSION: SparkSession | None = None

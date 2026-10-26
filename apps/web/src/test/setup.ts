@@ -21,20 +21,26 @@ beforeAll(() => {
     });
   }
 
-  if (!('matchMedia' in window)) {
+  // A plain function, not `vi.fn()`: in vitest 2.x `vi.restoreAllMocks()`
+  // resets a `vi.fn()` implementation to `undefined`, which made every
+  // later `matchMedia(...).matches` read throw. The stub is also installed
+  // when an earlier stub exists but no longer returns a MediaQueryList.
+  const needsMatchMedia =
+    typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 0px)') === undefined;
+  if (needsMatchMedia) {
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       writable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
+      value: (query: string) => ({
         matches: false,
         media: query,
         onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
     });
   }
 });

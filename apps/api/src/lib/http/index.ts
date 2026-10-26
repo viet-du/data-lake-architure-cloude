@@ -5,4 +5,5 @@ export {
   noContent,
   errorResponse,
   unwrapParams,
+  unwrapParamsWithQuery,
 } from './response-builder';

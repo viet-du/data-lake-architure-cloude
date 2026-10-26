@@ -13,22 +13,22 @@ export const kafkaTopicSchema = z.object({
   name: z.string().min(1),
   partitions: z.number().int().nonnegative(),
   replicationFactor: z.number().int().nonnegative(),
-  retentionMs: z.number().int().nonnegative(),
-  messagesPerSec: z.number().nonnegative(),
-  consumerGroups: z.number().int().nonnegative(),
-  lag: z.number().int().nonnegative(),
+  retentionMs: z.number().int().nonnegative().nullable(),
+  messagesPerSec: z.number().nonnegative().optional(),
+  consumerGroups: z.number().int().nonnegative().optional(),
+  lag: z.number().int().nonnegative().optional(),
   status: healthStatusSchema,
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
   config: z.record(z.string()).optional(),
 });
 
 export const kafkaMessageSchema = z.object({
   partition: z.number().int().nonnegative(),
-  offset: z.number().int().nonnegative(),
+  offset: z.string(),
   timestamp: z.string(),
-  key: z.string().optional(),
-  value: z.string().min(1),
+  key: z.string().nullable(),
+  value: z.string(),
   headers: z.record(z.string()).optional(),
 });
 
@@ -42,8 +42,8 @@ export const kafkaProducePayloadSchema = z.object({
 export const kafkaProduceResultSchema = z.object({
   topic: z.string(),
   partition: z.number().int().nonnegative(),
-  offset: z.number().int().nonnegative(),
-  timestamp: z.string(),
+  offset: z.string(),
+  timestamp: z.string().optional(),
 });
 
 export const kafkaProduceBatchPayloadSchema = z.object({
@@ -53,8 +53,8 @@ export const kafkaProduceBatchPayloadSchema = z.object({
 export const kafkaProduceBatchResultSchema = z.object({
   topic: z.string(),
   produced: z.number().int().nonnegative(),
-  failed: z.number().int().nonnegative(),
-  results: z.array(kafkaProduceResultSchema),
+  failed: z.number().int().nonnegative().optional(),
+  results: z.array(kafkaProduceResultSchema).optional(),
 });
 
 export const kafkaConsumerGroupSchema = z.object({
@@ -70,8 +70,8 @@ export const kafkaConsumerGroupLagSchema = z.object({
   groupId: z.string(),
   topic: z.string(),
   partition: z.number().int().nonnegative(),
-  currentOffset: z.number().int().nonnegative(),
-  logEndOffset: z.number().int().nonnegative(),
+  currentOffset: z.string(),
+  logEndOffset: z.string(),
   lag: z.number().int().nonnegative(),
 });
 
@@ -81,15 +81,15 @@ export const kafkaClusterSchema = z.object({
   clusterId: z.string(),
   topics: z.number().int().nonnegative(),
   consumerGroups: z.number().int().nonnegative(),
-  totalMessages: z.number().int().nonnegative(),
-  version: z.string(),
+  totalMessages: z.number().int().nonnegative().optional(),
+  version: z.string().optional(),
 });
 
 export const kafkaStatsSchema = z.object({
   topics: z.number().int().nonnegative(),
   consumerGroups: z.number().int().nonnegative(),
   totalPartitions: z.number().int().nonnegative(),
-  totalMessagesPerSec: z.number().nonnegative(),
+  totalMessagesPerSec: z.number().nonnegative().optional(),
   totalLag: z.number().int().nonnegative(),
 });
 

@@ -21,8 +21,16 @@ export type THealthResponse = z.infer<typeof HealthResponseSchema>;
 
 export const AppInfoResponseSchema = z.object({
   dataSource: z.enum(['local', 'databricks']),
+  /**
+   * Where ETL/ELT mutations actually execute.
+   *
+   * MASTER PLAN §02.2 / §09: the execution target is a separate decision from
+   * the read source, so both are reported and never conflated.
+   */
+  executionTarget: z.enum(['local_delta_minio', 'databricks_uc']),
   catalog: z.string().nullable(),
   workspaceId: z.string().nullable(),
+  /** True when the *execution target* rejects mutations. */
   readOnly: z.boolean(),
   name: z.string(),
   version: z.string(),

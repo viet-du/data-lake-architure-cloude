@@ -1,4 +1,4 @@
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { SchemaController } from '@/modules/catalog';
 import { SchemaNameParamsSchema } from '@/modules/catalog';
@@ -11,7 +11,7 @@ const handleGet: RouteHandler = async (_req, ctx) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
+export const GET = withSecurity(handleGet);
 
 /**
  * @openapi

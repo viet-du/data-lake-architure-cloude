@@ -13,4 +13,14 @@ export type {
   GanttTask,
   AirflowHealth,
   AirflowStats,
+  PreflightSeverity,
+  PreflightCheck,
+  PreflightResult,
 } from './airflow.types';
+export {
+  DAG_CONF_ALLOWLIST,
+  dagConfSpec,
+  filterConf,
+  validateConfValues,
+  type DagConfSpec,
+} from './dag-conf';

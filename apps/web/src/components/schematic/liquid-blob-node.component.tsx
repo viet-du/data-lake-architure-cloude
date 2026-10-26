@@ -4,14 +4,30 @@ import { useFrame } from '@react-three/fiber';
 import { Float, MeshDistortMaterial } from '@react-three/drei';
 import { CanvasTexture, SRGBColorSpace, type Group } from 'three';
 import type { PipelineNode } from './schematic.types';
+import type { SchematicOverlay } from './schematic.overlay';
 
 export interface LiquidBlobNodeProps {
   node: PipelineNode;
   active: boolean;
+  /** The live state of this node's stage. */
+  overlay: SchematicOverlay;
   onSelect: (kind: PipelineNode['kind']) => void;
 }
 
-export function LiquidBlobNode({ node, active, onSelect }: LiquidBlobNodeProps) {
+/**
+ * The emissive intensity of a node, derived from its live state.
+ *
+ * A running node glows — the pipeline is moving through it. A degraded
+ * node glows in a warning colour. An idle node stays dim, because "no
+ * operation has run" is not an achievement.
+ */
+function emissiveFor(overlay: SchematicOverlay, active: boolean): number {
+  if (overlay.running > 0) return active ? 0.95 : 0.7;
+  if (overlay.lastOperation?.status === 'failed') return active ? 0.8 : 0.5;
+  return active ? 0.6 : 0.25;
+}
+
+export function LiquidBlobNode({ node, active, overlay, onSelect }: LiquidBlobNodeProps) {
   const { t } = useTranslation();
   const label = t(node.labelKey);
   const texture = useMemo(() => {
@@ -40,7 +56,27 @@ export function LiquidBlobNode({ node, active, onSelect }: LiquidBlobNodeProps) 
     groupRef.current.position.y = node.position[1] + Math.sin(t * 0.6 + node.position[0]) * 0.08;
   });
 
-  const emissive = useMemo(() => (active ? 0.6 : 0.25), [active]);
+  const emissive = useMemo(
+    () => emissiveFor(overlay, active),
+    [overlay, active],
+  );
+
+  // A running node pulses, so the eye is drawn to the part of the pipeline
+  // that is actually moving.
+  const pulseRef = useRef<Group | null>(null);
+  useFrame(({ clock }) => {
+    if (pulseRef.current === null) return;
+    const isPulsing = overlay.running > 0;
+    const scale = isPulsing ? 1 + Math.sin(clock.getElapsedTime() * 3) * 0.06 : 1;
+    pulseRef.current.scale.setScalar(scale);
+  });
+
+  const ringColor =
+    overlay.lastOperation?.status === 'failed'
+      ? '#ef4444'
+      : overlay.running > 0
+        ? '#38bdf8'
+        : node.glow;
 
   return (
     <Float
@@ -63,23 +99,25 @@ export function LiquidBlobNode({ node, active, onSelect }: LiquidBlobNodeProps) 
           if (typeof document !== 'undefined') document.body.style.cursor = 'auto';
         }}
       >
-        <mesh>
-          <sphereGeometry args={[0.55, 64, 64]} />
-          <MeshDistortMaterial
-            color={node.color}
-            attach="material"
-            distort={active ? 0.55 : 0.35}
-            speed={active ? 1.6 : 0.8}
-            roughness={0.2}
-            metalness={0.1}
-            emissive={node.glow}
-            emissiveIntensity={emissive}
-          />
-        </mesh>
-        <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.72, 0.8, 64]} />
-          <meshBasicMaterial color={node.glow} transparent opacity={active ? 0.7 : 0.35} />
-        </mesh>
+        <group ref={pulseRef}>
+          <mesh>
+            <sphereGeometry args={[0.55, 64, 64]} />
+            <MeshDistortMaterial
+              color={node.color}
+              attach="material"
+              distort={active ? 0.55 : 0.35}
+              speed={active ? 1.6 : 0.8}
+              roughness={0.2}
+              metalness={0.1}
+              emissive={node.glow}
+              emissiveIntensity={emissive}
+            />
+          </mesh>
+          <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.72, 0.8, 64]} />
+            <meshBasicMaterial color={ringColor} transparent opacity={active ? 0.7 : 0.35} />
+          </mesh>
+        </group>
         <sprite position={[0, -0.95, 0]} scale={[2.2, 0.33, 1]}>
           <spriteMaterial map={texture} depthWrite={false} />
         </sprite>

@@ -1,4 +1,5 @@
 import { KafkaClient } from './kafka-client';
+import { logger } from '@/lib/logger';
 import type {
   KafkaTopic,
   KafkaTopicConfig,
@@ -9,6 +10,8 @@ import type {
   KafkaClusterInfo,
   KafkaBrokerInfo,
 } from '../types';
+
+const kafkaLogger = logger.child({ module: 'kafka' });
 
 function decodeValue(buf: Buffer | null): string {
   if (!buf) return '';
@@ -25,6 +28,25 @@ function decodeKey(buf: Buffer | null): string | null {
     return buf.toString('utf-8');
   } catch {
     return buf.toString('base64');
+  }
+}
+
+/**
+ * The committed offset of a partition, normalised to a real offset.
+ *
+ * Kafka answers with `-1` when a consumer group has never committed an
+ * offset for a partition. `-1` is *not* an offset: subtracting it from the
+ * end offset inflates the lag by one and reports a backlog that does not
+ * exist. A group that never committed has consumed nothing, so the honest
+ * base is the beginning of the partition — `0`.
+ */
+export function normalizeCommittedOffset(offset: string | undefined): string {
+  if (offset === undefined) return '0';
+  try {
+    const value = BigInt(offset);
+    return value < 0n ? '0' : value.toString();
+  } catch {
+    return '0';
   }
 }
 
@@ -47,41 +69,46 @@ function decodeHeaders(headers: Record<string, Buffer | string | (Buffer | strin
 
 export const KafkaTopicRepository = {
   async listTopics(opts: { internal?: boolean; pattern?: string } = {}): Promise<string[]> {
-    const admin = await KafkaClient.admin();
-    const all = await admin.listTopics();
-    if (opts.internal) return all;
-    const userOnly = all.filter((t) => !t.startsWith('__'));
-    if (!opts.pattern) return userOnly;
-    const re = new RegExp(opts.pattern);
-    return userOnly.filter((t) => re.test(t));
+    return KafkaClient.withAdmin(async (admin) => {
+      const all = await admin.listTopics();
+      if (opts.internal) return all;
+      const userOnly = all.filter((t) => !t.startsWith('__'));
+      if (!opts.pattern) return userOnly;
+      const re = new RegExp(opts.pattern);
+      return userOnly.filter((t) => re.test(t));
+    });
   },
 
   async describeTopic(topic: string): Promise<KafkaTopic> {
-    const admin = await KafkaClient.admin();
-    const meta = await admin.fetchTopicMetadata({ topics: [topic] });
-    const t = meta.topics[0];
-    if (!t) throw new Error(`Topic not found: ${topic}`);
-    const configResponse = await admin
-      .describeConfigs({
-        includeSynonyms: false,
-        resources: [{ type: 2, name: topic }],
-      })
-      .catch(() => ({ resources: [] as Array<{ configEntries: Array<{ configName: string; configValue: string }> }> }));
-    const cfgs = configResponse.resources[0]?.configEntries ?? [];
-    const retention = cfgs.find((c) => c.configName === 'retention.ms')?.configValue;
-    const cleanup = cfgs.find((c) => c.configName === 'cleanup.policy')?.configValue;
-    const compression = cfgs.find((c) => c.configName === 'compression.type')?.configValue;
-    const partitions = t.partitions.length;
-    const replicationFactor = t.partitions[0]?.replicas.length ?? 0;
-    return {
-      name: t.name,
-      partitions,
-      replicationFactor,
-      retentionMs: retention ? Number(retention) : null,
-      cleanupPolicy: cleanup ?? null,
-      compressionType: compression ?? null,
-      isInternal: t.name.startsWith('__'),
-    };
+    return KafkaClient.withAdmin(async (admin) => {
+      const meta = await admin.fetchTopicMetadata({ topics: [topic] });
+      const t = meta.topics[0];
+      if (!t) throw new Error(`Topic not found: ${topic}`);
+      const configResponse = await admin
+        .describeConfigs({
+          includeSynonyms: false,
+          resources: [{ type: 2, name: topic }],
+        })
+        // The config of a topic is optional metadata: a broker that refuses
+        // `DescribeConfigs` (or a topic that was deleted meanwhile) must not
+        // take the whole topic description down with it.
+        .catch(() => ({ resources: [] as Array<{ configEntries: Array<{ configName: string; configValue: string }> }> }));
+      const cfgs = configResponse.resources[0]?.configEntries ?? [];
+      const retention = cfgs.find((c) => c.configName === 'retention.ms')?.configValue;
+      const cleanup = cfgs.find((c) => c.configName === 'cleanup.policy')?.configValue;
+      const compression = cfgs.find((c) => c.configName === 'compression.type')?.configValue;
+      const partitions = t.partitions.length;
+      const replicationFactor = t.partitions[0]?.replicas.length ?? 0;
+      return {
+        name: t.name,
+        partitions,
+        replicationFactor,
+        retentionMs: retention ? Number(retention) : null,
+        cleanupPolicy: cleanup ?? null,
+        compressionType: compression ?? null,
+        isInternal: t.name.startsWith('__'),
+      };
+    });
   },
 
   async createTopic(config: KafkaTopicConfig & { name: string }): Promise<void> {
@@ -136,11 +163,8 @@ export const KafkaMessageRepository = {
     const out: KafkaMessage[] = [];
     try {
       await consumer.subscribe({ topic, fromBeginning: true });
-      for (const p of partitionsToRead) {
-        consumer.seek({ topic, partition: p, offset: String(opts.fromOffset) });
-      }
       let consumed = 0;
-      const runResult = await consumer.run({
+      const runResult = consumer.run({
         autoCommit: false,
         eachMessage: async ({ partition, message }) => {
           if (!partitionsToRead.includes(partition)) return;
@@ -161,6 +185,9 @@ export const KafkaMessageRepository = {
           }
         },
       });
+      for (const p of partitionsToRead) {
+        consumer.seek({ topic, partition: p, offset: String(opts.fromOffset) });
+      }
       const startedAt = Date.now();
       while (out.length < opts.limit && Date.now() - startedAt < opts.timeoutMs) {
         await new Promise((r) => setTimeout(r, 100));
@@ -248,25 +275,57 @@ export const KafkaConsumerGroupRepository = {
     };
   },
 
+  /**
+   * The topics and partitions of a consumer-group member assignment.
+   *
+   * The assignment is a Kafka *protocol* buffer, not JSON. The layout is
+   * the one kafkajs writes in `MemberAssignment.encode`:
+   *
+   *   int16  version
+   *   int32  topicCount
+   *   repeated topicCount times:
+   *     int16  topicNameLength
+   *     bytes  topicName
+   *     int32  partitionCount
+   *     int32  partitionId   (repeated partitionCount times)
+   *   int32  userDataLength
+   *   bytes  userData
+   *
+   * Reading the topic count as an int16 (or the partition count as an
+   * int16) silently mis-parses the buffer and produces garbage topics.
+   * A member that has not been assigned anything yet simply has no
+   * assignment, and the answer is an empty list — never a broken name.
+   */
   parseAssignmentTopics(buf: Buffer): Array<{ topic: string; partition: number }> {
-    if (!buf || buf.length === 0) return [];
+    if (!buf || buf.length < 6) return [];
     const out: Array<{ topic: string; partition: number }> = [];
     try {
-      const decoded = JSON.parse(buf.toString('utf-8')) as {
-        topics?: string[];
-        partitions?: number[][];
-      };
-      if (decoded.topics && decoded.partitions) {
-        for (let i = 0; i < decoded.topics.length; i += 1) {
-          const topic = decoded.topics[i];
-          const parts = decoded.partitions[i] ?? [];
-          for (const p of parts) {
-            if (topic) out.push({ topic, partition: p });
-          }
+      let offset = 0;
+      const version = buf.readInt16BE(offset);
+      offset += 2;
+      if (version < 0) return [];
+      const topicCount = buf.readInt32BE(offset);
+      offset += 4;
+      if (topicCount < 0 || topicCount > 10_000) return [];
+      for (let i = 0; i < topicCount; i += 1) {
+        const topicLength = buf.readInt16BE(offset);
+        offset += 2;
+        if (topicLength < 0 || offset + topicLength > buf.length) return [];
+        const topic = buf.subarray(offset, offset + topicLength).toString('utf8');
+        offset += topicLength;
+        const partitionCount = buf.readInt32BE(offset);
+        offset += 4;
+        if (partitionCount < 0 || partitionCount > 100_000) return [];
+        for (let p = 0; p < partitionCount; p += 1) {
+          if (offset + 4 > buf.length) return out;
+          const partition = buf.readInt32BE(offset);
+          offset += 4;
+          if (topic.length > 0) out.push({ topic, partition });
         }
       }
-    } catch {
-      // ignore malformed assignment
+    } catch (error) {
+      kafkaLogger.warn({ err: error }, 'Malformed consumer group member assignment');
+      return out;
     }
     return out;
   },
@@ -292,8 +351,10 @@ export const KafkaConsumerGroupRepository = {
     if (topics.length === 0) return [];
     const out: KafkaLagPartition[] = [];
     for (const t of topics) {
-      const endOffsets = await admin.fetchTopicOffsets(t);
-      const committed = await admin.fetchOffsets({ groupId, topics: [t] });
+      const endOffsets = await KafkaClient.safeFetchTopicOffsets(admin, t);
+      const committed = await admin
+        .fetchOffsets({ groupId, topics: [t] })
+        .catch(() => []);
       const committedMap = new Map<number, string>();
       for (const part of committed) {
         for (const p of part.partitions) {
@@ -302,13 +363,14 @@ export const KafkaConsumerGroupRepository = {
       }
       for (const entry of endOffsets) {
         const current = committedMap.get(entry.partition);
+        const currentOffset = normalizeCommittedOffset(current);
         const endBig = BigInt(entry.offset);
-        const currentBig = current !== undefined ? BigInt(current) : 0n;
+        const currentBig = BigInt(currentOffset);
         const lag = Number(endBig - currentBig);
         out.push({
           topic: t,
           partition: entry.partition,
-          currentOffset: current ?? '0',
+          currentOffset,
           endOffset: entry.offset,
           lag: lag < 0 ? 0 : lag,
         });
@@ -347,24 +409,27 @@ export const KafkaConsumerGroupRepository = {
 
 export const KafkaClusterRepository = {
   async clusterInfo(): Promise<KafkaClusterInfo> {
-    const admin = await KafkaClient.admin();
-    const cluster = await admin.describeCluster();
-    const [topics, groups] = await Promise.all([
-      admin.listTopics().catch(() => [] as string[]),
-      admin.listGroups().then((r) => r.groups).catch(() => [] as Array<{ groupId: string }>),
-    ]);
-    return {
-      clusterId: cluster.clusterId,
-      controller: cluster.controller ?? 0,
-      brokers: cluster.brokers.map((b): KafkaBrokerInfo => ({
-        nodeId: b.nodeId,
-        host: b.host,
-        port: b.port,
-        rack: null,
-      })),
-      topicsCount: topics.filter((t) => !t.startsWith('__')).length,
-      consumerGroupsCount: groups.length,
-    };
+    return KafkaClient.withAdmin(async (admin) => {
+      const cluster = await admin.describeCluster();
+      const [topics, groups] = await Promise.all([
+        // A broker that momentarily refuses the metadata request must not
+        // turn the cluster page into an error screen.
+        admin.listTopics().catch(() => [] as string[]),
+        admin.listGroups().then((r) => r.groups).catch(() => [] as Array<{ groupId: string }>),
+      ]);
+      return {
+        clusterId: cluster.clusterId,
+        controller: cluster.controller ?? 0,
+        brokers: cluster.brokers.map((b): KafkaBrokerInfo => ({
+          nodeId: b.nodeId,
+          host: b.host,
+          port: b.port,
+          rack: null,
+        })),
+        topicsCount: topics.filter((t) => !t.startsWith('__')).length,
+        consumerGroupsCount: groups.length,
+      };
+    });
   },
 
   async stats(): Promise<{
@@ -375,44 +440,47 @@ export const KafkaClusterRepository = {
     totalLag: number;
     byTopic: Array<{ topic: string; partitions: number; endOffsetTotal: number; lag: number }>;
   }> {
-    const admin = await KafkaClient.admin();
-    const topics = (await admin.listTopics().catch(() => [])).filter((t) => !t.startsWith('__'));
-    const groups = (await admin.listGroups().catch(() => ({ groups: [] as Array<{ groupId: string }> }))).groups;
-    let totalPartitions = 0;
-    let totalMessagesIn = 0;
-    let totalLag = 0;
-    const byTopic: Array<{ topic: string; partitions: number; endOffsetTotal: number; lag: number }> = [];
-    for (const t of topics) {
-      const offsets = await admin.fetchTopicOffsets(t).catch(() => []);
-      const partitions = offsets.length;
-      const endOffsetTotal = offsets.reduce((sum, o) => sum + Number(o.offset), 0);
-      let topicLag = 0;
-      for (const g of groups) {
-        const committed = await admin
-          .fetchOffsets({ groupId: g.groupId, topics: [t] })
-          .catch(() => []);
-        for (const part of committed) {
-          for (const p of part.partitions) {
-            const endEntry = offsets.find((o) => o.partition === p.partition);
-            const endBig = endEntry ? BigInt(endEntry.offset) : 0n;
-            const currentBig = BigInt(p.offset);
-            const lag = Number(endBig - currentBig);
-            if (lag > 0) topicLag += lag;
+    return KafkaClient.withAdmin(async (admin) => {
+      const topics = (await admin.listTopics().catch(() => [])).filter((t) => !t.startsWith('__'));
+      const groups = (await admin.listGroups().catch(() => ({ groups: [] as Array<{ groupId: string }> }))).groups;
+      let totalPartitions = 0;
+      let totalMessagesIn = 0;
+      let totalLag = 0;
+      const byTopic: Array<{ topic: string; partitions: number; endOffsetTotal: number; lag: number }> = [];
+      for (const t of topics) {
+        const offsets = await KafkaClient.safeFetchTopicOffsets(admin, t);
+        const partitions = offsets.length;
+        const endOffsetTotal = offsets.reduce((sum, o) => sum + Number(o.offset), 0);
+        let topicLag = 0;
+        for (const g of groups) {
+          // A group that was deleted between the listing and this call has
+          // no committed offsets anymore; that is "no lag", not an error.
+          const committed = await admin
+            .fetchOffsets({ groupId: g.groupId, topics: [t] })
+            .catch(() => []);
+          for (const part of committed) {
+            for (const p of part.partitions) {
+              const endEntry = offsets.find((o) => o.partition === p.partition);
+              const endBig = endEntry ? BigInt(endEntry.offset) : 0n;
+              const currentBig = BigInt(normalizeCommittedOffset(p.offset));
+              const lag = Number(endBig - currentBig);
+              if (lag > 0) topicLag += lag;
+            }
           }
         }
+        totalPartitions += partitions;
+        totalMessagesIn += endOffsetTotal;
+        totalLag += topicLag;
+        byTopic.push({ topic: t, partitions, endOffsetTotal, lag: topicLag });
       }
-      totalPartitions += partitions;
-      totalMessagesIn += endOffsetTotal;
-      totalLag += topicLag;
-      byTopic.push({ topic: t, partitions, endOffsetTotal, lag: topicLag });
-    }
-    return {
-      totalTopics: topics.length,
-      totalPartitions,
-      totalConsumerGroups: groups.length,
-      totalMessagesIn,
-      totalLag,
-      byTopic,
-    };
+      return {
+        totalTopics: topics.length,
+        totalPartitions,
+        totalConsumerGroups: groups.length,
+        totalMessagesIn,
+        totalLag,
+        byTopic,
+      };
+    });
   },
 };

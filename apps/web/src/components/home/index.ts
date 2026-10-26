@@ -1,4 +1,9 @@
-export type { HomeModuleItem, HomeQuickStat, HomeActivityItem } from './home.types';
+export type {
+  HomeModuleItem,
+  HomeQuickStat,
+  HomeActivityItem,
+  HomeActivityEventItem,
+} from './home.types';
 
 export { HeroHeaderCard } from './hero-header-card.component';
 export type { HeroHeaderCardProps } from './hero-header-card.component';
@@ -23,3 +28,6 @@ export type { ActivityFeedProps } from './activity-feed.component';
 
 export { BentoGrid } from './bento-grid.component';
 export type { BentoGridProps } from './bento-grid.component';
+
+export { QualityWindowSelector } from './quality-window-selector.component';
+export type { QualityWindowSelectorProps } from './quality-window-selector.component';

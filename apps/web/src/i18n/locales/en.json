@@ -43,6 +43,8 @@
     "quick_stats": "Quick Stats",
     "activity": "Activity",
     "no_activity": "No recent activity",
+    "activity_partial": "Some activity sources could not be read.",
+    "activity_load_more": "Load more",
     "modules_section_title": "Modules",
     "modules_section_subtitle": "Navigate through your data platform",
     "open_module": "Open",
@@ -101,12 +103,27 @@
       "running_jobs": "Running Jobs",
       "active_topics": "Active Topics",
       "dags_active": "Active DAGs",
-      "records_24h": "Records Processed (all time)",
+      "records_all_time": "Records Processed (all time)",
+      "stage_records": "Committed Records (stage)",
       "quality_score": "Quality Pass Rate",
       "uptime": "API Uptime"
     },
     "partial": "Some metrics are unavailable. See Health for dependency checks.",
-    "events": "{{count}} events"
+    "events": "{{count}} events",
+    "quality_window": {
+      "label": "Quality window",
+      "24h": "Last 24 hours",
+      "all": "All history",
+      "applied": "measured over {{window}}"
+    },
+    "metric_status": {
+      "stale": "Stale",
+      "unavailable": "Unavailable",
+      "not_evaluated": "Not evaluated"
+    },
+    "quality_cta": {
+      "run": "Run Quality Check"
+    }
   },
   "health": {
     "healthy": "Healthy",
@@ -191,7 +208,18 @@
     "noRuns": "No DAG runs",
     "noTasks": "No tasks",
     "runId": "Run ID",
-    "selectRun": "Select a run"
+    "selectRun": "Select a run",
+    "wizard": {
+      "title": "Trigger {{dagId}}",
+      "parameters": "Parameters",
+      "noParameters": "This DAG accepts no parameters.",
+      "datasets": "Affected datasets",
+      "preflight": "Check",
+      "preflightResult": "Preflight result",
+      "preflightHint": "Run the preflight to verify this trigger before starting it.",
+      "canTrigger": "Ready to trigger",
+      "cannotTrigger": "Blocked"
+    }
   },
   "crawler": {
     "trigger": "Trigger Crawl",
@@ -230,18 +258,66 @@
     "enable": "Enable",
     "updated": "Rule updated",
     "suiteTitle": "Run DQ Suite",
-    "suiteDescription": "Execute data quality checks on selected tables",
+    "suiteDescription": "Execute data quality checks on the rules you pick.",
     "hint": {
-      "ruleIds": "Comma-separated rule IDs",
+      "ruleIds": "Pick the rules to execute — the ids are filled in automatically.",
       "tables": "Comma-separated table names",
       "parallel": "Run checks in parallel"
     },
     "error": {
       "run": "Run failed: {{message}}",
       "suite": "Suite failed: {{message}}",
-      "update": "Update failed: {{message}}"
+      "update": "Update failed: {{message}}",
+      "noRulesSelected": "Select at least one rule to run.",
+      "tooManyRules": "A suite can run at most {{max}} rules."
     },
-    "run": "Run check"
+    "run": "Run check",
+    "gate": {
+      "notEvaluated": "Not evaluated",
+      "pass": "Quality gate passed",
+      "fail": "Quality gate failed",
+      "warn": "Quality gate warning",
+      "error": "Quality gate error",
+      "description": "Gate outcome of the latest evaluations",
+      "evaluatedRows": "Evaluated rows",
+      "skippedRows": "Skipped rows (NULL column)",
+      "coverage": "Coverage"
+    },
+    "preset": {
+      "title": "Apply a DQ preset",
+      "description": "Check the preset against the dataset schema, then confirm to create exactly one rule.",
+      "apply": "Apply preset",
+      "applying": "Applying…",
+      "applied": "Preset applied (rule {{id}})",
+      "alreadyApplied": "This preset was already applied to this dataset — the existing rule was kept.",
+      "checking": "Checking the preset against the dataset schema…",
+      "applicable": "Applicable to column {{column}} ({{type}}).",
+      "error": "Could not apply the preset: {{message}}",
+      "draftWarning": "The rule is created as a draft (disabled). Enable it explicitly after reviewing the check result.",
+      "field": {
+        "preset": "Preset",
+        "presetPlaceholder": "Select a preset…",
+        "layer": "Layer",
+        "table": "Dataset",
+        "column": "Column",
+        "severity": "Severity",
+        "enableNow": "Enable the rule right away",
+        "confirm": "I confirm this rule for the selected dataset and column"
+      },
+      "hint": {
+        "preset": "A preset is a template — nothing is created until you confirm.",
+        "table": "Pick the dataset — its canonical name is filled in automatically.",
+        "column": "Pick the column the preset checks."
+      }
+    },
+    "samples": {
+      "title": "Failed samples",
+      "selectRun": "Select a run to inspect its failed samples",
+      "empty": "No failed samples for this run",
+      "count": "{{returned}} of {{total}} failed rows shown",
+      "truncated": "Truncated",
+      "redactionNote": "Sample values are redacted on the server — sensitive columns and PII-shaped values are never sent to the browser."
+    }
   },
   "catalog": {
     "databases": "Databases",
@@ -271,7 +347,20 @@
       "crawler": "Data Crawlers",
       "storage": "Storage"
     },
-    "static": "Static architecture illustration; no live metrics are collected here."
+    "overlay": {
+      "idle": "Idle",
+      "running": "Running",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unavailable": "Live state unavailable",
+      "no_operation": "No operation has run in this stage yet.",
+      "last_operation": "Last operation",
+      "status": "Status",
+      "ago": "Ago",
+      "running_count": "{{count}} running",
+      "quality_not_evaluated": "Quality not evaluated yet",
+      "quality_pass_rate": "Quality pass rate {{rate}}%"
+    }
   },
   "sample": {
     "empty": "No sample data",
@@ -306,7 +395,11 @@
       "checkpoint": "Streaming checkpoint path",
       "delimiter": "CSV delimiter"
     },
-    "submitted": "Ingestion job submitted"
+    "submitted": "Ingestion job submitted",
+    "targetDataset": "Target dataset",
+    "hint": {
+      "targetDataset": "Pick the Bronze dataset to write into — its database and table are filled in automatically."
+    }
   },
   "transform": {
     "success": "Transform submitted",
@@ -364,7 +457,8 @@
     "crawler": "Crawler",
     "dq": "Data Quality",
     "health": "Health",
-    "schematic": "Schematic"
+    "schematic": "Schematic",
+    "eda": "Explorer"
   },
   "screens": {
     "catalog": {
@@ -480,7 +574,15 @@
       "suiteDescription": "Execute data quality checks on selected tables",
       "title": "Data Quality",
       "subtitle": "Data Lake Control Plane",
-      "description": "Manage validation rules and inspect results."
+      "description": "Manage validation rules and inspect results.",
+      "quality": "Quality",
+      "explore": "Explore",
+      "exploreTitle": "Explore & author rules",
+      "exploreDescription": "Start from a dataset: check a preset against its schema, then confirm to create exactly one rule.",
+      "exploreHint": "The preset wizard validates the column and its physical type before anything is created. Applying the same preset to the same dataset and column twice never creates a duplicate rule.",
+      "exploreStep1": "Pick the dataset (database.table) and the column the rule must check.",
+      "exploreStep2": "Review the applicability report — it explains why a preset does or does not fit.",
+      "exploreStep3": "Confirm to create the rule as a draft, enable it, then run the suite."
     },
     "health": {
       "healthy": "Healthy",
@@ -494,6 +596,11 @@
       "subtitle": "Data Lake Control Plane",
       "description": "Inspect API availability and dependency checks.",
       "dependencies": "Dependency Checks"
+    },
+    "eda": {
+      "title": "Data Explorer",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Profile datasets, explore distributions and derive quality rules."
     }
   },
   "form": {
@@ -560,6 +667,7 @@
     "parallel": "Parallel",
     "partition": "Partition",
     "partitions": "Partitions",
+    "pass_rate": "Pass rate",
     "passing": "Passing",
     "preview": "Preview",
     "progress": "Progress",
@@ -571,7 +679,7 @@
     "retries": "Retries",
     "row_limit": "Row limit",
     "rows": "Rows",
-    "rule_ids": "Rule IDs",
+    "rule_ids": "Rules",
     "running": "Running",
     "runs": "Runs",
     "sample": "Sample",
@@ -607,5 +715,137 @@
     "readOnly": "Browse live tables, schema and sample rows. Jobs, Kafka, Airflow and DQ show their separately connected services.",
     "preview": "View data",
     "permissionDenied": "Databricks: the server credential needs USE CATALOG, USE SCHEMA and SELECT for this table."
+  },
+  "eda": {
+    "runProfile": "Profile dataset",
+    "profiling": "Profiling…",
+    "profileCreated": "Profile ready ({{id}})",
+    "requestTitle": "Compute a dataset profile",
+    "requestDescription": "The profiler reads a bounded snapshot and stores the result for later comparison.",
+    "toDataQuality": "Data Quality",
+    "exploreTitle": "Profile library",
+    "chartsTitle": "Charts",
+    "sampleTitle": "Sample rows",
+    "noSelection": "No profile selected",
+    "noSelectionDescription": "Profile a dataset or pick a stored profile to explore its findings.",
+    "noCharts": "This profile has no chart artifacts.",
+    "approximate": "Approximate",
+    "correlationCost": "Costly",
+    "compare": "Compare",
+    "ruleProposed": "Draft rule created ({{id}})",
+    "ruleDrafted": "A draft rule was created — review it in Data Quality.",
+    "proposeRule": "Propose rule",
+    "proposing": "Proposing…",
+    "proposeTitle": "Propose a quality rule",
+    "proposeDescription": "Derive a draft rule from the finding on {{column}}.",
+    "proposeObservedNulls": "Observed nulls: {{value}}%",
+    "proposeDraftWarning": "The rule is created as a draft (disabled). Review the threshold and enable it explicitly.",
+    "tab": {
+      "explore": "Explore",
+      "charts": "Charts",
+      "sample": "Sample"
+    },
+    "sampling": {
+      "full": "Full scan",
+      "sample": "Sample",
+      "stratified": "Stratified"
+    },
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
+    "summary": {
+      "rows": "Population rows",
+      "observed": "Rows observed",
+      "columns": "Columns",
+      "sampling": "Sampling",
+      "engine": "Engine",
+      "elapsed": "Elapsed",
+      "estimated": "Estimated count",
+      "coverage": "Coverage {{value}}",
+      "sampleSize": "{{value}} rows",
+      "computedAt": "Computed {{value}}",
+      "fingerprint": "Fingerprint",
+      "queryHash": "Query hash",
+      "version": "Snapshot",
+      "schemaVersion": "Schema v"
+    },
+    "column": {
+      "missingPct": "{{value}}% missing",
+      "nulls": "Nulls",
+      "nonNulls": "Non-null",
+      "distinct": "Distinct",
+      "cardinality": "Cardinality",
+      "mean": "Mean",
+      "std": "Std",
+      "median": "Median",
+      "iqr": "IQR",
+      "min": "Min",
+      "max": "Max"
+    },
+    "chart": {
+      "missingTitle": "Missing values by column",
+      "boxSubtitle": "Median {{median}} · IQR {{iqr}}",
+      "correlationSubtitle": "Method: {{method}}",
+      "export": "Export CSV",
+      "min": "Min",
+      "max": "Max",
+      "unsupported": "Unsupported chart type: {{type}}"
+    },
+    "library": {
+      "title": "Stored profiles",
+      "empty": "No profile yet",
+      "search": "Filter columns…",
+      "rows": "Rows",
+      "columns": "Columns",
+      "alerts": "{{count}} alerts",
+      "noColumns": "This profile has no column statistics.",
+      "noMatch": "No column matches the filter."
+    },
+    "field": {
+      "dataset": "Dataset",
+      "datasetPlaceholder": "Select a dataset…",
+      "analyses": "Analyses",
+      "sampling": "Sampling policy",
+      "sampleSize": "Sample size",
+      "seed": "Seed",
+      "correlation": "Compute the correlation matrix",
+      "ruleType": "Rule type",
+      "ruleName": "Rule name",
+      "threshold": "Threshold (%)",
+      "enableNow": "Enable the rule immediately",
+      "columnsResolved": "{{count}} columns resolved",
+      "moreColumns": "+{{count}} more"
+    },
+    "hint": {
+      "dataset": "The dataset is resolved server-side — no path is sent from the browser.",
+      "analyses": "Only the selected analyses are computed.",
+      "sampling": "A sampling policy requires a sample size and a reproducible seed.",
+      "sampleSize": "Between 100 and 5,000,000 rows.",
+      "seed": "The same seed reproduces the same sample.",
+      "threshold": "The observed null percentage of the column is suggested."
+    },
+    "error": {
+      "datasetRequired": "Select a dataset first.",
+      "profile": "Could not compute the profile.",
+      "rule": "Could not create the rule.",
+      "ruleInvalid": "The rule is not valid."
+    }
+  },
+  "datasetPicker": {
+    "layer": "Layer",
+    "searchPlaceholder": "Search datasets…",
+    "noTables": "No dataset in this layer.",
+    "noColumns": "This dataset has no readable columns.",
+    "column": "Column"
+  },
+  "rulePicker": {
+    "search": "Search rules…",
+    "selected": "{{count}} selected",
+    "noRules": "No quality rules yet.",
+    "noMatch": "No rule matches this filter."
   }
 }

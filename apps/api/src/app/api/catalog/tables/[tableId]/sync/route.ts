@@ -1,4 +1,4 @@
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { TableController } from '@/modules/catalog';
 import { TableIdParamsSchema } from '@/modules/catalog';
@@ -11,7 +11,7 @@ const handlePost: RouteHandler = async (_req, ctx) => {
   return ok(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

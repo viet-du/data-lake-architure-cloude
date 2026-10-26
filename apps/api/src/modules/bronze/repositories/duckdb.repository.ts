@@ -1,16 +1,20 @@
 import { getDuckDB } from '@/lib/infra/duckdb';
 import type { ColumnMeta, PartitionMeta } from '@/modules/catalog/types/table.types';
+import { canonicalStoragePath, layerRootPath } from '@/modules/datasets/types';
 import type { BronzeHistoryEntry, BronzePartition, BronzeStats } from '../types';
-
-const BRONZE_BUCKET = 'lakehouse';
-const BRONZE_LAYER = 'bronze';
 
 function escapeS3Path(path: string): string {
   return path.replace(/'/g, "''");
 }
 
+/**
+ * Canonical Bronze storage path.
+ *
+ * MASTER PLAN §05.1: the physical location is derived from the dataset
+ * identity by the shared resolver, never hard-coded per repository.
+ */
 function buildS3Path(database: string, table: string): string {
-  return `s3://${BRONZE_BUCKET}/${BRONZE_LAYER}/${database}/${table}`;
+  return canonicalStoragePath('bronze', database, table);
 }
 
 export const BronzeDuckDBRepository = {
@@ -24,7 +28,7 @@ export const BronzeDuckDBRepository = {
     const conn = await instance.connect();
     const res = await conn.runAndReadAll(`
       SELECT file
-      FROM glob('s3://${BRONZE_BUCKET}/${BRONZE_LAYER}/*/*/_delta_log/00000000000000000000.json')
+      FROM glob('${layerRootPath('bronze')}/*/*/_delta_log/00000000000000000000.json')
       ORDER BY file
     `);
     const rows = res.getRowObjects() as Array<{ file: string }>;

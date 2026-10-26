@@ -6,5 +6,7 @@ export * from './kafka.queries';
 export * from './airflow.queries';
 export * from './crawler.queries';
 export * from './dq.queries';
+export * from './eda.queries';
+export * from './dashboard.queries';
 export * from './health.queries';
 export * from './home.queries';

@@ -27,7 +27,13 @@ services:
       # We deliberately do NOT read these from apps/api/.env.local, which
       # uses 127.0.0.1 (host) for local dev. Override here for the
       # in-container BE so its clients can reach the rest of the stack.
-      MONGO_URI: mongodb://mongo:27017
+      #
+      # The Mongo container runs with `MONGO_INITDB_ROOT_USERNAME`/
+      # `_PASSWORD`, so the root user exists and authentication is *required*.
+      # A credential-less URI fails with "Command aggregate requires
+      # authentication" — the connection succeeds but every command is
+      # rejected. The credentials mirror the compose service definition.
+      MONGO_URI: mongodb://mongoadmin:mongoadmin@mongo:27017/?authSource=admin
       REDIS_HOST: redis
       MINIO_ENDPOINT: minio:9000
       KAFKA_BOOTSTRAP: kafka:29092
@@ -43,6 +49,65 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+# ============================================================================
+# worker — the BullMQ consumer for the Bronze/Silver/Gold/Crawler queues
+# ----------------------------------------------------------------------------
+# The API process only *submits* jobs. Without a separate consumer process a
+# submitted job stayed `queued` forever, which is exactly the false-success
+# failure mode the master plan calls out. The worker image is a distinct
+# build target (`--target worker`) because the API runtime image ships no
+# `src/`.
+# ============================================================================
+  worker:
+    build:
+      # The build context is the repository ROOT: the worker image needs both
+      # the Python package (`src/lakehouse`) and the TypeScript worker
+      # sources (`apps/api/src`).
+      context: .
+      dockerfile: apps/api/Dockerfile.worker
+    container_name: lake-worker
+    env_file:
+      - .env
+      - apps/api/.env.local
+    environment:
+      MONGO_URI: mongodb://mongoadmin:mongoadmin@mongo:27017/?authSource=admin
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio:9000
+      KAFKA_BOOTSTRAP: kafka:29092
+      AIRFLOW_BASE_URL: http://airflow-webserver:8080/api/v1
+      # Inside the container the ambient environment owns the configuration;
+      # the local file only fills keys that are absent.
+      LAKEHOUSE_ENV_PRECEDENCE: ambient
+      LAKEHOUSE_REPO_ROOT: /app
+      PYTHONPATH: /app/lakehouse-src
+      # Spark resource budget for the jobs this worker executes. The worker
+      # inherits SPARK_DRIVER_MEMORY=2g from the repository `.env`, and a
+      # 2g heap plus the local[*] executor pool does not fit next to the
+      # other containers of the stack. The job runner also runs several
+      # jobs concurrently, so the budget is sized for that.
+      SPARK_DRIVER_MEMORY: "768m"
+      SPARK_EXECUTOR_MEMORY: "768m"
+      SPARK_MASTER: "local[2]"
+    volumes:
+      # The canonical Python package is mounted so a local edit is picked up
+      # without rebuilding the image. It is mounted at a dedicated path so it
+      # cannot shadow the TypeScript `src/` tree that lives in the image.
+      - ./src:/app/lakehouse-src:ro
+      # The deterministic QA fixtures. `source_resolver` resolves a relative
+      # source against the repository root (`/app`), so the fixtures must sit
+      # at `/app/data-samples` for the container to find them. Without this
+      # mount every Bronze ingestion fails with "source not found" — a real
+      # failure, not a fake one, but it blocks the E2E proof.
+      - ./data-samples:/app/data-samples:ro
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -55,7 +120,13 @@ services:
       # done with this base URL. Update VITE_API_BASE_URL in apps/web
       # before `pnpm --filter @lakehouse/web build` if you need a
       # different host.
-      VITE_API_BASE_URL: http://localhost:3001
+      #
+      # The API is reached through the *compose service name* `api`, not
+      # through `localhost`. Inside the web container `localhost` is the
+      # web container itself, so `http://localhost:3001` would point at
+      # nothing and every browser request would fail with
+      # "connect ECONNREFUSED 127.0.0.1:3001".
+      VITE_API_BASE_URL: http://api:3001
     depends_on:
       api:
         condition: service_started

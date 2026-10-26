@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components';
 import { cn } from '@/theme';
-import type { HomeActivityItem } from './home.types';
+import type { HomeActivityEventItem } from './home.types';
 
-const STATUS_DOT: Readonly<Record<HomeActivityItem['status'], string>> = {
+const STATUS_DOT: Readonly<Record<HomeActivityEventItem['status'], string>> = {
   success: 'bg-emerald-500',
   failed: 'bg-red-500',
   running: 'bg-sky-500 animate-pulse',
@@ -25,7 +25,7 @@ function formatRelative(iso: string): string {
 }
 
 export interface ActivityItemProps {
-  item: HomeActivityItem;
+  item: HomeActivityEventItem;
 }
 
 export function ActivityItem({ item }: ActivityItemProps) {
@@ -36,6 +36,7 @@ export function ActivityItem({ item }: ActivityItemProps) {
     <button
       type="button"
       onClick={() => navigate(item.path)}
+      title={`${item.title} — ${item.actor} — ${item.reference}`}
       className={cn(
         'group flex w-full items-center gap-3 rounded-lg p-2 text-left',
         'transition-colors duration-200',
@@ -59,10 +60,14 @@ export function ActivityItem({ item }: ActivityItemProps) {
         />
       </div>
       <div className="min-w-0 flex-1">
+        {/* The title is the event's own description — it is never a
+            translation key, because the event describes a real run. */}
         <p className="truncate text-xs font-medium text-black dark:text-white">
-          {t(item.titleKey)}
+          {item.title}
         </p>
-        <p className="text-[10px] text-black dark:text-white">{t(`nav.${item.moduleKey}`)}</p>
+        <p className="truncate text-[10px] text-black dark:text-white">
+          {t(`nav.${item.moduleKey}`)} · {item.actor}
+        </p>
       </div>
       <span className="shrink-0 text-[10px] text-black dark:text-white">
         {formatRelative(item.timestamp)}

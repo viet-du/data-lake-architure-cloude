@@ -9,8 +9,26 @@ import type {
   TUpdateTableMetadata,
   TSampleQuery,
 } from '../schemas';
+import type { TCatalogProvider } from '../schemas/table.schema';
 
 const STORAGE_BUCKET = 'lakehouse';
+
+/**
+ * Resolve the catalog provider for one request.
+ *
+ * MASTER PLAN §02.2: Databricks and the local Delta lakehouse are two
+ * distinct stores. The catalog must therefore address exactly one of them
+ * per request — never a silent merge, which would make the table list
+ * ambiguous and the "table not found" answer depend on which store happened
+ * to hold the name.
+ *
+ * An explicit provider always wins; otherwise the configured
+ * `LAKEHOUSE_DATA_SOURCE` decides.
+ */
+function catalogProvider(explicit?: TCatalogProvider): 'databricks' | 'local' {
+  if (explicit) return explicit;
+  return usesDatabricks() ? 'databricks' : 'local';
+}
 
 function buildTableId(layer: Layer, database: string, name: string): string {
   return `${layer}.${database}.${name}`;
@@ -39,6 +57,8 @@ function toTableMeta(doc: Record<string, unknown> | null): TableMeta | null {
     database: parsed.database,
     name: parsed.name,
     fullName: (doc.fullName as string) ?? tableId,
+    provider: 'local',
+    source: 'local',
     description: (doc.description as string | undefined) ?? undefined,
     owner: (doc.owner as string | undefined) ?? undefined,
     tags: (doc.tags as string[]) ?? [],
@@ -60,6 +80,8 @@ function deltaToTableMeta(info: DeltaTableInfo, layer: Layer, database: string, 
     database,
     name,
     fullName: `${layer}.${database}.${name}`,
+    provider: 'local',
+    source: 'local',
     tags: [],
     partitions: info.partitions,
     columnCount: info.columns.length,
@@ -74,7 +96,10 @@ function deltaToTableMeta(info: DeltaTableInfo, layer: Layer, database: string, 
 
 export const TableService = {
   async list(query: TTableLayerQuery): Promise<TableMeta[]> {
-    if (usesDatabricks()) return DatabricksRepository.list(query);
+    // The provider is an explicit input: MASTER PLAN §02.2 forbids merging
+    // two catalogs into one ambiguous list, so a request addresses exactly
+    // one store. `undefined` keeps the configured default.
+    if (catalogProvider(query.provider) === 'databricks') return DatabricksRepository.list(query);
     const filter = {
       limit: query.limit,
       offset: query.offset,
@@ -87,7 +112,7 @@ export const TableService = {
   },
 
   async getOrFail(params: TTableIdParams): Promise<TableMeta> {
-    if (usesDatabricks()) return DatabricksRepository.get(params.tableId);
+    if (catalogProvider(params.provider) === 'databricks') return DatabricksRepository.get(params.tableId);
     const doc = await TableRepository.findById(params.tableId);
     if (!doc) {
       const parsed = parseTableId(params.tableId);
@@ -101,8 +126,13 @@ export const TableService = {
     return meta;
   },
 
-  async getSchema(tableId: string): Promise<{ tableId: string; columns: ColumnMeta[] }> {
-    if (usesDatabricks()) return { tableId, columns: await DatabricksRepository.columns(tableId) };
+  async getSchema(
+    tableId: string,
+    provider?: TCatalogProvider,
+  ): Promise<{ tableId: string; columns: ColumnMeta[] }> {
+    if (catalogProvider(provider) === 'databricks') {
+      return { tableId, columns: await DatabricksRepository.columns(tableId) };
+    }
     const parsed = parseTableId(tableId);
     if (!parsed) throw new NotFoundError('Table', tableId);
     const info = await DuckDBRepository.getTableInfo(parsed.layer, parsed.database, parsed.name);
@@ -110,8 +140,8 @@ export const TableService = {
     return { tableId, columns: info.columns };
   },
 
-  async getStats(tableId: string): Promise<TableStats> {
-    const meta = await this.getOrFail({ tableId });
+  async getStats(tableId: string, provider?: TCatalogProvider): Promise<TableStats> {
+    const meta = await this.getOrFail({ tableId, provider });
     return {
       tableId: meta.tableId,
       rowCount: meta.rowCount,
@@ -123,8 +153,14 @@ export const TableService = {
     };
   },
 
-  async getSample(tableId: string, query: TSampleQuery): Promise<Array<Record<string, unknown>>> {
-    if (usesDatabricks()) return DatabricksRepository.sample(tableId, query.limit);
+  async getSample(
+    tableId: string,
+    query: TSampleQuery,
+    provider?: TCatalogProvider,
+  ): Promise<Array<Record<string, unknown>>> {
+    if (catalogProvider(provider) === 'databricks') {
+      return DatabricksRepository.sample(tableId, query.limit);
+    }
     const parsed = parseTableId(tableId);
     if (!parsed) throw new NotFoundError('Table', tableId);
     return DuckDBRepository.getTableSample(parsed.layer, parsed.database, parsed.name, query.limit);

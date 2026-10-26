@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @lakehouse/web dev",
+    "dev": "pnpm --parallel --filter lakehouse-api --filter @lakehouse/web dev",
     "build": "pnpm --filter @lakehouse/web build",
     "build:all": "pnpm -r build",
     "test": "pnpm -r test"

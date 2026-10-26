@@ -14,6 +14,7 @@ import {
   KafkaScreen,
   AirflowScreen,
   DQScreen,
+  EdaScreen,
   HealthScreen,
   SchematicScreen,
 } from '@/screens';
@@ -54,6 +55,7 @@ function ThemedApp() {
               <Route path={ROUTES.KAFKA} element={<KafkaScreen />} />
               <Route path={ROUTES.AIRFLOW} element={<AirflowScreen />} />
               <Route path={ROUTES.DQ} element={<DQScreen />} />
+              <Route path={ROUTES.EDA} element={<EdaScreen />} />
               <Route path={ROUTES.HEALTH} element={<HealthScreen />} />
               <Route path={ROUTES.SCHEMATIC} element={<SchematicScreen />} />
             </Route>

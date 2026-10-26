@@ -1,5 +1,6 @@
 import { ROUTES } from '@/navigation/routes';
-import type { HomeActivityItem, HomeModuleItem, HomeQuickStat } from '@/components/home';
+import type { HomeModuleItem, HomeQuickStat } from '@/components/home';
+import type { DashboardMetric, EDashboardMetricStatus } from '@/types/entities';
 
 export const HOME_MODULES: ReadonlyArray<HomeModuleItem> = [
   {
@@ -24,7 +25,7 @@ export const HOME_MODULES: ReadonlyArray<HomeModuleItem> = [
     accent: 'bronze',
     status: 'unknown',
     metric: '0',
-    metricLabelKey: 'home.stats.records_24h',
+    metricLabelKey: 'home.stats.stage_records',
   },
   {
     key: 'silver',
@@ -36,7 +37,7 @@ export const HOME_MODULES: ReadonlyArray<HomeModuleItem> = [
     accent: 'silver',
     status: 'unknown',
     metric: '0',
-    metricLabelKey: 'home.stats.records_24h',
+    metricLabelKey: 'home.stats.stage_records',
   },
   {
     key: 'gold',
@@ -48,7 +49,7 @@ export const HOME_MODULES: ReadonlyArray<HomeModuleItem> = [
     accent: 'gold',
     status: 'unknown',
     metric: '0',
-    metricLabelKey: 'home.stats.records_24h',
+    metricLabelKey: 'home.stats.stage_records',
   },
   {
     key: 'kafka',
@@ -119,24 +120,100 @@ function formatNumber(n: number | null): string {
   return String(n);
 }
 
-export function buildHomeQuickStats(input: {
-  totalTables: number | null;
-  runningJobs: number | null;
-  activeTopics: number | null;
-  activeDAGs: number | null;
-  records24h: number | null;
-  qualityScore: number | null;
-  totalLag: number | null;
-  uptimeSeconds: number | null;
-}): ReadonlyArray<HomeQuickStat> {
-  return [
-    { key: 'tables', labelKey: 'home.stats.total_tables', value: formatNumber(input.totalTables), accent: 'primary' },
-    { key: 'jobs', labelKey: 'home.stats.running_jobs', value: formatNumber(input.runningJobs), accent: 'bronze' },
-    { key: 'topics', labelKey: 'home.stats.active_topics', value: formatNumber(input.activeTopics), accent: 'kafka' },
-    { key: 'dags', labelKey: 'home.stats.dags_active', value: formatNumber(input.activeDAGs), accent: 'airflow' },
-    { key: 'records', labelKey: 'home.stats.records_24h', value: formatNumber(input.records24h), accent: 'silver' },
-    { key: 'quality', labelKey: 'home.stats.quality_score', value: input.qualityScore === null ? '—' : `${input.qualityScore}%`, accent: 'dq' },
-  ];
+/**
+ * The value of a metric, rendered for the card.
+ *
+ * A metric that was not measured is `—`, not `0`. The distinction matters:
+ * a `0` reads as "there are no records", while `—` reads as "we do not
+ * know", which is what a degraded provider actually means.
+ */
+export function formatMetricValue(metric: DashboardMetric | undefined): string {
+  if (!metric || metric.value === null) return '—';
+  return formatNumber(metric.value);
 }
 
-export const HOME_ACTIVITY: ReadonlyArray<HomeActivityItem> = [];
+/**
+ * The Home quick stats.
+ *
+ * MASTER PLAN §08: the numbers come from the API's read model, so this
+ * function only *renders* them — it never aggregates two sources into one
+ * number. In particular `records` is the Bronze ingestion stage's committed
+ * input record count and is never the sum of the three layers.
+ *
+ * Each card keeps the **status** of its metric, so the UI can tell a
+ * stale last-known value apart from a metric whose source failed and
+ * from one that was never evaluated. Collapsing all three into "—" would
+ * throw away exactly the information the metric contract exists to
+ * carry.
+ */
+export function buildHomeQuickStats(input: {
+  totalTables: DashboardMetric | undefined;
+  runningJobs: DashboardMetric | undefined;
+  activeTopics: DashboardMetric | undefined;
+  activeDAGs: DashboardMetric | undefined;
+  recordsProcessed: DashboardMetric | undefined;
+  qualityScore: DashboardMetric | undefined;
+  totalLag: DashboardMetric | undefined;
+  uptimeSeconds: number | null;
+}): ReadonlyArray<HomeQuickStat> {
+  const metric = (value: DashboardMetric | undefined): EDashboardMetricStatus =>
+    value?.status ?? 'unavailable';
+
+  return [
+    {
+      key: 'tables',
+      labelKey: 'home.stats.total_tables',
+      value: formatMetricValue(input.totalTables),
+      accent: 'primary',
+      status: metric(input.totalTables),
+    },
+    {
+      key: 'jobs',
+      labelKey: 'home.stats.running_jobs',
+      value: formatMetricValue(input.runningJobs),
+      accent: 'bronze',
+      status: metric(input.runningJobs),
+    },
+    {
+      key: 'topics',
+      labelKey: 'home.stats.active_topics',
+      value: formatMetricValue(input.activeTopics),
+      accent: 'kafka',
+      status: metric(input.activeTopics),
+    },
+    {
+      key: 'dags',
+      labelKey: 'home.stats.dags_active',
+      value: formatMetricValue(input.activeDAGs),
+      accent: 'airflow',
+      status: metric(input.activeDAGs),
+    },
+    {
+      key: 'records',
+      labelKey: 'home.stats.records_all_time',
+      value: formatMetricValue(input.recordsProcessed),
+      accent: 'silver',
+      status: metric(input.recordsProcessed),
+    },
+    {
+      key: 'quality',
+      labelKey: 'home.stats.quality_score',
+      // The pass rate is a **percentage** (0–100) — the API converts it
+      // from the DQ ledger's fraction at the boundary.
+      value:
+        input.qualityScore?.value === null || input.qualityScore?.value === undefined
+          ? '—'
+          : `${input.qualityScore.value}%`,
+      accent: 'dq',
+      status: metric(input.qualityScore),
+      ...(input.qualityScore?.window !== undefined
+        ? { window: input.qualityScore.window }
+        : {}),
+      // No evaluation exists yet: say where to run one. The value stays
+      // "Not evaluated" — the CTA never fabricates a percentage.
+      ...(input.qualityScore?.status === 'not_evaluated'
+        ? { action: { labelKey: 'home.quality_cta.run', path: ROUTES.DQ } }
+        : {}),
+    },
+  ];
+}

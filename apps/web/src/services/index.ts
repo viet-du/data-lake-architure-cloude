@@ -9,6 +9,8 @@ export * from './crawler';
 export * from './kafka';
 export * from './airflow';
 export * from './dq';
+export * from './eda';
+export * from './dashboard';
 export * from './health';
 
 export * from './queries';

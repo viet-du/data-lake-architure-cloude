@@ -53,7 +53,14 @@ interface AirflowDagDetailResponse extends AirflowDagSummary {
 }
 
 interface AirflowDagRun {
-  run_id: string;
+  /**
+   * Airflow's REST API names the run identifier `dag_run_id`. The
+   * `run_id` spelling is accepted as a fallback so a proxy that rewrites
+   * the payload cannot silently produce an operation with no correlation
+   * anchor.
+   */
+  dag_run_id?: string;
+  run_id?: string;
   dag_id: string;
   logical_date: string;
   execution_date?: string;
@@ -69,7 +76,9 @@ interface AirflowDagRun {
 interface AirflowTaskInstance {
   task_id: string;
   dag_id: string;
-  run_id: string;
+  /** Airflow names the run identifier `dag_run_id`; `run_id` is a fallback. */
+  dag_run_id?: string;
+  run_id?: string;
   state: string;
   try_number: number;
   max_tries: number;
@@ -161,7 +170,7 @@ function toDagDetail(d: AirflowDagDetailResponse): DagDetail {
 
 function toDagRun(r: AirflowDagRun): DagRun {
   return {
-    runId: r.run_id,
+    runId: r.dag_run_id ?? r.run_id ?? '',
     dagId: r.dag_id,
     executionDate: r.logical_date ?? r.execution_date ?? '',
     state: r.state,
@@ -178,7 +187,7 @@ function toTaskInstance(t: AirflowTaskInstance): TaskInstance {
   return {
     taskId: t.task_id,
     dagId: t.dag_id,
-    runId: t.run_id,
+    runId: t.dag_run_id ?? t.run_id ?? '',
     state: t.state as TaskInstance['state'],
     tryNumber: t.try_number,
     maxTries: t.max_tries,
@@ -362,8 +371,11 @@ export const AirflowTaskRepository = {
     contentUrl: string | null;
   }> {
     const client = AirflowClientSingleton.get();
+    // Airflow 2.7's task-log endpoint takes the try number in the *path*
+    // and rejects `try_number` as a query parameter ("Extra query
+    // parameter(s) try_number not in spec"). `full_content` and
+    // `map_index` are genuine query parameters.
     const params: Record<string, string | number | boolean> = {
-      try_number: query.tryNumber,
       full_content: query.fullContent,
       map_index: query.mapIndex,
     };

@@ -15,3 +15,6 @@ export type { AirflowRunListProps } from './airflow-run-list.component';
 
 export { AirflowTaskLogs } from './airflow-task-logs.component';
 export type { AirflowTaskLogsProps } from './airflow-task-logs.component';
+
+export { AirflowTriggerWizard } from './airflow-trigger-wizard.component';
+export type { AirflowTriggerWizardProps } from './airflow-trigger-wizard.component';

@@ -39,6 +39,10 @@ export const ROUTE_META: Readonly<Record<RoutePath, Omit<DocumentMeta, 'ogType'>
     title: 'Data Quality · Lakehouse',
     description: 'Data quality rules, suites and scoring',
   },
+  '/eda': {
+    title: 'Data Explorer · Lakehouse',
+    description: 'Profile datasets, explore distributions and derive quality rules',
+  },
   '/health': {
     title: 'System Health · Lakehouse',
     description: 'Service status, dependencies and resources',

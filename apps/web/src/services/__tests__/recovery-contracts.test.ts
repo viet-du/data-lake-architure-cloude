@@ -5,11 +5,21 @@ import { decodeLayerList, decodeJobs } from '../lake';
 import { decodeSummary } from '../dq/dq.adapter';
 import { decodeKafkaStats } from '../kafka/kafka.adapter';
 import { decodeAirflowStats } from '../airflow/airflow.adapter';
-import { buildHomeQuickStats, HOME_ACTIVITY, HOME_MODULES } from '@/screens/home/home.constants';
+import { buildHomeQuickStats, HOME_MODULES } from '@/screens/home/home.constants';
 import { getErrorMessage } from '../api';
 import { AxiosError } from 'axios';
+import type { DashboardMetric, EDashboardMetricStatus } from '@/types/entities';
 
 const timestamp = '2026-10-20T00:00:00Z';
+
+/** A metric object, as the read model delivers it. */
+function metric(
+  value: number | null,
+  status: EDashboardMetricStatus = value === null ? 'unavailable' : 'ok',
+): DashboardMetric {
+  return { value, status, source: 'test', window: 'all-time', asOf: timestamp, coverage: null };
+}
+
 afterEach(() => vi.restoreAllMocks());
 describe('actual backend response contracts', () => {
   it('maps health statuses, names, skipped checks and milliseconds', () => {
@@ -43,10 +53,27 @@ describe('actual backend response contracts', () => {
     expect(decodeAirflowStats({ totalDags: 2, activeDags: 1, pausedDags: 1, runningRuns: 0, failedRuns: 1, successRuns: 2, queuedRuns: 0 }).activeDAGs).toBe(1);
   });
   it('removes fabricated trends/activity and preserves unknown metrics', () => {
-    const stats = buildHomeQuickStats({ totalTables: 0, runningJobs: null, activeTopics: 0, activeDAGs: null, records24h: null, qualityScore: null, totalLag: null, uptimeSeconds: null });
-    expect(stats[0]?.value).toBe('0'); expect(stats[1]?.value).toBe('—');
+    // The cards render *metric objects*, not bare numbers, so the status
+    // survives into the UI. A metric that was not measured renders as `—`
+    // and keeps its `unavailable` status.
+    const stats = buildHomeQuickStats({
+      totalTables: metric(0),
+      runningJobs: metric(null, 'unavailable'),
+      activeTopics: metric(0),
+      activeDAGs: metric(null, 'unavailable'),
+      recordsProcessed: metric(null, 'unavailable'),
+      qualityScore: metric(null, 'not_evaluated'),
+      totalLag: metric(null, 'unavailable'),
+      uptimeSeconds: null,
+    });
+    expect(stats[0]?.value).toBe('0');
+    expect(stats[0]?.status).toBe('ok');
+    expect(stats[1]?.value).toBe('—');
+    expect(stats[1]?.status).toBe('unavailable');
+    // The quality card keeps "not evaluated" distinct from "unavailable".
+    expect(stats.find((s) => s.key === 'quality')?.status).toBe('not_evaluated');
     expect(stats.every((s) => s.delta === undefined)).toBe(true);
-    expect(HOME_ACTIVITY).toEqual([]); expect(HOME_MODULES.every((m) => m.progress === undefined && m.sparkline === undefined)).toBe(true);
+    expect(HOME_MODULES.every((m) => m.progress === undefined && m.sparkline === undefined)).toBe(true);
   });
   it('distinguishes transport and HTTP backend errors', () => {
     const network = new AxiosError('Network Error', 'ERR_NETWORK');
@@ -59,18 +86,73 @@ describe('actual backend response contracts', () => {
 });
 
 describe('Home service failure lifecycle', () => {
-  it('keeps unavailable metrics unknown when all services fail', async () => {
+  it('keeps unavailable metrics unknown when the dashboard reports a partial read', async () => {
     const services = await import('..');
-    vi.spyOn(services.catalogService, 'listDatabases').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.bronzeService, 'getJobStats').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.silverService, 'getJobStats').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.goldService, 'getJobStats').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.kafkaService, 'getStats').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.airflowService, 'getStats').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.dqService, 'getSummary').mockRejectedValue(new Error('offline'));
-    vi.spyOn(services.healthService, 'getHealth').mockRejectedValue(new Error('offline'));
+    vi.spyOn(services.dashboardService, 'getSummary').mockResolvedValue({
+      asOf: timestamp,
+      scope: 'local_delta_minio',
+      metrics: {
+        totalTables: { value: null, status: 'unavailable', source: 'catalog', window: 'all-time', asOf: timestamp, coverage: null },
+        runningJobs: { value: null, status: 'unavailable', source: 'operations.registry', window: 'live', asOf: timestamp, coverage: null },
+        activeTopics: { value: null, status: 'unavailable', source: 'kafka.admin.listTopics', window: 'live', asOf: timestamp, coverage: null },
+        activeDAGs: { value: null, status: 'unavailable', source: 'airflow.dags.activeUnpaused', window: 'live', asOf: timestamp, coverage: null },
+        recordsProcessed: { value: null, status: 'unavailable', source: 'bronze.jobs.committed', window: 'all-time', asOf: timestamp, coverage: null },
+        recordsByStage: {
+          bronze: { value: null, status: 'unavailable', source: 'bronze.jobs.committed', window: 'all-time', asOf: timestamp, coverage: null },
+          silver: { value: null, status: 'unavailable', source: 'silver.jobs.committed', window: 'all-time', asOf: timestamp, coverage: null },
+          gold: { value: null, status: 'unavailable', source: 'gold.jobs.committed', window: 'all-time', asOf: timestamp, coverage: null },
+        },
+        qualityPassRate: { value: null, status: 'not_evaluated', source: 'dq.runs.passRate', window: 'all-evaluated-runs', asOf: timestamp, coverage: null },
+        totalLag: { value: null, status: 'unavailable', source: 'kafka.admin.consumerOffsets', window: 'live', asOf: timestamp, coverage: null },
+      },
+      serviceHealth: [],
+      stageStates: [],
+      partialFailures: [{ metric: 'totalTables', reason: 'offline' }],
+      partial: true,
+      freshnessSeconds: 1,
+      systemStatus: null,
+      uptimeSeconds: null,
+    });
     const { fetchHomeStats } = await import('../queries/home.queries');
     const result = await fetchHomeStats();
     expect(result).toMatchObject({ systemStatus: 'unknown', totalTables: null, runningJobs: null, qualityScore: null, partial: true, uptimeSeconds: null });
+  });
+
+  it('does not turn an unevaluated quality metric into a zero pass rate', async () => {
+    const services = await import('..');
+    vi.spyOn(services.dashboardService, 'getSummary').mockResolvedValue({
+      asOf: timestamp,
+      scope: 'local_delta_minio',
+      metrics: {
+        totalTables: { value: 13, status: 'ok', source: 'catalog', window: 'all-time', asOf: timestamp, coverage: 1 },
+        runningJobs: { value: 0, status: 'ok', source: 'operations.registry', window: 'live', asOf: timestamp, coverage: 1 },
+        activeTopics: { value: 2, status: 'ok', source: 'kafka.admin.listTopics', window: 'live', asOf: timestamp, coverage: 1 },
+        activeDAGs: { value: 1, status: 'ok', source: 'airflow.dags.activeUnpaused', window: 'live', asOf: timestamp, coverage: 1 },
+        recordsProcessed: { value: 42, status: 'ok', source: 'bronze.jobs.committed', window: 'all-time', asOf: timestamp, coverage: 1 },
+        recordsByStage: {
+          bronze: { value: 42, status: 'ok', source: 'bronze.jobs.committed', window: 'all-time', asOf: timestamp, coverage: 1 },
+          silver: { value: 40, status: 'ok', source: 'silver.jobs.committed', window: 'all-time', asOf: timestamp, coverage: 1 },
+          gold: { value: 12, status: 'ok', source: 'gold.jobs.committed', window: 'all-time', asOf: timestamp, coverage: 1 },
+        },
+        qualityPassRate: { value: null, status: 'not_evaluated', source: 'dq.runs.passRate', window: 'all-evaluated-runs', asOf: timestamp, coverage: 0 },
+        totalLag: { value: 0, status: 'ok', source: 'kafka.admin.consumerOffsets', window: 'live', asOf: timestamp, coverage: 1 },
+      },
+      serviceHealth: [],
+      stageStates: [],
+      partialFailures: [],
+      partial: false,
+      freshnessSeconds: 1,
+      systemStatus: 'ok',
+      uptimeSeconds: 120,
+    });
+    const { fetchHomeStats } = await import('../queries/home.queries');
+    const result = await fetchHomeStats();
+    // The unevaluated quality metric stays `null` — never a fake 0% or 100%.
+    expect(result.qualityScore).toBeNull();
+    // The record count is the Bronze stage's count, never the sum of the
+    // three layers (42 + 40 + 12 = 94 would count every row three times).
+    expect(result.recordsProcessed).toBe(42);
+    expect(result.recordsByStage).toEqual({ bronze: 42, silver: 40, gold: 12 });
+    expect(result.systemStatus).toBe('healthy');
   });
 });

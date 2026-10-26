@@ -43,6 +43,8 @@
     "quick_stats": "Thống kê Nhanh",
     "activity": "Hoạt động",
     "no_activity": "Không có hoạt động gần đây",
+    "activity_partial": "Không đọc được một số nguồn hoạt động.",
+    "activity_load_more": "Tải thêm",
     "modules_section_title": "Mô-đun",
     "modules_section_subtitle": "Điều hướng qua nền tảng dữ liệu của bạn",
     "open_module": "Mở",
@@ -101,12 +103,27 @@
       "running_jobs": "Tác vụ đang chạy",
       "active_topics": "Topic hiện có",
       "dags_active": "DAG đang bật",
-      "records_24h": "Bản ghi đã xử lý (tất cả thời gian)",
+      "records_all_time": "Bản ghi đã xử lý (tất cả thời gian)",
+      "stage_records": "Bản ghi đã commit (tầng)",
       "quality_score": "Tỷ lệ kiểm tra đạt",
       "uptime": "Thời gian API hoạt động"
     },
     "partial": "Một số chỉ số chưa khả dụng. Xem trang Sức khỏe để kiểm tra dịch vụ.",
-    "events": "{{count}} sự kiện"
+    "events": "{{count}} sự kiện",
+    "quality_window": {
+      "label": "Cửa sổ chất lượng",
+      "24h": "24 giờ gần nhất",
+      "all": "Toàn bộ lịch sử",
+      "applied": "đo trong {{window}}"
+    },
+    "metric_status": {
+      "stale": "Cũ",
+      "unavailable": "Không khả dụng",
+      "not_evaluated": "Chưa đánh giá"
+    },
+    "quality_cta": {
+      "run": "Chạy kiểm tra chất lượng"
+    }
   },
   "health": {
     "healthy": "Khỏe mạnh",
@@ -191,7 +208,18 @@
     "noRuns": "Chưa có lần chạy DAG",
     "noTasks": "Chưa có tác vụ",
     "runId": "Mã lần chạy",
-    "selectRun": "Chọn lần chạy"
+    "selectRun": "Chọn lần chạy",
+    "wizard": {
+      "title": "Kích hoạt {{dagId}}",
+      "parameters": "Tham số",
+      "noParameters": "DAG này không nhận tham số nào.",
+      "datasets": "Tập dữ liệu bị tác động",
+      "preflight": "Kiểm tra",
+      "preflightResult": "Kết quả kiểm tra trước",
+      "preflightHint": "Chạy kiểm tra trước để xác minh lần kích hoạt này.",
+      "canTrigger": "Sẵn sàng kích hoạt",
+      "cannotTrigger": "Bị chặn"
+    }
   },
   "crawler": {
     "trigger": "Kích hoạt Crawl",
@@ -230,18 +258,66 @@
     "enable": "Bật",
     "updated": "Quy tắc đã cập nhật",
     "suiteTitle": "Chạy DQ Suite",
-    "suiteDescription": "Thực hiện kiểm tra chất lượng dữ liệu trên các bảng đã chọn",
+    "suiteDescription": "Thực hiện kiểm tra chất lượng dữ liệu trên các rule bạn chọn.",
     "hint": {
-      "ruleIds": "Các ID quy tắc (phân cách bằng dấu phẩy)",
+      "ruleIds": "Chọn các rule cần chạy — id được điền tự động.",
       "tables": "Tên bảng (phân cách bằng dấu phẩy)",
       "parallel": "Chạy kiểm tra song song"
     },
     "error": {
       "run": "Run thất bại: {{message}}",
       "suite": "Suite thất bại: {{message}}",
-      "update": "Cập nhật thất bại: {{message}}"
+      "update": "Cập nhật thất bại: {{message}}",
+      "noRulesSelected": "Hãy chọn ít nhất một rule để chạy.",
+      "tooManyRules": "Một suite chạy tối đa {{max}} rule."
     },
-    "run": "Chạy kiểm tra"
+    "run": "Chạy kiểm tra",
+    "gate": {
+      "notEvaluated": "Chưa đánh giá",
+      "pass": "Quality gate đạt",
+      "fail": "Quality gate không đạt",
+      "warn": "Quality gate cảnh báo",
+      "error": "Quality gate lỗi",
+      "description": "Kết quả quality gate của các lần đánh giá gần nhất",
+      "evaluatedRows": "Số dòng đã đánh giá",
+      "skippedRows": "Số dòng bị bỏ qua (cột NULL)",
+      "coverage": "Độ phủ"
+    },
+    "preset": {
+      "title": "Áp dụng preset DQ",
+      "description": "Kiểm tra preset với schema của dataset, rồi xác nhận để tạo đúng một quy tắc.",
+      "apply": "Áp dụng preset",
+      "applying": "Đang áp dụng…",
+      "applied": "Đã áp dụng preset (quy tắc {{id}})",
+      "alreadyApplied": "Preset này đã được áp dụng cho dataset — quy tắc cũ được giữ nguyên.",
+      "checking": "Đang kiểm tra preset với schema của dataset…",
+      "applicable": "Áp dụng được cho cột {{column}} ({{type}}).",
+      "error": "Không thể áp dụng preset: {{message}}",
+      "draftWarning": "Quy tắc được tạo ở trạng thái nháp (tắt). Hãy bật thủ công sau khi xem kết quả kiểm tra.",
+      "field": {
+        "preset": "Preset",
+        "presetPlaceholder": "Chọn một preset…",
+        "layer": "Lớp",
+        "table": "Dataset",
+        "column": "Cột",
+        "severity": "Mức độ",
+        "enableNow": "Bật quy tắc ngay",
+        "confirm": "Tôi xác nhận quy tắc này cho dataset và cột đã chọn"
+      },
+      "hint": {
+        "preset": "Preset chỉ là mẫu — không có gì được tạo cho tới khi bạn xác nhận.",
+        "table": "Chọn dataset — tên chuẩn được điền tự động.",
+        "column": "Chọn cột mà preset kiểm tra."
+      }
+    },
+    "samples": {
+      "title": "Dòng lỗi",
+      "selectRun": "Chọn một lần chạy để xem các dòng lỗi",
+      "empty": "Lần chạy này không có dòng lỗi",
+      "count": "Hiển thị {{returned}} / {{total}} dòng lỗi",
+      "truncated": "Đã cắt bớt",
+      "redactionNote": "Giá trị mẫu được che trên máy chủ — cột nhạy cảm và giá trị có dạng PII không bao giờ được gửi tới trình duyệt."
+    }
   },
   "catalog": {
     "databases": "Databases",
@@ -271,7 +347,20 @@
       "crawler": "Thu thập dữ liệu",
       "storage": "Lưu trữ"
     },
-    "static": "Sơ đồ kiến trúc tĩnh; không thu thập chỉ số trực tiếp tại đây."
+    "overlay": {
+      "idle": "Nhàn rỗi",
+      "running": "Đang chạy",
+      "healthy": "Ổn định",
+      "degraded": "Suy giảm",
+      "unavailable": "Không đọc được trạng thái trực tiếp",
+      "no_operation": "Chưa có tác vụ nào chạy ở lớp này.",
+      "last_operation": "Tác vụ gần nhất",
+      "status": "Trạng thái",
+      "ago": "Trước",
+      "running_count": "{{count}} đang chạy",
+      "quality_not_evaluated": "Chưa đánh giá chất lượng",
+      "quality_pass_rate": "Tỷ lệ đạt chất lượng {{rate}}%"
+    }
   },
   "sample": {
     "empty": "Không có dữ liệu mẫu",
@@ -306,7 +395,11 @@
       "checkpoint": "Đường dẫn checkpoint streaming",
       "delimiter": "Dấu phân cách CSV"
     },
-    "submitted": "Đã gửi tác vụ nạp dữ liệu"
+    "submitted": "Đã gửi tác vụ nạp dữ liệu",
+    "targetDataset": "Dataset đích",
+    "hint": {
+      "targetDataset": "Chọn dataset Bronze để ghi vào — database và table được điền tự động."
+    }
   },
   "transform": {
     "success": "Transform đã gửi",
@@ -364,7 +457,8 @@
     "crawler": "Crawler",
     "dq": "Chất lượng Dữ liệu",
     "health": "Sức khỏe",
-    "schematic": "Sơ đồ"
+    "schematic": "Sơ đồ",
+    "eda": "Khám phá"
   },
   "screens": {
     "catalog": {
@@ -480,7 +574,15 @@
       "suiteDescription": "Thực hiện kiểm tra chất lượng dữ liệu trên các bảng đã chọn",
       "title": "Chất lượng dữ liệu",
       "subtitle": "Quản trị Data Lake",
-      "description": "Quản lý quy tắc kiểm tra và xem kết quả."
+      "description": "Quản lý quy tắc kiểm tra và xem kết quả.",
+      "quality": "Chất lượng",
+      "explore": "Khám phá",
+      "exploreTitle": "Khám phá & soạn quy tắc",
+      "exploreDescription": "Bắt đầu từ một dataset: kiểm tra preset với schema, rồi xác nhận để tạo đúng một quy tắc.",
+      "exploreHint": "Trình hướng dẫn preset kiểm tra cột và kiểu dữ liệu trước khi tạo bất cứ thứ gì. Áp dụng cùng một preset cho cùng dataset/cột hai lần sẽ không tạo quy tắc trùng.",
+      "exploreStep1": "Chọn dataset (database.table) và cột mà quy tắc phải kiểm tra.",
+      "exploreStep2": "Xem báo cáo khả dụng — nó giải thích vì sao preset phù hợp hoặc không phù hợp.",
+      "exploreStep3": "Xác nhận để tạo quy tắc ở trạng thái nháp, bật lên rồi chạy suite."
     },
     "health": {
       "healthy": "Khỏe mạnh",
@@ -494,6 +596,11 @@
       "subtitle": "Quản trị Data Lake",
       "description": "Kiểm tra API và trạng thái các dịch vụ phụ thuộc.",
       "dependencies": "Kiểm tra dịch vụ phụ thuộc"
+    },
+    "eda": {
+      "title": "Trình khám phá dữ liệu",
+      "subtitle": "Data Lake Control Plane",
+      "description": "Phân tích dataset, khám phá phân phối và suy ra quy tắc chất lượng."
     }
   },
   "form": {
@@ -560,6 +667,7 @@
     "parallel": "Song song",
     "partition": "Phân vùng",
     "partitions": "Phân vùng",
+    "pass_rate": "Tỉ lệ đạt",
     "passing": "Đạt",
     "preview": "Xem trước",
     "progress": "Tiến độ",
@@ -571,7 +679,7 @@
     "retries": "Số lần thử lại",
     "row_limit": "Giới hạn bản ghi",
     "rows": "Bản ghi",
-    "rule_ids": "Mã quy tắc",
+    "rule_ids": "Rule",
     "running": "Đang chạy",
     "runs": "Lần chạy",
     "sample": "Mẫu dữ liệu",
@@ -607,5 +715,137 @@
     "readOnly": "Xem bảng, cấu trúc và dữ liệu mẫu trực tiếp. Jobs, Kafka, Airflow và DQ hiển thị từ các dịch vụ kết nối riêng.",
     "preview": "Xem dữ liệu",
     "permissionDenied": "Databricks: tài khoản kết nối cần quyền USE CATALOG, USE SCHEMA và SELECT trên bảng này."
+  },
+  "eda": {
+    "runProfile": "Phân tích dataset",
+    "profiling": "Đang phân tích…",
+    "profileCreated": "Đã có profile ({{id}})",
+    "requestTitle": "Tính profile cho dataset",
+    "requestDescription": "Bộ phân tích đọc một snapshot có giới hạn và lưu kết quả để so sánh về sau.",
+    "toDataQuality": "Chất lượng dữ liệu",
+    "exploreTitle": "Thư viện profile",
+    "chartsTitle": "Biểu đồ",
+    "sampleTitle": "Mẫu dữ liệu",
+    "noSelection": "Chưa chọn profile",
+    "noSelectionDescription": "Phân tích một dataset hoặc chọn một profile đã lưu để khám phá kết quả.",
+    "noCharts": "Profile này không có biểu đồ.",
+    "approximate": "Xấp xỉ",
+    "correlationCost": "Tốn tài nguyên",
+    "compare": "So sánh",
+    "ruleProposed": "Đã tạo rule nháp ({{id}})",
+    "ruleDrafted": "Đã tạo rule nháp — hãy xem lại trong Chất lượng dữ liệu.",
+    "proposeRule": "Đề xuất rule",
+    "proposing": "Đang đề xuất…",
+    "proposeTitle": "Đề xuất quy tắc chất lượng",
+    "proposeDescription": "Suy ra rule nháp từ phát hiện trên cột {{column}}.",
+    "proposeObservedNulls": "Giá trị null quan sát được: {{value}}%",
+    "proposeDraftWarning": "Rule được tạo ở trạng thái nháp (tắt). Hãy xem lại ngưỡng và bật thủ công.",
+    "tab": {
+      "explore": "Khám phá",
+      "charts": "Biểu đồ",
+      "sample": "Mẫu"
+    },
+    "sampling": {
+      "full": "Quét toàn bộ",
+      "sample": "Lấy mẫu",
+      "stratified": "Lấy mẫu phân tầng"
+    },
+    "status": {
+      "queued": "Đang chờ",
+      "running": "Đang chạy",
+      "succeeded": "Thành công",
+      "partial": "Một phần",
+      "failed": "Thất bại"
+    },
+    "summary": {
+      "rows": "Số dòng tổng",
+      "observed": "Số dòng đã đo",
+      "columns": "Số cột",
+      "sampling": "Chiến lược lấy mẫu",
+      "engine": "Engine",
+      "elapsed": "Thời gian",
+      "estimated": "Số dòng ước tính",
+      "coverage": "Độ phủ {{value}}",
+      "sampleSize": "{{value}} dòng",
+      "computedAt": "Tính lúc {{value}}",
+      "fingerprint": "Vân tay",
+      "queryHash": "Hash truy vấn",
+      "version": "Snapshot",
+      "schemaVersion": "Schema v"
+    },
+    "column": {
+      "missingPct": "thiếu {{value}}%",
+      "nulls": "Null",
+      "nonNulls": "Không null",
+      "distinct": "Khác biệt",
+      "cardinality": "Độ khác biệt",
+      "mean": "Trung bình",
+      "std": "Độ lệch chuẩn",
+      "median": "Trung vị",
+      "iqr": "IQR",
+      "min": "Nhỏ nhất",
+      "max": "Lớn nhất"
+    },
+    "chart": {
+      "missingTitle": "Giá trị thiếu theo cột",
+      "boxSubtitle": "Trung vị {{median}} · IQR {{iqr}}",
+      "correlationSubtitle": "Phương pháp: {{method}}",
+      "export": "Xuất CSV",
+      "min": "Nhỏ nhất",
+      "max": "Lớn nhất",
+      "unsupported": "Loại biểu đồ không được hỗ trợ: {{type}}"
+    },
+    "library": {
+      "title": "Profile đã lưu",
+      "empty": "Chưa có profile",
+      "search": "Lọc cột…",
+      "rows": "Số dòng",
+      "columns": "Số cột",
+      "alerts": "{{count}} cảnh báo",
+      "noColumns": "Profile này không có thống kê cột.",
+      "noMatch": "Không cột nào khớp bộ lọc."
+    },
+    "field": {
+      "dataset": "Dataset",
+      "datasetPlaceholder": "Chọn dataset…",
+      "analyses": "Phân tích",
+      "sampling": "Chiến lược lấy mẫu",
+      "sampleSize": "Kích thước mẫu",
+      "seed": "Seed",
+      "correlation": "Tính ma trận tương quan",
+      "ruleType": "Loại rule",
+      "ruleName": "Tên rule",
+      "threshold": "Ngưỡng (%)",
+      "enableNow": "Bật rule ngay",
+      "columnsResolved": "Đã phân giải {{count}} cột",
+      "moreColumns": "+{{count}} cột nữa"
+    },
+    "hint": {
+      "dataset": "Dataset được phân giải ở server — trình duyệt không gửi đường dẫn.",
+      "analyses": "Chỉ các phân tích đã chọn mới được tính toán.",
+      "sampling": "Chiến lược lấy mẫu cần kích thước mẫu và seed tái lập được.",
+      "sampleSize": "Từ 100 đến 5.000.000 dòng.",
+      "seed": "Cùng seed cho ra cùng mẫu.",
+      "threshold": "Gợi ý là tỷ lệ null quan sát được của cột."
+    },
+    "error": {
+      "datasetRequired": "Hãy chọn dataset trước.",
+      "profile": "Không thể tính profile.",
+      "rule": "Không thể tạo rule.",
+      "ruleInvalid": "Rule không hợp lệ."
+    }
+  },
+  "datasetPicker": {
+    "layer": "Lớp",
+    "searchPlaceholder": "Tìm dataset…",
+    "noTables": "Lớp này chưa có dataset.",
+    "noColumns": "Dataset này không có cột đọc được.",
+    "column": "Cột"
+  },
+  "rulePicker": {
+    "search": "Tìm rule…",
+    "selected": "Đã chọn {{count}}",
+    "noRules": "Chưa có rule chất lượng nào.",
+    "noMatch": "Không rule nào khớp bộ lọc."
   }
 }

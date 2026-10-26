@@ -43,6 +43,53 @@ export function decodeLogs(input: unknown) {
 export function decodeGantt(input: unknown) {
   const values = z.object({ tasks: z.array(z.object({ taskId: z.string(), startDate: z.string().nullable(), duration: z.number().nullable(), state: taskState })) }).parse(input).tasks;
   const timed = values.flatMap((task) => task.startDate && task.duration !== null ? [{ ...task, start: Date.parse(task.startDate), duration: task.duration * 1000 }] : []);
-  const start = Math.min(...timed.map((task) => task.start));
+  const start = timed.length > 0 ? Math.min(...timed.map((task) => task.start)) : 0;
   return timed.map((task) => ({ taskId: task.taskId, state: task.state, startOffset: task.start - start, duration: task.duration }));
+}
+
+/**
+ * The preflight result.
+ *
+ * The `checks` array is the source of truth for the verdict: `canTrigger`
+ * is true only when no check reported an `error`. The UI must not
+ * re-derive the verdict from the individual checks — that is how a UI and
+ * a backend end up disagreeing about whether a run is allowed.
+ */
+export function decodePreflight(input: unknown) {
+  const severity = z.enum(['error', 'warning', 'info']);
+  const v = z
+    .object({
+      dagId: z.string(),
+      canTrigger: z.boolean(),
+      allowedConfKeys: z.array(z.string()),
+      rejectedConfKeys: z.array(z.string()),
+      affectedDatasets: z.array(z.object({ layer: z.string(), database: z.string(), table: z.string() })),
+      scheduleMode: z.enum(['scheduled', 'manual_only']),
+      checks: z.array(
+        z.object({
+          id: z.string(),
+          severity,
+          message: z.string(),
+          detail: z.record(z.string(), z.unknown()).optional(),
+        }),
+      ),
+      evaluatedAt: z.string(),
+    })
+    .parse(input);
+  return v;
+}
+
+/** The typed conf specification. */
+export function decodeConfSpec(input: unknown) {
+  const v = z
+    .object({
+      dagId: z.string(),
+      keys: z.array(z.string()),
+      types: z.record(z.string(), z.enum(['string', 'number', 'boolean', 'enum'])),
+      options: z.record(z.string(), z.array(z.string())),
+      descriptions: z.record(z.string(), z.string()),
+      datasets: z.array(z.object({ layer: z.string(), database: z.string(), table: z.string() })),
+    })
+    .parse(input);
+  return { ...v, affectedDatasets: v.datasets };
 }

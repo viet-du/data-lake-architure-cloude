@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class DailyRevenueAggregator:
     GOLD_TABLE = "daily_revenue"
+    #: Silver source table — overridden by the control plane (MASTER PLAN §05.1).
+    SILVER_ORDERS = "orders"
 
     def __init__(
         self, spark: SparkSession | None = None, *, paths: LakePaths | None = None
@@ -24,7 +26,7 @@ class DailyRevenueAggregator:
 
     def build(self) -> int:
         logger.info(" Build: daily_revenue")
-        orders = self.spark.read.format("delta").load(self.paths.silver("orders"))
+        orders = self.spark.read.format("delta").load(self.paths.silver(self.SILVER_ORDERS))
         daily = (
             orders.filter(F.col("status") == "completed")
             .groupBy("order_date")

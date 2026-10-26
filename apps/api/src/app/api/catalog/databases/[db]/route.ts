@@ -1,4 +1,4 @@
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, noContent, unwrapParams } from '@/lib/http';
 import { DatabaseController } from '@/modules/catalog';
 import { DatabaseParamsSchema } from '@/modules/catalog';
@@ -17,8 +17,8 @@ const handleDelete: RouteHandler = async (_req, ctx) => {
   return noContent();
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
-export const DELETE = withRequestId(withErrorHandler(handleDelete));
+export const GET = withSecurity(handleGet);
+export const DELETE = withSecurity(handleDelete);
 
 /**
  * @openapi

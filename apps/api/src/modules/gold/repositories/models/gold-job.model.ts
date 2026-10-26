@@ -11,6 +11,8 @@ const GoldJobSchemaDef = new Schema(
     sourceTables: { type: [String], default: [] },
     rowCount: { type: Number, default: 0 },
     bytesProcessed: { type: Number, default: 0 },
+    deltaVersion: { type: Number },
+    datasetId: { type: String },
     errorMessage: { type: String },
     bullJobId: { type: String, index: true },
     startedAt: { type: String, required: true },

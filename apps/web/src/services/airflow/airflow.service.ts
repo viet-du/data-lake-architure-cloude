@@ -1,4 +1,4 @@
-import { decodeTask, decodeLogs, decodeGantt } from './airflow.adapter';
+import { decodeTask, decodeLogs, decodeGantt, decodePreflight, decodeConfSpec } from './airflow.adapter';
 import { decodeDAG, decodeDAGRun, decodeAirflowStats, decodeAirflowItems } from './airflow.adapter';
 import { apiClient } from '../api';
 import { ENDPOINTS } from '../api/endpoints';
@@ -11,6 +11,8 @@ import type {
   AirflowTriggerResult,
   AirflowStats,
   AirflowTaskLogs,
+  AirflowPreflightResult,
+  AirflowConfSpec,
 } from '@/types/entities';
 
 export interface ListDAGRunsParams {
@@ -47,6 +49,34 @@ export const airflowService = {
       { conf: payload.conf ?? {}, logicalDate: payload.executionDate },
     );
     return res.data.data;
+  },
+
+  /**
+   * Evaluate the trigger without triggering it.
+   *
+   * Read-only: the server never mutates anything here. The verdict
+   * (`canTrigger`) comes straight from the backend so the wizard and the
+   * trigger route can never disagree.
+   */
+  preflight: async (
+    dagId: string,
+    conf: Readonly<Record<string, unknown>> = {},
+  ): Promise<AirflowPreflightResult> => {
+    const res = await apiClient.post<ApiResponse<unknown>>(
+      ENDPOINTS.airflow.dagPreflight(dagId),
+      { conf },
+    );
+    return decodePreflight(res.data.data) as AirflowPreflightResult;
+  },
+
+  /**
+   * The typed conf specification, used to render the trigger form.
+   */
+  getConfSpec: async (dagId: string): Promise<AirflowConfSpec> => {
+    const res = await apiClient.get<ApiResponse<unknown>>(
+      ENDPOINTS.airflow.dagConfSpec(dagId),
+    );
+    return decodeConfSpec(res.data.data) as AirflowConfSpec;
   },
 
   pauseDAG: async (dagId: string): Promise<void> => {

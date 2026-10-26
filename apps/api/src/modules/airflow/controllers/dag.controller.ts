@@ -2,13 +2,14 @@ import {
   AirflowDagService,
   AirflowRunService,
 } from '../services/airflow.service';
-import type { Dag, DagDetail, DagRun } from '../types';
+import type { Dag, DagDetail, DagRun, PreflightResult } from '../types';
 import type {
   TDagIdParam,
   TDagListQuery,
   TTriggerDagBody,
   TRunIdParam,
   TRunsListQuery,
+  TPreflightBody,
 } from '../schemas';
 
 export const AirflowDagController = {
@@ -34,6 +35,21 @@ export const AirflowDagController = {
       ...(body.logicalDate !== undefined ? { logicalDate: body.logicalDate } : {}),
       ...(body.runId !== undefined ? { runId: body.runId } : {}),
     });
+  },
+
+  /**
+   * The typed preflight. Read-only — nothing is triggered.
+   */
+  async preflight(params: TDagIdParam, body: TPreflightBody): Promise<PreflightResult> {
+    return AirflowDagService.preflight(params.dagId, body.conf);
+  },
+
+  /**
+   * The typed conf specification, used by the trigger wizard to render a
+   * form instead of a raw JSON editor.
+   */
+  async confSpec(params: TDagIdParam) {
+    return AirflowDagService.confSpec(params.dagId);
   },
 
   async pause(params: TDagIdParam): Promise<{ dagId: string; isPaused: boolean }> {

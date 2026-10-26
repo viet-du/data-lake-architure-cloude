@@ -44,12 +44,21 @@ function ruleRunFromDoc(doc: Record<string, unknown>): DqRuleRun {
     severity: (doc.severity as DqRuleRun['severity']) ?? 'medium',
     totalRows: (doc.totalRows as number) ?? 0,
     failedRows: (doc.failedRows as number) ?? 0,
-    passRate: (doc.passRate as number) ?? 0,
+    evaluatedRows: (doc.evaluatedRows as number) ?? 0,
+    skippedRows: (doc.skippedRows as number) ?? 0,
+    passRate: (doc.passRate as number | null | undefined) ?? null,
+    coverageRate: (doc.coverageRate as number) ?? 0,
     errorMessage: (doc.errorMessage as string | null | undefined) ?? null,
     durationMs: (doc.durationMs as number) ?? 0,
     startedAt: doc.startedAt as string,
     finishedAt: doc.finishedAt as string,
     suiteRunId: (doc.suiteRunId as string | null | undefined) ?? null,
+    ...(doc.dataVersion !== null && doc.dataVersion !== undefined
+      ? { dataVersion: doc.dataVersion as number }
+      : {}),
+    ...(Array.isArray(doc.sampleFailures) && doc.sampleFailures.length > 0
+      ? { sampleFailures: doc.sampleFailures as Array<Record<string, unknown>> }
+      : {}),
   };
 }
 

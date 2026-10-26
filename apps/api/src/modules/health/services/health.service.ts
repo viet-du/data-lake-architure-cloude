@@ -184,9 +184,10 @@ export const HealthService = {
   async info(): Promise<TAppInfoResponse> {
     return {
       dataSource: env.LAKEHOUSE_DATA_SOURCE,
+      executionTarget: env.LAKEHOUSE_EXECUTION_TARGET,
       catalog: env.LAKEHOUSE_DATA_SOURCE === 'databricks' ? env.DATABRICKS_CATALOG : null,
       workspaceId: env.LAKEHOUSE_DATA_SOURCE === 'databricks' ? env.DATABRICKS_WORKSPACE_ID ?? null : null,
-      readOnly: env.LAKEHOUSE_DATA_SOURCE === 'databricks',
+      readOnly: env.LAKEHOUSE_EXECUTION_TARGET === 'databricks_uc',
       name: APP_NAME,
       version: APP_VERSION,
       env: env.ENV,

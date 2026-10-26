@@ -17,9 +17,11 @@ export function withErrorHandler(handler: RouteHandler): RouteHandler {
       if (err instanceof ZodError) {
         return errorResponse('VALIDATION_ERROR', 'Request validation failed', 400, err.issues);
       }
-      const message = err instanceof Error ? err.message : 'Internal server error';
       logger.error({ err, url: req.url, method: req.method }, 'Unhandled route error');
-      return errorResponse('INTERNAL_ERROR', message, 500);
+      // MASTER PLAN §05.3 / working_rule §14.1: an unexpected failure must not
+      // expose internal business logic to the client. The full error stays in
+      // the server log and is correlated through the request id.
+      return errorResponse('INTERNAL_ERROR', 'An unexpected error occurred.', 500);
     }
   };
 }

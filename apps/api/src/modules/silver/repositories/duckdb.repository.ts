@@ -1,5 +1,6 @@
 import { getDuckDB } from '@/lib/infra/duckdb';
 import type { ColumnMeta, PartitionMeta } from '@/modules/catalog/types/table.types';
+import { canonicalStoragePath, layerRootPath } from '@/modules/datasets/types';
 import type {
   SilverHistoryEntry,
   SilverPartition,
@@ -8,15 +9,13 @@ import type {
   DiffResult,
 } from '../types';
 
-const SILVER_BUCKET = 'lakehouse';
-const SILVER_LAYER = 'silver';
-
 function escapeS3Path(path: string): string {
   return path.replace(/'/g, "''");
 }
 
+/** Canonical Silver storage path — see `DatasetResolver` (MASTER PLAN §05.1). */
 function buildS3Path(database: string, table: string): string {
-  return `s3://${SILVER_BUCKET}/${SILVER_LAYER}/${database}/${table}`;
+  return canonicalStoragePath('silver', database, table);
 }
 
 export const SilverDuckDBRepository = {
@@ -30,7 +29,7 @@ export const SilverDuckDBRepository = {
     const conn = await instance.connect();
     const res = await conn.runAndReadAll(`
       SELECT file
-      FROM glob('s3://${SILVER_BUCKET}/${SILVER_LAYER}/*/*/_delta_log/00000000000000000000.json')
+      FROM glob('${layerRootPath('silver')}/*/*/_delta_log/00000000000000000000.json')
       ORDER BY file
     `);
     const rows = res.getRowObjects() as Array<{ file: string }>;
@@ -274,7 +273,7 @@ export const SilverDuckDBRepository = {
     const instance = await getDuckDB();
     const conn = await instance.connect();
     const silverPath = escapeS3Path(buildS3Path(database, table));
-    const sourcePath = escapeS3Path(`s3://${SILVER_BUCKET}/bronze/${database}/${sourceTable ?? table}`);
+    const sourcePath = escapeS3Path(canonicalStoragePath('bronze', database, sourceTable ?? table));
     const wherePartition = partition ? `WHERE partition = '${partition}'` : '';
     const countRes = await conn.runAndReadAll(`
       SELECT COUNT(*)::BIGINT AS cnt FROM '${sourcePath}' ${wherePartition}

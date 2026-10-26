@@ -9,10 +9,12 @@ export {
   TableLayerQuerySchema,
   UpdateTableMetadataSchema,
   SampleQuerySchema,
+  CATALOG_PROVIDERS,
   type TTableIdParams,
   type TTableLayerQuery,
   type TUpdateTableMetadata,
   type TSampleQuery,
+  type TCatalogProvider,
 } from './table.schema';
 export {
   SearchQuerySchema,

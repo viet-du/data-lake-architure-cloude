@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
-import { ok, noContent, unwrapParams } from '@/lib/http';
+import { withSecurity, type RouteHandler } from '@/middlewares';
+import { ok, noContent, unwrapParams, unwrapParamsWithQuery } from '@/lib/http';
 import { TableController } from '@/modules/catalog';
 import { TableIdParamsSchema, UpdateTableMetadataSchema } from '@/modules/catalog';
 
 export const runtime = 'nodejs';
 
-const handleGet: RouteHandler = async (_req, ctx) => {
-  const params = await unwrapParams(ctx, TableIdParamsSchema);
+const handleGet: RouteHandler = async (req: NextRequest, ctx) => {
+  const params = await unwrapParamsWithQuery(req, ctx, TableIdParamsSchema);
   const data = await TableController.get(params);
   return ok(data);
 };
@@ -26,9 +26,9 @@ const handleDelete: RouteHandler = async (_req, ctx) => {
   return noContent();
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
-export const PUT = withRequestId(withErrorHandler(handlePut));
-export const DELETE = withRequestId(withErrorHandler(handleDelete));
+export const GET = withSecurity(handleGet);
+export const PUT = withSecurity(handlePut);
+export const DELETE = withSecurity(handleDelete);
 
 /**
  * @openapi

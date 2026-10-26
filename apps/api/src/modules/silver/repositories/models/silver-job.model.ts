@@ -11,6 +11,8 @@ const SilverJobSchemaDef = new Schema(
     sourceTable: { type: String },
     rowCount: { type: Number, default: 0 },
     bytesProcessed: { type: Number, default: 0 },
+    deltaVersion: { type: Number },
+    datasetId: { type: String },
     errorMessage: { type: String },
     bullJobId: { type: String, index: true },
     startedAt: { type: String, required: true },

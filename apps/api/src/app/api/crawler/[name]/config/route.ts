@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { ok, unwrapParams } from '@/lib/http';
 import { CrawlerConfigController } from '@/modules/crawler/controllers';
 import { CrawlerNameParamSchema, CrawlerConfigBodySchema } from '@/modules/crawler/schemas';
@@ -21,8 +21,8 @@ const handlePut: RouteHandler = async (req: NextRequest, ctx: unknown) => {
   return ok(data);
 };
 
-export const GET = withRequestId(withErrorHandler(handleGet));
-export const PUT = withRequestId(withErrorHandler(handlePut));
+export const GET = withSecurity(handleGet);
+export const PUT = withSecurity(handlePut);
 
 /**
  * @openapi

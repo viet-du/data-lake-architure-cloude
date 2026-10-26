@@ -7,5 +7,6 @@ export { CrawlerScreen } from './crawler.screen';
 export { KafkaScreen } from './kafka.screen';
 export { AirflowScreen } from './airflow.screen';
 export { DQScreen } from './dq.screen';
+export { EdaScreen } from './eda.screen';
 export { HealthScreen } from './health.screen';
 export { SchematicScreen } from './schematic.screen';

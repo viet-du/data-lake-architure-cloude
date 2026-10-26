@@ -1,5 +1,6 @@
 import { usesDatabricks, remoteReadOnly } from '@/lib/infra/databricks/client';
 import { DatabricksRepository } from '@/modules/catalog/repositories/databricks.repository';
+import { canonicalStoragePath } from '@/modules/datasets/types';
 import { NotFoundError } from '@/errors';
 import { SilverDuckDBRepository } from '../repositories/duckdb.repository';
 import type { ColumnMeta } from '@/modules/catalog/types';
@@ -59,7 +60,7 @@ export const SilverTableService = {
       database: parsed.database,
       name: parsed.name,
       fullName: `silver.${parsed.database}.${parsed.name}`,
-      s3Path: `s3://lakehouse/silver/${parsed.database}/${parsed.name}`,
+      s3Path: canonicalStoragePath('silver', parsed.database, parsed.name),
       columns,
       partitions,
       rowCount,

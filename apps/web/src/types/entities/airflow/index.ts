@@ -7,4 +7,9 @@ export type {
   AirflowTriggerResult,
   AirflowStats,
   AirflowTaskLogs,
+  EPreflightSeverity,
+  AirflowPreflightCheck,
+  AirflowPreflightResult,
+  EConfFieldType,
+  AirflowConfSpec,
 } from './airflow.entity';

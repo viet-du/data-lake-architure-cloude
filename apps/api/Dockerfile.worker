@@ -1,0 +1,91 @@
+# ============================================================================
+# apps/api/Dockerfile.worker — the BullMQ consumer that also owns the Spark work
+# ----------------------------------------------------------------------------
+# Why this is a separate Dockerfile instead of a stage of `apps/api/Dockerfile`:
+#
+#   The control plane is Node/TypeScript; the data plane is Python/Spark.
+#   A job submitted through the API must eventually run `python -m
+#   lakehouse.jobs.runner '<json>'`, which needs Python 3.11, a JDK (PySpark
+#   starts a JVM gateway), PySpark, delta-spark and the hadoop-aws JARs.
+#
+#   `lake-airflow:2.7.0` already carries exactly that verified stack — it is
+#   the image that runs the Bronze/Silver/Gold E2E. Reusing it means the
+#   worker container and the Airflow container execute the *same* Python code
+#   with the *same* dependency versions, so a job cannot succeed in one place
+#   and fail in the other.
+#
+#   The Node binary is copied in from `node:20-bookworm-slim` rather than
+#   installed through a package manager: the official binary is glibc-linked
+#   and matches the Debian base of the Airflow image, and copying it keeps
+#   the architecture correct on both arm64 and amd64 without a build matrix.
+#
+# Build order (the base image must exist first):
+#   docker build -f Dockerfile.airflow -t lake-airflow:2.7.0 .
+#   docker compose ... build worker
+#
+# Build context is the REPOSITORY ROOT, because the image needs both the
+# Python package (`src/lakehouse`) and the TypeScript worker sources
+# (`apps/api/src`). They are laid out under one root so the worker's
+# repository-root discovery finds the canonical `src/lakehouse` marker.
+# ============================================================================
+
+# ── Node dependencies, resolved on the same Debian base as the runtime ──────
+FROM node:20-bookworm-slim AS worker-deps
+WORKDIR /app
+COPY apps/api/package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
+
+# ── The Node runtime binary, matching the Debian/glibc base ────────────────
+FROM node:20-bookworm-slim AS worker-node
+
+# ── The worker image ───────────────────────────────────────────────────────
+FROM lake-airflow:2.7.0 AS worker
+
+USER root
+WORKDIR /app
+
+# The Node runtime. `node` is enough: the worker is started through the
+# `tsx` CLI module directly, so neither npm nor npx is required at runtime.
+COPY --from=worker-node /usr/local/bin/node /usr/local/bin/node
+COPY --from=worker-deps /app/node_modules /app/node_modules
+
+# The Python package lives at `/app/lakehouse-src/lakehouse` and the
+# TypeScript sources at `/app/apps/api/src`, so `/app` is the repository root
+# as far as the worker is concerned. `LAKEHOUSE_REPO_ROOT` makes that
+# explicit and removes the need for the runner to discover it.
+#
+# The two trees are kept apart on purpose: the Python package and the
+# TypeScript sources both live under a directory named `src`, so they cannot
+# share one mount point without one of them shadowing the other.
+COPY src /app/lakehouse-src
+COPY apps/api/src /app/apps/api/src
+COPY apps/api/env-loader.js /app/apps/api/env-loader.js
+COPY apps/api/package.json /app/apps/api/package.json
+COPY apps/api/tsconfig.json /app/apps/api/tsconfig.json
+COPY apps/api/next.config.ts /app/apps/api/next.config.ts
+
+ENV LAKEHOUSE_REPO_ROOT=/app \
+    PYTHONPATH=/app/lakehouse-src \
+    LAKEHOUSE_PYTHON=python3 \
+    NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
+
+# The Airflow image ships a non-root `airflow` user; reuse it so the worker
+# writes nothing it does not own.
+RUN chown -R airflow:0 /app
+USER airflow
+
+# The Airflow base image sets `ENTRYPOINT ["airflow"]`, which would swallow
+# the command below and make the container exit with an "invalid choice:
+# node" error. The worker is not an Airflow process, so the entry point is
+# cleared explicitly.
+ENTRYPOINT []
+# The worker has no HTTP surface, so readiness is expressed through the
+# process staying alive: a BullMQ worker fails loudly on a broken Redis
+# connection, so a running container means a connected worker.
+#
+# The working directory is `/app/apps/api` because the TypeScript sources use
+# the `@/*` path alias, which `tsx` resolves through the `tsconfig.json` that
+# sits next to them.
+WORKDIR /app/apps/api
+CMD ["node", "/app/node_modules/tsx/dist/cli.mjs", "src/workers/main.ts"]

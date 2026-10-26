@@ -10,6 +10,11 @@ export interface ListTablesParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  /**
+   * The medallion layer to filter by. The API accepts `bronze` | `silver` |
+   * `gold` and ignores anything else.
+   */
+  layer?: 'bronze' | 'silver' | 'gold';
 }
 
 export interface ListTablesResult {
@@ -60,7 +65,7 @@ export const catalogService = {
   listTables: async (params: ListTablesParams = {}): Promise<ListTablesResult> => {
     const res = await apiClient.get<ApiResponse<ListTablesResult>>(
       ENDPOINTS.catalog.tables,
-      { params: { database: params.database, search: params.search, limit: params.pageSize ?? 50, offset: ((params.page ?? 1) - 1) * (params.pageSize ?? 50) } },
+      { params: { database: params.database, search: params.search, layer: params.layer, limit: params.pageSize ?? 50, offset: ((params.page ?? 1) - 1) * (params.pageSize ?? 50) } },
     );
     const items = decodeTables(res.data.data);
     return { items, pagination: { page: params.page ?? 1, pageSize: params.pageSize ?? 50, total: items.length } };

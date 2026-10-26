@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 class FactOrdersAggregator:
     GOLD_TABLE = "fact_orders"
+    #: Silver source tables — overridden by the control plane so the database
+    #: segment of the dataset identity is honoured (MASTER PLAN §05.1).
+    SILVER_ORDERS = "orders"
+    SILVER_CUSTOMERS = "customers"
+    SILVER_PRODUCTS = "products"
 
     def __init__(
         self, spark: SparkSession | None = None, *, paths: LakePaths | None = None
@@ -25,15 +30,15 @@ class FactOrdersAggregator:
     def build(self) -> int:
         logger.info(" Build: fact_orders")
         orders = (
-            self.spark.read.format("delta").load(self.paths.silver("orders"))
+            self.spark.read.format("delta").load(self.paths.silver(self.SILVER_ORDERS))
             # P0 FIX: only completed orders are revenue events.
             # "completed" = order has been fully processed and payment confirmed.
             # pending / shipped are not finalized; cancelled are voided.
             # ⚠️ BUSINESS RULE — verify with project owner: should "shipped" also count?
             .filter(F.col("status") == "completed")
         )
-        customers = self.spark.read.format("delta").load(self.paths.silver("customers"))
-        products = self.spark.read.format("delta").load(self.paths.silver("products"))
+        customers = self.spark.read.format("delta").load(self.paths.silver(self.SILVER_CUSTOMERS))
+        products = self.spark.read.format("delta").load(self.paths.silver(self.SILVER_PRODUCTS))
         fact = (
             orders.join(
                 customers.select("customer_id", "full_name", "city", "segment"),

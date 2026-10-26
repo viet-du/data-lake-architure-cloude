@@ -88,6 +88,8 @@ export const ENDPOINTS = {
     dags: API_PREFIX + '/airflow/dags',
     dag: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId,
     dagTrigger: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/trigger',
+    dagPreflight: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/preflight',
+    dagConfSpec: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/conf-spec',
     dagPause: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/pause',
     dagUnpause: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/unpause',
     dagRuns: (dagId: string) => API_PREFIX + '/airflow/dags/' + dagId + '/runs',
@@ -116,14 +118,31 @@ export const ENDPOINTS = {
       API_PREFIX + '/crawler/' + name + '/runs/' + runId + '/items',
     stats: API_PREFIX + '/crawler/stats',
   },
+  eda: {
+    profiles: API_PREFIX + '/eda/profiles',
+    profile: (profileId: string) => API_PREFIX + '/eda/profiles/' + profileId,
+    profileColumns: (profileId: string) =>
+      API_PREFIX + '/eda/profiles/' + profileId + '/columns',
+    profileCharts: (profileId: string) =>
+      API_PREFIX + '/eda/profiles/' + profileId + '/charts',
+    profileChart: (profileId: string, chartId: string) =>
+      API_PREFIX + '/eda/profiles/' + profileId + '/charts/' + chartId,
+    profileSample: (profileId: string) =>
+      API_PREFIX + '/eda/profiles/' + profileId + '/sample',
+    compare: API_PREFIX + '/eda/compare',
+    proposeRule: API_PREFIX + '/eda/propose-rule',
+  },
   dq: {
     rules: API_PREFIX + '/dq/rules',
     rule: (ruleId: string) => API_PREFIX + '/dq/rules/' + ruleId,
     ruleRun: (ruleId: string) => API_PREFIX + '/dq/rules/' + ruleId + '/run',
     runSuite: API_PREFIX + '/dq/run-suite',
     presets: API_PREFIX + '/dq/presets',
+    presetCheck: (presetId: string) => API_PREFIX + '/dq/presets/' + presetId + '/check',
+    presetApply: (presetId: string) => API_PREFIX + '/dq/presets/' + presetId + '/apply',
     runs: API_PREFIX + '/dq/runs',
     run: (runId: string) => API_PREFIX + '/dq/runs/' + runId,
+    runSamples: (runId: string) => API_PREFIX + '/dq/runs/' + runId + '/samples',
     summary: API_PREFIX + '/dq/summary',
   },
   health: {
@@ -132,5 +151,10 @@ export const ENDPOINTS = {
   },
   info: {
     root: API_PREFIX + '/info',
+  },
+  dashboard: {
+    summary: API_PREFIX + '/dashboard/summary',
+    activity: API_PREFIX + '/dashboard/activity',
+    dependencies: API_PREFIX + '/dashboard/dependencies',
   },
 } as const;

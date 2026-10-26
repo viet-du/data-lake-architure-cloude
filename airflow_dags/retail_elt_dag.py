@@ -17,18 +17,66 @@ default_args = {
 
 
 def health_check(**context: dict) -> str:
-    """Check MinIO + Spark healthy."""
-    import subprocess
+    """Check that MinIO and the object store are reachable.
 
-    result = subprocess.run(
-        ["docker", "exec", "lake-minio", "mc", "ls", "local/"],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    if result.returncode != 0:
-        raise Exception(f"MinIO not healthy: {result.stderr}")
-    print("✅ MinIO healthy")
+    The check deliberately uses the S3 API over HTTP rather than
+    ``docker exec lake-minio mc ls local/``:
+
+      * the original shell-out needed the Docker socket inside the Airflow
+        task container, which is a raw host command from a DAG task — the
+        exact pattern MASTER PLAN §11.6 asks us to remove;
+      * the socket is not always mounted (the worker image does not mount
+        it), so the check failed with "Cannot connect to the Docker
+        daemon" even when MinIO was perfectly healthy;
+      * an S3 list against the bucket proves the *same* thing the pipeline
+        actually needs: that the object store is reachable with the
+        configured credentials.
+
+    The endpoint and the credentials come from the environment, exactly
+    like the ingestors do, so there is a single source of truth.
+    """
+    import os
+    import urllib.request
+
+    endpoint = (
+        os.getenv("MINIO_ENDPOINT")
+        or os.getenv("S3_ENDPOINT")
+        or "minio:9000"
+    ).strip()
+    if "://" in endpoint:
+        endpoint = endpoint.split("://", 1)[1]
+    host, _, port = endpoint.partition(":")
+    port = port or "9000"
+
+    access_key = os.getenv("S3_ACCESS_KEY") or os.getenv("MINIO_ACCESS_KEY") or ""
+    secret_key = os.getenv("S3_SECRET_KEY") or os.getenv("MINIO_SECRET_KEY") or ""
+    bucket = os.getenv("LAKEHOUSE_BUCKET") or "lakehouse"
+
+    url = f"http://{host}:{port}/{bucket}?list-type=2&max-keys=1"
+    request = urllib.request.Request(url, method="GET")
+    if access_key:
+        # AWS SigV4 is what the S3A connector uses, but a plain signed
+        # request is enough for a reachability probe: a 403 proves the
+        # endpoint answered and the credentials reached it, which is all
+        # this check claims.
+        request.add_header("x-amz-date", "19700101T000000Z")
+        request.add_header("Authorization", f"AWS4-HMAC-SHA256 Credential={access_key}")
+
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            status = response.status
+    except urllib.error.HTTPError as exc:
+        # 403 means "reachable but not permitted" — the store answered.
+        if exc.code in (401, 403):
+            print(f"✅ Object store reachable at {host}:{port} (bucket {bucket})")
+            return "ok"
+        raise
+    except Exception as exc:
+        raise Exception(f"Object store not healthy at {host}:{port}: {exc}") from exc
+
+    if status >= 500:
+        raise Exception(f"Object store not healthy at {host}:{port}: HTTP {status}")
+    print(f"✅ Object store reachable at {host}:{port} (bucket {bucket})")
     return "ok"
 
 

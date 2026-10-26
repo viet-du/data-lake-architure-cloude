@@ -3,6 +3,8 @@ import {
   DqExecutionService,
   DqRunService,
 } from '../services/dq.service';
+import { DqPresetService, DqPresetCatalogueService } from '../services/preset.service';
+import { redactSamples } from '../services/sample-redaction.service';
 import type { DqRule, DqRuleInput, DqRuleRun, DqSuiteRun } from '../types';
 import type {
   TRuleIdParam,
@@ -13,6 +15,8 @@ import type {
   TRunRuleBody,
   TRunSuiteBody,
   TRunsListQuery,
+  TPresetIdParam,
+  TPresetTarget,
 } from '../schemas';
 
 export const DqRuleController = {
@@ -102,5 +106,63 @@ export const DqRunController = {
 
   async get(params: TRunIdParam): Promise<DqRuleRun> {
     return DqRunService.get(params.runId);
+  },
+
+  /**
+   * The redacted failed samples of a run.
+   *
+   * MASTER PLAN §06.5: only representative failed samples are returned, the
+   * cap is bounded (1–100) and PII is redacted before the rows leave the
+   * server. The rows are never returned raw.
+   */
+  async samples(params: TRunIdParam, limit: number): Promise<{
+    runId: string;
+    ruleId: string | null;
+    status: DqRuleRun['status'];
+    total: number;
+    returned: number;
+    truncated: boolean;
+    columns: string[];
+    rows: Array<Record<string, unknown>>;
+  }> {
+    const run = await DqRunService.get(params.runId);
+    const stored = run.sampleFailures ?? [];
+    const rows = redactSamples(stored, limit);
+    const columns = rows.length > 0 ? Object.keys(rows[0] ?? {}) : [];
+    return {
+      runId: run.runId,
+      ruleId: run.ruleId,
+      status: run.status,
+      total: stored.length,
+      returned: rows.length,
+      truncated: stored.length > rows.length,
+      columns,
+      rows,
+    };
+  },
+};
+
+/**
+ * The preset wizard controller.
+ *
+ * MASTER PLAN DQ-009: the preset is checked against the dataset schema and
+ * applied idempotently to the confirmed dataset/column.
+ */
+export const DqPresetController = {
+  async check(
+    params: TPresetIdParam,
+    target: TPresetTarget,
+  ): Promise<Awaited<ReturnType<typeof DqPresetService.check>>> {
+    const preset = await DqPresetCatalogueService.get(params.presetId);
+    return DqPresetService.check(preset, target);
+  },
+
+  async apply(
+    params: TPresetIdParam,
+    target: TPresetTarget,
+    options: { severity?: 'low' | 'medium' | 'high' | 'critical'; enabled?: boolean },
+  ): Promise<Awaited<ReturnType<typeof DqPresetService.apply>>> {
+    const preset = await DqPresetCatalogueService.get(params.presetId);
+    return DqPresetService.apply(preset, target, options);
   },
 };

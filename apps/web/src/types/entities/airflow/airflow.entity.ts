@@ -70,3 +70,41 @@ export interface AirflowTaskLogs {
   tryNumber: number;
   logs: string;
 }
+
+/**
+ * The severity of one preflight check.
+ *
+ * `error` means the trigger is refused; `warning` means it is allowed but
+ * the operator should know; `info` is neutral context.
+ */
+export type EPreflightSeverity = 'error' | 'warning' | 'info';
+
+export interface AirflowPreflightCheck {
+  id: string;
+  severity: EPreflightSeverity;
+  message: string;
+  detail?: Record<string, unknown>;
+}
+
+export interface AirflowPreflightResult {
+  dagId: string;
+  canTrigger: boolean;
+  allowedConfKeys: ReadonlyArray<string>;
+  rejectedConfKeys: ReadonlyArray<string>;
+  affectedDatasets: ReadonlyArray<{ layer: string; database: string; table: string }>;
+  scheduleMode: 'scheduled' | 'manual_only';
+  checks: ReadonlyArray<AirflowPreflightCheck>;
+  evaluatedAt: string;
+}
+
+/** The type of one conf field. */
+export type EConfFieldType = 'string' | 'number' | 'boolean' | 'enum';
+
+export interface AirflowConfSpec {
+  dagId: string;
+  keys: ReadonlyArray<string>;
+  types: Readonly<Record<string, EConfFieldType>>;
+  options: Readonly<Record<string, ReadonlyArray<string>>>;
+  descriptions: Readonly<Record<string, string>>;
+  affectedDatasets: ReadonlyArray<{ layer: string; database: string; table: string }>;
+}

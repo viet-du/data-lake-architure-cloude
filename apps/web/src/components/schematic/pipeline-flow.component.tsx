@@ -11,13 +11,16 @@ import {
 import { LiquidBlobNode } from './liquid-blob-node.component';
 import { DataParticleStream } from './data-particle.component';
 import type { EPipelineNodeKind } from './schematic.types';
+import type { SchematicOverlay } from './schematic.overlay';
 
 export interface PipelineFlowProps {
   activeKind: EPipelineNodeKind | null;
   onSelect: (kind: EPipelineNodeKind) => void;
+  /** The live state of each node, keyed by the node's kind. */
+  overlays: ReadonlyMap<EPipelineNodeKind, SchematicOverlay>;
 }
 
-export function PipelineFlow({ activeKind, onSelect }: PipelineFlowProps) {
+export function PipelineFlow({ activeKind, onSelect, overlays }: PipelineFlowProps) {
   return (
     <Canvas
       camera={{ position: [0, 2, 9], fov: 50 }}
@@ -40,6 +43,14 @@ export function PipelineFlow({ activeKind, onSelect }: PipelineFlowProps) {
             key={node.kind}
             node={node}
             active={activeKind === node.kind}
+            overlay={
+              overlays.get(node.kind) ?? {
+                running: 0,
+                lastOperation: null,
+                qualityPassRate: null,
+                unavailable: true,
+              }
+            }
             onSelect={onSelect}
           />
         ))}

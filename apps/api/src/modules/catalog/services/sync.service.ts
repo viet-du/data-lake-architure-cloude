@@ -1,4 +1,5 @@
 import { remoteReadOnly } from '@/lib/infra/databricks/client';
+import { canonicalStoragePath } from '@/modules/datasets/types';
 import { DuckDBRepository, TableRepository, DatabaseRepository, type TableInput } from '../repositories';
 import { TableService } from './table.service';
 import { LineageInferenceService } from './lineage-inference.service';
@@ -26,7 +27,7 @@ function buildInputFromDelta(
     database,
     name,
     fullName: `${layer}.${database}.${name}`,
-    s3Path: info?.s3Path ?? `s3://lakehouse/${layer}/${database}/${name}`,
+    s3Path: info?.s3Path ?? canonicalStoragePath(layer, database, name),
     columnCount: info?.columns.length ?? 0,
     rowCount: info?.rowCount ?? 0,
     sizeBytes: info?.sizeBytes ?? 0,

@@ -54,6 +54,11 @@ services:
   postgres:
     image: postgres:13
     container_name: lake-postgres
+    # The metastore Postgres is a hard dependency of the Spark session. When
+    # it exited, every Spark job died with it and nothing brought it back:
+    # Docker's default restart policy is "no", so the container stayed dead
+    # until a human noticed. `unless-stopped` makes it self-healing.
+    restart: unless-stopped
     environment:
       POSTGRES_DB: hive_metastore
       POSTGRES_USER: hive
@@ -69,6 +74,10 @@ services:
   gold-postgres:
     image: postgres:16-alpine
     container_name: lake-gold-postgres
+    # The Gold analytics store. Same reasoning as `postgres` above: a crash
+    # here silently breaks every Gold query and the browser has to keep the
+    # service alive on its own.
+    restart: unless-stopped
     environment:
       POSTGRES_DB: gold_analytics
       POSTGRES_USER: ${GOLD_POSTGRES_USER:-metabase}
@@ -148,8 +157,12 @@ services:
       SPARK_MODE: worker
       SPARK_MASTER: "spark://spark-master:7077"
       SPARK_MASTER_URL: spark://spark-master:7077
-      SPARK_WORKER_MEMORY: 2g
+      SPARK_WORKER_MEMORY: 1g
       SPARK_WORKER_CORES: 2
+      # The executor heap must fit next to the driver inside the worker's
+      # memory budget. With 2g the second overlapping executor was
+      # OOM-killed ("Command exited with code 137").
+      SPARK_EXECUTOR_MEMORY: "768m"
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
@@ -171,6 +184,27 @@ services:
   airflow-db:
     image: postgres:13
     container_name: lake-airflow-db
+    # Airflow's metadata database. This container crashed repeatedly during
+    # development — the Postgres *backend* process exited with code 2 and no
+    # FATAL message, which takes the whole cluster into recovery. Every
+    # crash also killed the scheduler: its SQLAlchemy pool raised
+    # `InvalidatePoolError`, the scheduler loop aborted and the process
+    # exited. With Docker's default "no" restart policy that meant the
+    # orchestrator stayed down until a human noticed, and every Bronze →
+    # Silver → Gold DAG stopped being triggered.
+    #
+    # `unless-stopped` makes the cluster self-healing; the scheduler's own
+    # `restart` policy (below) covers the case where it is the process that
+    # dies rather than the database.
+    restart: unless-stopped
+    # Postgres uses POSIX shared memory for parallel query workers and for
+    # `dynamic_shared_memory_type = posix` allocations. The Docker default
+    # is 64 MB, which is the classic size at which a backend dies with
+    # "could not resize shared memory segment" — and that failure surfaces
+    # as a bare "server process exited with exit code 2" with no FATAL line
+    # in the log, exactly what was observed here. 256 MB gives the parallel
+    # workers room to allocate their segments.
+    shm_size: "256mb"
     environment:
       POSTGRES_DB: airflow
       POSTGRES_USER: airflow
@@ -191,6 +225,10 @@ services:
       dockerfile: Dockerfile.airflow
     image: lake-airflow:2.7.0
     container_name: lake-airflow-webserver
+    # The webserver is the API surface the control plane reads for DAG runs.
+    # It must come back on its own after a crash or a host reboot; the
+    # scheduler's `depends_on: service_healthy` then keeps it consistent.
+    restart: unless-stopped
     depends_on:
       airflow-db:
         condition: service_healthy
@@ -233,6 +271,38 @@ services:
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
       DATA_SAMPLES_DIR: /data-samples
+      # The canonical bucket name. The delta writer and the S3A connector
+      # both derive their paths from it, so the DAG health check must use
+      # the same value or it probes a bucket nobody writes to.
+      LAKEHOUSE_BUCKET: "lakehouse"
+      # --- Spark resource budget for the in-container tasks ----------------
+      # The Bronze tasks run a local SparkSession *inside* this container.
+      # Three of them start at the same time (the DAG fans out after
+      # `health_check`), and the JVM heap of each one is taken from
+      # SPARK_DRIVER_MEMORY by `spark-class` — the `spark.driver.memory`
+      # SparkConf key does NOT resize an already-started gateway.
+      #
+      # With the repository default (2g) three concurrent drivers asked for
+      # more memory than the compose limit (7.7 GiB on this machine), and
+      # the kernel OOM-killed the JVM mid-write:
+      #
+      #   py4j.protocol.Py4JNetworkError: Answer from Java side is empty
+      #   ConnectionRefusedError: [Errno 111] Connection refused
+      #
+      # The budget below keeps three concurrent drivers inside the limit,
+      # and the scheduler is additionally serialised so the DAG never
+      # competes with itself for the same heap.
+      SPARK_DRIVER_MEMORY: "768m"
+      SPARK_EXECUTOR_MEMORY: "768m"
+      # `local[*]` would give every driver all 10 cores; two threads are
+      # plenty for the tiny fixtures and keep the three drivers from
+      # thrashing.
+      SPARK_MASTER: "local[2]"
+      # One task at a time per DAG: the tasks are IO/S3-bound, not
+      # CPU-bound, so serialising them costs little and removes the
+      # concurrent-JVM memory spike entirely.
+      # (Airflow 2.7 reads this key from the `[core]` section.)
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "1"
     ports:
       - "8088:8080"  # Airflow webserver (host 8088 → container 8080, avoids Spark UI collision on 8080)
     volumes:
@@ -260,6 +330,12 @@ services:
       dockerfile: Dockerfile.airflow
     image: lake-airflow:2.7.0
     container_name: lake-airflow-scheduler
+    # The scheduler is the orchestrator: when it is down, no DAG is
+    # triggered and the Bronze → Silver → Gold pipeline silently stops.
+    # It exited during development because the metadata database crashed
+    # (`InvalidatePoolError` → the scheduler loop aborts → the process
+    # terminates). `unless-stopped` makes it reconnect and resume.
+    restart: unless-stopped
     depends_on:
       airflow-db:
         condition: service_healthy
@@ -282,6 +358,14 @@ services:
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
       DATA_SAMPLES_DIR: /data-samples
+      # The canonical bucket name — see the webserver service.
+      LAKEHOUSE_BUCKET: "lakehouse"
+      # Same Spark memory budget as the webserver: the scheduler runs the
+      # task instances on LocalExecutor, so the local SparkSession of a
+      # Bronze task is created *in this container*.
+      SPARK_DRIVER_MEMORY: "768m"
+      SPARK_EXECUTOR_MEMORY: "768m"
+      SPARK_MASTER: "local[2]"
     volumes:
       - ./airflow_dags:/opt/airflow/dags:ro
       # Mount source at /app-src/src; Spark entry-point scripts use this path.

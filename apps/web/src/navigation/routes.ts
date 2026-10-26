@@ -8,6 +8,7 @@ export const ROUTES = {
   KAFKA: '/kafka',
   AIRFLOW: '/airflow',
   DQ: '/dq',
+  EDA: '/eda',
   HEALTH: '/health',
   SETTINGS: '/settings',
   SCHEMATIC: '/schematic',
@@ -25,6 +26,7 @@ export const NAV_ROUTES: ReadonlyArray<{ path: RoutePath; key: keyof typeof ROUT
   { path: ROUTES.KAFKA, key: 'KAFKA' },
   { path: ROUTES.AIRFLOW, key: 'AIRFLOW' },
   { path: ROUTES.DQ, key: 'DQ' },
+  { path: ROUTES.EDA, key: 'EDA' },
   { path: ROUTES.HEALTH, key: 'HEALTH' },
   { path: ROUTES.SCHEMATIC, key: 'SCHEMATIC' },
 ];

@@ -65,7 +65,7 @@ describe('kafka schema', () => {
         key: 'k1',
         value: 'hello',
       };
-      expect(kafkaMessageSchema.parse(msg).offset).toBe(42);
+      expect(kafkaMessageSchema.parse({ ...msg, offset: '42' }).offset).toBe('42');
     });
 
     it('rejects empty value', () => {

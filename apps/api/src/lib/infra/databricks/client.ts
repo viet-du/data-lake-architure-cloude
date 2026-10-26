@@ -2,7 +2,28 @@ import { z } from 'zod';
 import { env } from '@/config';
 import { AppError } from '@/errors';
 
+/**
+ * The default **read** source.
+ *
+ * MASTER PLAN §02.2: "Databricks and MinIO are not automatically one unified
+ * data store." This flag only selects where the control plane *reads* a
+ * dataset from by default.
+ */
 export const usesDatabricks = () => env.LAKEHOUSE_DATA_SOURCE === 'databricks';
+
+/**
+ * The **execution target** for ETL/ELT mutations.
+ *
+ * MASTER PLAN §02.2 / §09 (`executionTarget`): the target where a pipeline
+ * actually runs is a separate decision from the read source.
+ *
+ * - `local_delta_minio` — Spark jobs write Delta tables into MinIO. This is
+ *   the only target that is actually provisioned in this deployment.
+ * - `databricks_uc` — reserved for a remote Databricks Jobs/Workflows
+ *   pipeline. It is **not** implemented here, so every mutation against it
+ *   is rejected instead of silently falling back to MinIO.
+ */
+export const executionTarget = () => env.LAKEHOUSE_EXECUTION_TARGET;
 
 export function identifier(value: string): string {
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) throw new AppError(400, 'INVALID_IDENTIFIER', 'Invalid Databricks identifier');
@@ -84,6 +105,26 @@ export async function readStatement(statement: string, rowLimit = 1000): Promise
   })));
 }
 
+/**
+ * Guard a mutation against a read-only execution target.
+ *
+ * MASTER PLAN §02.2: the read source and the execution target are separate
+ * settings. A deployment may browse a Databricks catalog while running its
+ * ETL pipeline on the local Delta lakehouse, so this guard is driven by
+ * `LAKEHOUSE_EXECUTION_TARGET` — not by the read source.
+ *
+ * The Databricks execution target is reserved for a remote Databricks
+ * Jobs/Workflows pipeline that is not implemented yet. Rejecting it here is
+ * what prevents a "Databricks" action from silently writing into MinIO.
+ */
 export function remoteReadOnly(): void {
-  if (usesDatabricks()) throw new AppError(409, 'DATABRICKS_READ_ONLY', 'This Databricks connection supports browsing and read-only queries; this action requires a configured remote execution pipeline');
+  if (executionTarget() === 'databricks_uc') {
+    throw new AppError(
+      409,
+      'DATABRICKS_READ_ONLY',
+      'The Databricks execution target is read-only in this deployment; ' +
+        'it supports browsing and read-only queries, while ETL/ELT mutations ' +
+        'run on the local Delta lakehouse (LAKEHOUSE_EXECUTION_TARGET=local_delta_minio).',
+    );
+  }
 }

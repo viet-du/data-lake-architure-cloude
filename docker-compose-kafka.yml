@@ -4,6 +4,11 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: lake-zookeeper
+    # A crashed ZooKeeper or broker stayed dead until someone noticed: the
+    # API then reported Kafka as Unavailable on Home. `unless-stopped`
+    # brings both back after a crash or a Docker restart, while an
+    # explicit `docker compose stop` is still honoured.
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -31,6 +36,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: lake-kafka
+    restart: unless-stopped
     depends_on:
       zookeeper:
         condition: service_healthy

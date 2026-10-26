@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { created } from '@/lib/http';
 import { SilverTransformController } from '@/modules/silver/controllers';
 import { TransformAllBodySchema } from '@/modules/silver/schemas';
@@ -12,7 +12,7 @@ const handlePost: RouteHandler = async (req: NextRequest) => {
   return created(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

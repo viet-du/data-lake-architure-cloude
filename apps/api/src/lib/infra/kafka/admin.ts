@@ -7,6 +7,8 @@ interface KafkaCache {
   admin: Admin | null;
   producer: Producer | null;
   consumer: Consumer | null;
+  adminConnection: Promise<Admin> | null;
+  producerConnection: Promise<Producer> | null;
 }
 
 const globalForKafka = globalThis as unknown as { _kafkaCache?: KafkaCache };
@@ -15,6 +17,8 @@ const cache: KafkaCache = globalForKafka._kafkaCache ?? {
   admin: null,
   producer: null,
   consumer: null,
+  adminConnection: null,
+  producerConnection: null,
 };
 if (!globalForKafka._kafkaCache) globalForKafka._kafkaCache = cache;
 
@@ -35,18 +39,42 @@ export function getKafka(): Kafka {
 
 export async function getAdmin(): Promise<Admin> {
   if (cache.admin) return cache.admin;
-  cache.admin = getKafka().admin();
-  await cache.admin.connect();
-  logger.info('Kafka admin connected');
-  return cache.admin;
+  if (cache.adminConnection) return cache.adminConnection;
+  const candidate = getKafka().admin();
+  cache.adminConnection = candidate.connect().then(
+    () => {
+      cache.admin = candidate;
+      cache.adminConnection = null;
+      logger.info('Kafka admin connected');
+      return candidate;
+    },
+    async (error: Error) => {
+      cache.adminConnection = null;
+      await candidate.disconnect().catch(() => undefined);
+      throw error;
+    },
+  );
+  return cache.adminConnection;
 }
 
 export async function getProducer(): Promise<Producer> {
   if (cache.producer) return cache.producer;
-  cache.producer = getKafka().producer({ allowAutoTopicCreation: false });
-  await cache.producer.connect();
-  logger.info('Kafka producer connected');
-  return cache.producer;
+  if (cache.producerConnection) return cache.producerConnection;
+  const candidate = getKafka().producer({ allowAutoTopicCreation: false });
+  cache.producerConnection = candidate.connect().then(
+    () => {
+      cache.producer = candidate;
+      cache.producerConnection = null;
+      logger.info('Kafka producer connected');
+      return candidate;
+    },
+    async (error: Error) => {
+      cache.producerConnection = null;
+      await candidate.disconnect().catch(() => undefined);
+      throw error;
+    },
+  );
+  return cache.producerConnection;
 }
 
 export async function getConsumer(groupId: string): Promise<Consumer> {
@@ -71,5 +99,7 @@ export async function closeKafka(): Promise<void> {
     cache.consumer = null;
   }
   cache.kafka = null;
+  cache.adminConnection = null;
+  cache.producerConnection = null;
   logger.info('Kafka clients closed');
 }

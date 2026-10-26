@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { withErrorHandler, withRequestId, type RouteHandler } from '@/middlewares';
+import { withSecurity, type RouteHandler } from '@/middlewares';
 import { created } from '@/lib/http';
 import { BronzeIngestController } from '@/modules/bronze/controllers';
 import { IngestJsonBodySchema } from '@/modules/bronze/schemas';
@@ -12,7 +12,7 @@ const handlePost: RouteHandler = async (req: NextRequest) => {
   return created(data);
 };
 
-export const POST = withRequestId(withErrorHandler(handlePost));
+export const POST = withSecurity(handlePost);
 
 /**
  * @openapi

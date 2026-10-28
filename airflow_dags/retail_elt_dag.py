@@ -90,6 +90,7 @@ with DAG(
     # Manual only: this legacy DAG must not generate synthetic data on a timer.
     schedule_interval=None,
     catchup=False,
+    max_active_tasks=1,
     tags=["elt", "batch", "retail"],
 ) as dag:
     # ===== Health check =====

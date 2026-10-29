@@ -33,6 +33,14 @@
     "name": "Data Lake",
     "tagline": "Modern Data Platform"
   },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "invalidCredentials": "Email or password is incorrect.",
+    "unavailable": "Could not connect to the API. Try again."
+  },
   "a11y": {
     "skipToContent": "Skip to content"
   },

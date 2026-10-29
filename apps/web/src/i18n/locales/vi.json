@@ -33,6 +33,14 @@
     "name": "Data Lake",
     "tagline": "Nền tảng Dữ liệu Hiện đại"
   },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "invalidCredentials": "Email hoặc mật khẩu không chính xác.",
+    "unavailable": "Không kết nối được API. Hãy thử lại."
+  },
   "a11y": {
     "skipToContent": "Chuyển đến nội dung"
   },

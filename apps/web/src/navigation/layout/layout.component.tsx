@@ -14,7 +14,7 @@ import { LanguageToggle } from '@/navigation/header/language-toggle.component';
 import { ThemeToggle } from '@/navigation/header/theme-toggle.component';
 import { NavRail } from '@/navigation/rail/nav-rail.component';
 import { SearchBox } from '@/navigation/header/search-box.component';
-import { useUiStore } from '@/store';
+import { useAuthStore, useUiStore } from '@/store';
 import { useHotkey } from '@/hooks';
 import { cn } from '@/theme';
 import type { LayoutProps, NavRailItem } from '@/navigation';
@@ -30,6 +30,8 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const sidebar = useUiStore((s) => s.sidebar);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
   const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
@@ -83,6 +85,16 @@ export function Layout({ children }: LayoutProps) {
             }
             rightSlot={
               <>
+                <span className="hidden max-w-40 truncate text-xs text-neutral-500 sm:block" title={user?.email}>
+                  {user?.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                >
+                  {t('auth.signOut')}
+                </button>
                 <LanguageToggle />
                 <ThemeToggle />
               </>

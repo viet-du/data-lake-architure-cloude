@@ -1,9 +1,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/ ./apps/
-COPY . .
+COPY apps/web/package.json apps/web/package.json
+COPY apps/web/ ./apps/web/
 ENV NODE_ENV=production
+# Vite embeds client configuration at build time. Keep the default same-origin
+# so the browser calls /api and nginx proxies it to the Compose `api` service.
+# A public deployment can override this with `--build-arg`.
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN corepack enable && pnpm install --filter @lakehouse/web... --frozen-lockfile && pnpm --filter @lakehouse/web build
 
 FROM nginx:1.27-alpine AS runner

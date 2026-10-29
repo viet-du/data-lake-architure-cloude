@@ -115,18 +115,10 @@ services:
     container_name: lake-web
     ports:
       - "5173:5173"
-    environment:
-      # The container serves via nginx on 5173, but the Vite build was
-      # done with this base URL. Update VITE_API_BASE_URL in apps/web
-      # before `pnpm --filter @lakehouse/web build` if you need a
-      # different host.
-      #
-      # The API is reached through the *compose service name* `api`, not
-      # through `localhost`. Inside the web container `localhost` is the
-      # web container itself, so `http://localhost:3001` would point at
-      # nothing and every browser request would fail with
-      # "connect ECONNREFUSED 127.0.0.1:3001".
-      VITE_API_BASE_URL: http://api:3001
+    # Vite embeds API configuration during the image build. The browser must
+    # use same-origin `/api`; nginx proxies that path to the internal `api`
+    # service. Setting `VITE_API_BASE_URL=http://api:3001` here would bake a
+    # Docker-only hostname into JavaScript and fail in every real browser.
     depends_on:
       api:
         condition: service_started

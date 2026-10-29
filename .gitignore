@@ -116,6 +116,8 @@ packages/*/coverage/
 # ═══════════════════════════════════════════════════════
 # ENV FILES — KHÔNG BAO GIỜ COMMIT
 # ═══════════════════════════════════════════════════════
+# Local credential inventory / notes can contain active access keys.
+R2_ENV_KEYS.txt
 .env
 .env.local
 .env.*.local

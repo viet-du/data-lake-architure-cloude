@@ -89,7 +89,7 @@ const POLICY_RULES: readonly PolicyRule[] = [
     resource: 'job',
     resourceParam: 'jobId',
   }),
-  rule('GET', /^\/api\/bronze\//, READ),
+  rule('GET', /^\/api\/bronze(?:\/|$)/, READ),
 
   // ── Silver ──────────────────────────────────────────────────────────────
   rule('GET', /^\/api\/silver\/[^/]+\/sample$/, SAMPLE),
@@ -102,7 +102,7 @@ const POLICY_RULES: readonly PolicyRule[] = [
     resource: 'job',
     resourceParam: 'jobId',
   }),
-  rule('GET', /^\/api\/silver\//, READ),
+  rule('GET', /^\/api\/silver(?:\/|$)/, READ),
 
   // ── Gold ────────────────────────────────────────────────────────────────
   rule('GET', /^\/api\/gold\/[^/]+\/sample$/, SAMPLE),
@@ -115,7 +115,7 @@ const POLICY_RULES: readonly PolicyRule[] = [
     resource: 'job',
     resourceParam: 'jobId',
   }),
-  rule('GET', /^\/api\/gold\//, READ),
+  rule('GET', /^\/api\/gold(?:\/|$)/, READ),
 
   // ── Kafka ───────────────────────────────────────────────────────────────
   rule('POST', /^\/api\/kafka\/topics\/[^/]+\/produce(-batch)?$/, 'kafka:produce', {

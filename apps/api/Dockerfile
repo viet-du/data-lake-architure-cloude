@@ -107,6 +107,7 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 # runtime image has no `src/` directory, and `next.config.ts` `require()`s
 # this file to resolve the environment before any route handler starts.
 COPY --from=builder /app/env-loader.js ./env-loader.js
+COPY --from=builder /app/src/modules/gold-queries/sql ./src/modules/gold-queries/sql
 
 USER nextjs
 EXPOSE 3001

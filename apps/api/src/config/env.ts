@@ -72,7 +72,16 @@ const EnvSchema = z.object({
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')
     .optional(),
-  S3_HEALTH_BUCKET: z.string().min(1).default('bronze'),
+  /**
+   * Bucket probed by the deep health check and the dashboard storage probe.
+   *
+   * It must be the SAME canonical bucket that holds the medallion layers —
+   * `LAKEHOUSE_BUCKET` (default `lakehouse`), which is also what
+   * `src/lakehouse/core/paths.py` addresses as `s3a://<bucket>/...`. Probing
+   * a per-layer bucket such as `bronze` returns 404/NoSuchBucket on a stock
+   * deployment and makes `/api/health/deep` report the storage layer as down.
+   */
+  S3_HEALTH_BUCKET: z.string().min(1).default('lakehouse'),
   S3_USE_SSL: z
     .union([z.literal('true'), z.literal('false')])
     .transform((v) => v === 'true')

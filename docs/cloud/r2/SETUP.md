@@ -38,10 +38,9 @@ The buckets mirror the medallion architecture (bronze / silver / gold) plus `scr
 export CF_ACCOUNT_ID="<your-32-char-hex-account-id>"
 
 # Create buckets
-wrangler r2 bucket create bronze
-wrangler r2 bucket create silver
-wrangler r2 bucket create gold
-wrangler r2 bucket create scripts
+# Canonical bucket duy nhất chứa toàn bộ 3 tầng medallion
+# (biến LAKEHOUSE_BUCKET, mặc định "lakehouse").
+wrangler r2 bucket create lakehouse
 
 # Verify
 wrangler r2 bucket list

@@ -1506,6 +1506,44 @@ Mỗi lệnh phải in phiên bản, không có `command not found`. Nếu `dock
 
 ## 14. Cấu hình biến môi trường
 
+### 14.0 Người mới clone repo — chạy script này
+
+> **Nếu bạn vừa `git clone` repo này về máy mới, hãy đọc mục này trước.**
+> Repo **cố ý không chứa** `.env` và `apps/api/.env.local` (chúng chứa secret
+> và bị `.gitignore`). Nếu bạn chỉ `git clone` rồi `make up`, Docker Compose sẽ
+> dừng ngay với `required variable AIRFLOW_FERNET_KEY is missing`.
+
+Một lệnh duy nhất tạo đủ cấu hình với **đúng tên biến mà code thực sự đọc**:
+
+```bash
+./scripts/setup-new-machine.sh          # dùng MinIO local (mặc định)
+./scripts/setup-new-machine.sh --r2     # sinh sẵn khung cấu hình Cloudflare R2
+```
+
+Script sẽ:
+
+1. Tạo `.env` (MinIO local hoặc khung R2) + `AIRFLOW_FERNET_KEY` hợp lệ (44 ký tự).
+2. Tạo `apps/api/.env.local` với `MONGO_URI` có auth, `API_CORS_ORIGINS` gồm port `5173`.
+3. Kiểm tra `.env` / `apps/api/.env.local` / `R2_ENV_KEYS.txt` đã được gitignore chưa.
+4. Validate `docker compose config`.
+5. In ra checklist các bước còn lại (tạo bucket `lakehouse`, bootstrap admin…).
+
+**Ba điều mà `git clone` không thể mang theo** — mỗi máy phải tự làm:
+
+| # | Việc | Vì sao không tự động |
+|---|---|---|
+| 1 | Tạo bucket `lakehouse` | `minio-init` tạo `bronze`/`silver`/`gold` nhưng **không** tạo `lakehouse` — mà toàn bộ code ghi vào `s3a://lakehouse/...` |
+| 2 | `pnpm --filter lakehouse-api security:bootstrap` | User nằm trong MongoDB collection `control_plane_users` **của từng máy**. Thêm admin trên GitHub **không** tạo được user trong hệ thống này |
+| 3 | Điền `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Secret của bạn. Token R2 cần quyền **Object Read & Write** trên bucket `lakehouse` |
+
+> ⚠️ **Biến R2 phải là `S3_*`, không phải `R2_*`.** `.env.example` trước đây
+> khai báo `R2_ENDPOINT_URL` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` —
+> **không module nào đọc các biến đó** (`spark.py`, `env.ts`,
+> `test_r2_connection.sh` đều đọc `S3_*`). Điền theo tên `R2_*` ⇒ hệ thống
+> im lặng rơi về MinIO `localhost:9000` và bạn thấy `403`/`NoSuchBucket` mà
+> không hiểu vì sao. `R2_ACCOUNT_ID` / `R2_ACCESS_KEY` / `R2_SECRET_KEY` chỉ
+> dùng cho `r2_replicate.py` (cold-tier replicate), không phải đường chính.
+
 ### 14.1 Ba file môi trường
 
 | File | Ai đọc | Bắt buộc? |
@@ -2330,7 +2368,38 @@ Compose đã đặt `SPARK_DRIVER_MEMORY=768m`, `SPARK_EXECUTOR_MEMORY=768m`, `S
 
 ### 21.7 Pipeline lỗi vì bucket hoặc đường dẫn S3 không tồn tại
 
-`NoSuchBucket` / `The specified bucket does not exist` ⇒ `minio-init` không tạo bucket `lakehouse`. Tạo theo mục 16.2 bước 1.5.
+`NoSuchBucket` / `The specified bucket does not tồn tại` ⇒ `minio-init` không tạo bucket `lakehouse`. Tạo theo mục 16.2 bước 1.5.
+
+> **Trên Cloudflare R2:** bucket canonical vẫn là `lakehouse` — **không** phải 3
+> bucket `bronze`/`silver`/`gold`. Tầng medallion là *prefix* bên trong bucket:
+> `s3a://lakehouse/bronze/crm/customers`. Tạo sai tên ⇒ `NoSuchBucket` hoặc 403.
+
+### 21.7b R2 trả `403 Forbidden` / `AccessDenied` / `Authentication error [code: 10000]`
+
+| Mã / triệu chứng | Nguyên nhân | Cách sửa |
+|---|---|---|
+| `403 AccessDenied` | Token R2 thiếu quyền **Object Read & Write**, hoặc chỉ được gán cho bucket khác | Tạo lại token, chọn đúng bucket `lakehouse` |
+| `403` khi đã có quyền | Đang dùng **nhầm tên biến** `R2_*` thay vì `S3_*` | Code chỉ đọc `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY`. Đổi tên biến |
+| `403` + hệ thống im lặng rơi về MinIO | Đặt `R2_ENDPOINT_URL` (không ai đọc) thay vì `S3_ENDPOINT` | Xem mục 14.0 |
+| `code: 10000` (wrangler) | `wrangler` chưa login hoặc login sai account | `wrangler logout && wrangler login && wrangler whoami` |
+| `NoSuchBucket` | Bucket `lakehouse` chưa tạo trên R2 dashboard | Tạo 1 bucket tên `lakehouse` (Region: auto, Private) |
+| `400 Path style access is not supported` | Thiếu `S3_PATH_STYLE_ACCESS=true` | Bổ sung biến này (mặc định đã là `true` ở API) |
+
+### 21.7c Người khác clone repo về không chạy được
+
+| Triệu chứng | Nguyên nhân | Cách sửa |
+|---|---|---|
+| `required variable AIRFLOW_FERNET_KEY is missing` | Clone không có `.env` (bị gitignore) | Chạy `./scripts/setup-new-machine.sh` |
+| Compose báo không tìm thấy file `.env` | `env_file: .env` trong `docker-compose.yml` | Tạo `.env` (mục 14.2) |
+| Điền R2 xong vẫn 403 / không kết nối được R2 | Dùng tên biến `R2_*` thay vì `S3_*` | Mục 14.0 |
+| Không đăng nhập được dù đã là admin | User nằm trong MongoDB **của máy đó**, không phải trên GitHub | `pnpm --filter lakehouse-api security:bootstrap` |
+| `Authentication failed` từ MongoDB | `MONGO_URI` thiếu credentials | `mongodb://mongoadmin:mongoadmin@127.0.0.1:27017/?authSource=admin` |
+| Lỗi CORS trên trình duyệt | `API_CORS_ORIGINS` thiếu `http://localhost:5173` | Thêm origin của web dev (5173, **không phải** 3000 — 3000 là Metabase) |
+
+> 💡 **"Thêm họ làm admin" trên GitHub không có tác dụng gì với hệ thống này.**
+> RBAC của Control Plane lưu trong MongoDB collection `control_plane_users`
+> (`apps/api/src/modules/security/repositories/models/user.model.ts`). Mỗi máy
+> có một MongoDB riêng ⇒ mỗi máy cần bootstrap riêng.
 
 ### 21.8 API báo lỗi MongoDB: `Authentication failed` hoặc `command ... requires authentication`
 

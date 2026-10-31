@@ -8,7 +8,7 @@
 # Reads S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY from .env
 # and verifies we can:
 #   1. Reach the R2 endpoint
-#   2. List the 3 buckets (bronze, silver, gold)
+#   2. Verify the canonical bucket "lakehouse" exists
 #   3. Upload a small test file
 #   4. Download and verify
 #   5. Clean up
@@ -86,8 +86,8 @@ if [[ -n "$TOOL" ]]; then
         export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY"
         export AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
         export AWS_DEFAULT_REGION="auto"
-        if aws --endpoint-url "$S3_ENDPOINT" s3 ls 2>&1 | grep -qE "bronze|silver|gold"; then
-            echo "  ✅ Found bronze/silver/gold buckets"
+        if aws --endpoint-url "$S3_ENDPOINT" s3 ls 2>&1 | grep -q "lakehouse"; then
+            echo "  ✅ Found bucket lakehouse"
         else
             echo "  ⚠️  Buckets not visible. Available buckets:"
             aws --endpoint-url "$S3_ENDPOINT" s3 ls || true
@@ -96,8 +96,8 @@ if [[ -n "$TOOL" ]]; then
         fi
     else
         mc alias set r2test "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY" 2>/dev/null
-        if mc ls r2test/ 2>&1 | grep -qE "bronze|silver|gold"; then
-            echo "  ✅ Found bronze/silver/gold buckets"
+        if mc ls r2test/ 2>&1 | grep -q "lakehouse"; then
+            echo "  ✅ Found bucket lakehouse"
         else
             echo "  ⚠️  Buckets not visible. Available buckets:"
             mc ls r2test/ || true
@@ -137,18 +137,18 @@ s3 = boto3.client(
 test_content = f"hello-from-r2-test-{os.urandom(4).hex()}\n".encode()
 test_key = "_r2_connection_test/ping.txt"
 
-# Write to bronze bucket
+# Write to the canonical bucket
 try:
-    s3.put_object(Bucket="bronze", Key=test_key, Body=test_content)
-    print(f"  ✅ Uploaded {len(test_content)} bytes to bronze/{test_key}")
+    s3.put_object(Bucket="lakehouse", Key=test_key, Body=test_content)
+    print(f"  ✅ Uploaded {len(test_content)} bytes to lakehouse/{test_key}")
 except Exception as e:
     print(f"  ❌ Upload failed: {e}")
-    print("     Check: bucket 'bronze' đã tạo? Access key có quyền write?")
+    print("     Check: bucket 'lakehouse' đã tạo? Access key có quyền Object Read & Write?")
     sys.exit(1)
 
 # Read back
 try:
-    resp = s3.get_object(Bucket="bronze", Key=test_key)
+    resp = s3.get_object(Bucket="lakehouse", Key=test_key)
     body = resp["Body"].read()
     if body == test_content:
         print(f"  ✅ Downloaded content matches ({len(body)} bytes)")
@@ -161,15 +161,15 @@ except Exception as e:
 
 # Cleanup
 try:
-    s3.delete_object(Bucket="bronze", Key=test_key)
+    s3.delete_object(Bucket="lakehouse", Key=test_key)
     print("  ✅ Cleanup test file OK")
 except Exception as e:
     print(f"  ⚠️  Could not delete test file: {e}")
 
-# List all 3 buckets
+# Verify the canonical bucket
 print("")
 print("  Bucket availability:")
-for bucket in ("bronze", "silver", "gold"):
+for bucket in ("lakehouse",):
     try:
         s3.head_bucket(Bucket=bucket)
         print(f"    ✅ {bucket}")
@@ -201,9 +201,9 @@ from pyspark.sql import SparkSession
 from lakehouse.core.spark import build_spark_session
 spark = build_spark_session(\"r2-smoke-test\", master=\"local[2]\")
 try:
-    spark.range(3).write.format(\"delta\").mode(\"overwrite\").save(\"s3a://bronze/_spark_smoke_test/\")
-    n = spark.read.format(\"delta\").load(\"s3a://bronze/_spark_smoke_test/\").count()
-    print(f\"  ✅ Spark wrote and read {n} rows from s3a://bronze/\")
+    spark.range(3).write.format(\"delta\").mode(\"overwrite\").save(\"s3a://lakehouse/_spark_smoke_test/\")
+    n = spark.read.format(\"delta\").load(\"s3a://lakehouse/_spark_smoke_test/\").count()
+    print(f\"  ✅ Spark wrote and read {n} rows from s3a://lakehouse/\")
 finally:
     spark.stop()
 '
@@ -221,4 +221,4 @@ echo "  • Python boto3:           see above"
 echo "  • Spark Delta read/write: see above"
 echo ""
 echo "🎉 R2 setup looks good! Run 'make batch' to start the pipeline."
-echo "   View data at: https://dash.cloudflare.com → R2 → bucket 'bronze'"
+echo "   View data at: https://dash.cloudflare.com → R2 → bucket 'lakehouse'"

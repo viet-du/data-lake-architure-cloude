@@ -17,7 +17,7 @@ spark.hadoop.fs.s3a.path.style.access     true       # R2 uses path-style, not v
 spark.hadoop.fs.s3a.connection.ssl.enabled true
 ```
 
-**Gotcha:** the endpoint MUST be just `<account-id>.r2.cloudflarestorage.com`. Do NOT prepend `s3://` or `https://` or include a bucket name. The bucket goes in the path, e.g. `s3a://bronze/path/to/file`.
+**Gotcha:** the endpoint MUST be just `<account-id>.r2.cloudflarestorage.com`. Do NOT prepend `s3://` or `https://` or include a bucket name. The bucket goes in the path, e.g. `s3a://lakehouse/bronze/path/to/file`.
 
 ### 1.2 S3A credentials
 
@@ -111,10 +111,10 @@ from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
 
 # Read a Delta table from R2 (zero egress from API + Web UI)
-df = spark.read.format("delta").load("s3a://gold/crm/fact_tiki")
+df = spark.read.format("delta").load("s3a://lakehouse/gold/crm/fact_tiki")
 
 # Write a Delta table to R2
-df.write.format("delta").mode("overwrite").save("s3a://silver/crm/tiki_smartphone")
+df.write.format("delta").mode("overwrite").save("s3a://lakehouse/silver/crm/tiki_smartphone")
 
 # Stream from Kafka, write to R2 Delta (structured streaming)
 stream = (
@@ -126,11 +126,14 @@ stream = (
 )
 stream.writeStream \
     .format("delta") \
-    .option("checkpointLocation", "s3a://bronze/_checkpoints/clickstream/") \
-    .start("s3a://bronze/stream/clickstream/")
+    .option("checkpointLocation", "s3a://lakehouse/bronze/_checkpoints/clickstream/") \
+    .start("s3a://lakehouse/bronze/stream/clickstream/")
 ```
 
-**The path `s3a://bronze/...` resolves to `https://<account-id>.r2.cloudflarestorage.com/bronze/...`** under the hood. The bucket name is the first path segment, not part of the hostname.
+**The path `s3a://lakehouse/bronze/...` resolves to `https://<account-id>.r2.cloudflarestorage.com/lakehouse/bronze/...`** under the hood. The bucket name is the first path segment, not part of the hostname.
+
+> Canonical bucket là `lakehouse` (biến `LAKEHOUSE_BUCKET`). Tầng medallion là
+> **prefix** bên trong bucket, không phải bucket riêng.
 
 ---
 
@@ -140,13 +143,13 @@ Delta Lake time travel works on R2 the same as on S3 — the `_delta_log/` subdi
 
 ```python
 # Read a specific version
-df_v3 = spark.read.format("delta").option("versionAsOf", 3).load("s3a://gold/crm/fact_tiki")
+df_v3 = spark.read.format("delta").option("versionAsOf", 3).load("s3a://lakehouse/gold/crm/fact_tiki")
 
 # Read as of a timestamp
 df_yesterday = (
     spark.read.format("delta")
     .option("timestampAsOf", "2026-10-17T00:00:00Z")
-    .load("s3a://gold/crm/fact_tiki")
+    .load("s3a://lakehouse/gold/crm/fact_tiki")
 )
 ```
 
@@ -161,7 +164,7 @@ Delta Lake's `VACUUM` command removes files no longer referenced by the transact
 ```python
 from delta.tables import DeltaTable
 
-dt = DeltaTable.forPath(spark, "s3a://silver/crm/tiki_smartphone")
+dt = DeltaTable.forPath(spark, "s3a://lakehouse/silver/crm/tiki_smartphone")
 dt.vacuum(retentionHours=168)  # keep 7 days for time travel
 ```
 
@@ -173,10 +176,10 @@ dt.vacuum(retentionHours=168)  # keep 7 days for time travel
 
 ```python
 # Compact small files into larger ones (improves read performance)
-spark.sql("OPTIMIZE delta.`s3a://silver/crm/tiki_smartphone`")
+spark.sql("OPTIMIZE delta.`s3a://lakehouse/silver/crm/tiki_smartphone`")
 
 # Z-ORDER by a frequently-queried column (improves predicate pushdown)
-spark.sql("OPTIMIZE delta.`s3a://gold/crm/fact_tiki` ZORDER BY (customer_id, order_date)")
+spark.sql("OPTIMIZE delta.`s3a://lakehouse/gold/crm/fact_tiki` ZORDER BY (customer_id, order_date)")
 ```
 
 **R2 + Z-ORDER gotcha:** Z-ORDER works on R2 but the read-time benefit depends on R2's range-read performance. In practice, we've seen 2-3x speedup on filtered queries. Not as good as local NVMe (5-10x) but still meaningful.

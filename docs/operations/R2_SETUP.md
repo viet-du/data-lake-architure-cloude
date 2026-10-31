@@ -42,21 +42,28 @@
 
 ---
 
-## Bước 2 — Tạo 3 bucket
+## Bước 2 — Tạo bucket
 
-Trong R2 dashboard, click **Create bucket**, tạo lần lượt 3 bucket:
+Trong R2 dashboard, click **Create bucket**, tạo **1 bucket duy nhất**:
 
 | Tên bucket | Region | Public access | Mục đích |
 |---|---|---|---|
-| `bronze` | APAC (Tokyo) | ❌ Private | Raw data từ CSV/JSON/streaming |
-| `silver` | APAC (Tokyo) | ❌ Private | Cleaned + enriched |
-| `gold` | APAC (Tokyo) | ❌ Private | Aggregated metrics |
+| `lakehouse` | APAC (Tokyo) | ❌ Private | Toàn bộ 3 tầng medallion, phân tách bằng prefix |
 
-> **Tên bucket phải đúng:** `bronze`, `silver`, `gold` (lowercase, không ký tự đặc biệt). Code `LakePaths` sẽ tự tạo URL `s3a://bronze/`, `s3a://silver/`, `s3a://gold/` — phải khớp.
-
-> **Region APAC:** Chọn "Asia Pacific (Japan)" hoặc gần nhất. Từ Việt Nam thì APAC cho latency thấp hơn US/EU.
-
----
+> ⚠️ **ĐỪNG tạo 3 bucket `bronze` / `silver` / `gold`.** Tài liệu cũ nói vậy,
+> nhưng code đã chuẩn hoá về **một** bucket duy nhất:
+>
+> - `src/lakehouse/core/paths.py` → `DEFAULT_BUCKET = "lakehouse"`,
+>   biến môi trường `LAKEHOUSE_BUCKET` (mặc định `lakehouse`).
+> - `apps/api/src/config/env.ts` → `LAKEHOUSE_BUCKET` (mặc định `lakehouse`).
+>
+> Đường dẫn đầy đủ: `s3a://lakehouse/{layer}/{database}/{table}` — ví dụ
+> `s3a://lakehouse/bronze/crm/customers`. Tầng là **prefix**, không phải bucket.
+> Nếu tạo 3 bucket riêng, mọi lệnh ghi sẽ trả `NoSuchBucket`.
+>
+> **Bucket `lakehouse` phải tồn tại trước khi chạy bất kỳ job nào.** Với
+> MinIO local, `minio-init` **không** tạo bucket này — phải tạo tay (xem README
+> mục 16.2). Với R2 thì bạn tạo trên dashboard.
 
 ## Bước 3 — Tạo Access Key
 
@@ -64,7 +71,7 @@ Trong R2 dashboard, click **Create bucket**, tạo lần lượt 3 bucket:
 2. Đặt tên: `datalake-local-dev`
 3. Permissions: chọn **"Object Read & Write"** (không cần Delete cho dev)
 4. TTL: chọn **"Forever"** hoặc **30 ngày** (rotate định kỳ)
-5. **Specify bucket(s):** chọn cả 3 bucket `bronze`, `silver`, `gold`
+5. **Specify bucket(s):** chọn bucket `lakehouse`
 6. Click **Create API Token**
 7. **COPY NGAY** 2 giá trị (chỉ hiện 1 lần):
    - **Access Key ID** (dạng: `a1b2c3d4e5f6...`)
@@ -156,7 +163,7 @@ Spark sẽ tự động đọc `S3_ENDPOINT` từ `.env` → dùng R2 thay vì M
 
 Script sẽ:
 1. Đọc `S3_ENDPOINT` từ `.env`
-2. Liệt kê 3 bucket `bronze`, `silver`, `gold`
+2. Kiểm tra bucket `lakehouse` tồn tại và list được
 3. Upload 1 file test
 4. Download lại và so sánh
 5. Nếu OK → in "✅ R2 connection successful"
@@ -166,8 +173,8 @@ Script sẽ:
 ```bash
 make shell
 # Trong Spark shell:
-spark.range(10).write.format("delta").mode("overwrite").save("s3a://bronze/_smoke_test/")
-spark.read.format("delta").load("s3a://bronze/_smoke_test/").show()
+spark.range(10).write.format("delta").mode("overwrite").save("s3a://lakehouse/_smoke_test/")
+spark.read.format("delta").load("s3a://lakehouse/_smoke_test/").show()
 ```
 
 Sau đó vào R2 dashboard → bucket `bronze` → xem có folder `_smoke_test/`.
@@ -269,7 +276,7 @@ gold/
 ### ❌ Lỗi: `NoSuchBucket`
 
 - Bucket chưa được tạo trên R2 dashboard
-- Tên phải đúng: `bronze`, `silver`, `gold` (lowercase)
+- Tên phải đúng: `lakehouse` (lowercase) — đây là bucket duy nhất
 
 ### ❌ Spark chậm khi ghi R2
 
@@ -302,9 +309,7 @@ Khi cần xóa bucket để test lại từ đầu:
 
 ```bash
 # Backup toàn bộ data về máy local
-aws s3 sync s3a://bronze ./backup/r2/bronze/ --endpoint-url $S3_ENDPOINT
-aws s3 sync s3a://silver ./backup/r2/silver/ --endpoint-url $S3_ENDPOINT
-aws s3 sync s3a://gold ./backup/r2/gold/ --endpoint-url $S3_ENDPOINT
+aws s3 sync s3://lakehouse ./backup/r2/lakehouse/ --endpoint-url $S3_ENDPOINT
 ```
 
 (Cần `aws cli` với R2 endpoint override.)
@@ -316,7 +321,7 @@ aws s3 sync s3a://gold ./backup/r2/gold/ --endpoint-url $S3_ENDPOINT
 | Bước | Thời gian | Làm gì |
 |---|---|---|
 | 1 | 5 phút | Đăng ký Cloudflare + enable R2 |
-| 2 | 2 phút | Tạo 3 bucket `bronze`, `silver`, `gold` |
+| 2 | 2 phút | Tạo 1 bucket `lakehouse` |
 | 3 | 1 phút | Tạo API token + copy key |
 | 4 | 1 phút | Copy Account ID |
 | 5 | 2 phút | Edit `.env` |

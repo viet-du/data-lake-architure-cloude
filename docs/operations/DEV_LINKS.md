@@ -100,6 +100,20 @@ Sau khi kết nối, sync schema và tạo câu hỏi từ các bảng `fact_ord
 `daily_revenue`, `dim_customers`, `dim_products` trong schema `public`.
 Chạy lại script sau mỗi lần pipeline cập nhật Gold để làm mới bản mirror.
 
+### Dựng sẵn dashboard "Tổng quan Lakehouse"
+
+Script `scripts/seed_metabase_dashboard.py` tạo 12 câu hỏi native SQL trên 4 bảng
+Gold và gắn vào dashboard id 2 (`Tổng quan Lakehouse`):
+
+```bash
+# Chạy lại sau khi Gold đã được sync để làm mới số liệu trên dashboard
+python3 scripts/seed_metabase_dashboard.py
+```
+
+Script là idempotent: chạy lại sẽ archive các câu hỏi cũ và tạo lại, không
+nhân bản. Biến môi trường: `METABASE_URL`, `METABASE_USER`,
+`METABASE_PASSWORD`, `METABASE_DASHBOARD_ID`, `METABASE_GOLD_DB_ID`.
+
 Danh sách route frontend gọi và trạng thái kết nối local được ghi riêng tại
 [`../UI_API_CONNECTIONS.md`](../UI_API_CONNECTIONS.md). Swagger/OpenAPI là
 nguồn chuẩn cho HTTP method, request schema và response contract.

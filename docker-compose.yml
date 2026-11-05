@@ -414,6 +414,10 @@ services:
       - mongo_data:/data/db
     ports:
       - "27017:27017"
+      # A second published port for desktop clients (Compass, Studio 3T)
+      # configured for localhost:27018. Both host ports map to the same
+      # container port, so both reach the same database.
+      - "27018:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
       interval: 15s

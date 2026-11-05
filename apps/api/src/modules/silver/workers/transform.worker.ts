@@ -1,5 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import { SilverJobRepository } from '../repositories';
 import { SilverDuckDBRepository } from '../repositories/duckdb.repository';
 import { SILVER_QUEUE_NAME, type SilverJobPayload } from '../queues/silver.queue';
@@ -64,7 +65,7 @@ export const SilverTransformWorker = {
           throw err;
         }
       },
-      { connection: getQueueConnection(), concurrency: 2 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 2 },
     );
   },
 };

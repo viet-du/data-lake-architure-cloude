@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import type { GoldAggregateKind } from '../types';
 
 export const GOLD_QUEUE_NAME = 'gold-aggregate';
@@ -22,6 +23,7 @@ export const GoldQueue = {
     if (queue) return queue;
     queue = new Queue<GoldJobPayload>(GOLD_QUEUE_NAME, {
       connection: getQueueConnection(),
+      prefix: REDIS_KEY_PREFIX,
       defaultJobOptions: {
         attempts: 2,
         backoff: { type: 'exponential', delay: 2000 },

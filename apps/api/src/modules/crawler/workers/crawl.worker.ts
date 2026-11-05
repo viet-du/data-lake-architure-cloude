@@ -1,5 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import { getCrawler } from '../adapters';
 import { CrawlerRunRepository, CrawlerConfigRepository } from '../repositories';
 import { CRAWLER_QUEUE_NAME, type CrawlerJobPayload } from '../queues/crawler.queue';
@@ -61,17 +62,18 @@ export async function processCrawl(payload: CrawlerJobPayload): Promise<CrawlerI
     );
     return items;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const finishedAt = new Date().toISOString();
-    const startedAt = new Date(payload.startedAt).getTime();
-    await CrawlerRunRepository.update(payload.runId, {
-      status: 'failed',
-      errorMessage: msg,
-      finishedAt,
-      durationMs: Date.now() - startedAt,
-    });
-    throw err;
-  }
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ runId: payload.runId, err: msg }, 'Crawler run threw');
+      const finishedAt = new Date().toISOString();
+      const startedAt = new Date(payload.startedAt).getTime();
+      await CrawlerRunRepository.update(payload.runId, {
+        status: 'failed',
+        errorMessage: msg,
+        finishedAt,
+        durationMs: Date.now() - startedAt,
+      });
+      throw err;
+    }
 }
 
 export const CrawlerRunWorker = {
@@ -81,7 +83,7 @@ export const CrawlerRunWorker = {
       async (job: Job<CrawlerJobPayload>) => {
         return processCrawl(job.data);
       },
-      { connection: getQueueConnection(), concurrency: 4 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 4 },
     );
   },
 };

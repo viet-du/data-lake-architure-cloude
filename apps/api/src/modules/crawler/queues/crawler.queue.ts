@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import type { CrawlerName, CrawlerRunRequest } from '../types';
 
 export const CRAWLER_QUEUE_NAME = 'crawler-run';
@@ -20,6 +21,7 @@ export const CrawlerQueue = {
     if (queue) return queue;
     queue = new Queue<CrawlerJobPayload>(CRAWLER_QUEUE_NAME, {
       connection: getQueueConnection(),
+      prefix: REDIS_KEY_PREFIX,
       defaultJobOptions: {
         attempts: 1,
         removeOnComplete: { count: 200, age: 7 * 24 * 60 * 60 },

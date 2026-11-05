@@ -100,9 +100,17 @@ class BaseCrawler(ABC):
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
+        # Browser-like headers reduce upstream anti-bot challenges (esp. Tiki).
         session.headers.update(
             {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": "https://tiki.vn/",
+                "Origin": "https://tiki.vn",
+                "sec-fetch-site": "same-origin",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-dest": "empty",
             }
         )
         return session
@@ -131,4 +139,19 @@ class BaseCrawler(ABC):
 
     def _get_json(self, url: str, **kwargs: Any) -> dict[str, Any] | None:
         response = self._request(url, **kwargs)
-        return response.json() if response else None
+        if not response:
+            return None
+        # Upstream anti-bot can return 200 OK with HTML body, not JSON.
+        # Detect via Content-Type before calling .json() to avoid crashes.
+        ctype = response.headers.get("Content-Type", "")
+        if "json" not in ctype.lower():
+            logger.warning(
+                "Non-JSON response for %s (Content-Type=%s, status=%s)",
+                url, ctype, response.status_code,
+            )
+            return None
+        try:
+            return response.json()
+        except ValueError as e:
+            logger.warning("JSON decode error for %s: %s", url, e)
+            return None

@@ -1,5 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import { GoldJobRepository } from '../repositories';
 import { GoldDuckDBRepository } from '../repositories/duckdb.repository';
 import { GOLD_QUEUE_NAME, type GoldJobPayload } from '../queues/gold.queue';
@@ -65,7 +66,7 @@ export const GoldAggregateWorker = {
           throw err;
         }
       },
-      { connection: getQueueConnection(), concurrency: 2 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 2 },
     );
   },
 };

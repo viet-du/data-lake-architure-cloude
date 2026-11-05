@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import type { SilverTransformKind } from '../types';
 
 export const SILVER_QUEUE_NAME = 'silver-transform';
@@ -22,6 +23,7 @@ export const SilverQueue = {
     if (queue) return queue;
     queue = new Queue<SilverJobPayload>(SILVER_QUEUE_NAME, {
       connection: getQueueConnection(),
+      prefix: REDIS_KEY_PREFIX,
       defaultJobOptions: {
         attempts: 2,
         backoff: { type: 'exponential', delay: 2000 },

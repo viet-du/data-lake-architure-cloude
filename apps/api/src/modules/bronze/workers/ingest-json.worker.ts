@@ -1,5 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { getQueueConnection } from '@/lib/infra/queue';
+import { REDIS_KEY_PREFIX } from '@/config';
 import { BronzeJobRepository } from '../repositories';
 import { BRONZE_QUEUE_NAME, type BronzeJobPayload } from '../queues/bronze.queue';
 import { logger } from '@/lib/logger';
@@ -58,7 +59,7 @@ export const JsonWorker = {
           throw err;
         }
       },
-      { connection: getQueueConnection(), concurrency: 2 },
+      { connection: getQueueConnection(), prefix: REDIS_KEY_PREFIX, concurrency: 2 },
     );
   },
 };

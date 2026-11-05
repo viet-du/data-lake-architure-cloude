@@ -205,9 +205,9 @@ def build_default_scheduler() -> CrawlScheduler:
     for cat in ("smartphone", "laptop", "fashion", "beauty", "home-appliance"):
         s.add(CrawlJob(
             name=f"tiki-{cat}",
-            crawler=TikiCrawler(rate_limit=2.0),
+            crawler=TikiCrawler(rate_limit=5.0),
             run_every_s=6 * 3600,
-            kwargs={"category": cat, "max_pages": 5, "workers": 4},
+            kwargs={"category": cat, "max_pages": 5, "workers": 1},
         ))
 
     # --- Trending: GitHub ---

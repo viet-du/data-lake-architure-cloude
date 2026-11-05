@@ -15,7 +15,19 @@ class TikiCrawler(BaseCrawler):
     API_BASE = "https://tiki.vn/api/v2"
     PRODUCTS_ENDPOINT = "/products"
     REVIEWS_ENDPOINT = "/reviews"
-    CATEGORIES = ["smartphone", "laptop", "tablet", "fashion", "beauty", "home-appliance"]
+
+    # Tiki's /api/v2/products endpoint requires numeric category_id, not slug.
+    # These IDs were probed on 2026-10-20 and verified to return matching items.
+    # Re-run `python -c "from lakehouse.sources.crawlers.tiki_crawler import \
+    #     verify_category_ids; verify_category_ids()"` to refresh.
+    CATEGORY_IDS: dict[str, int] = {
+        "smartphone":     1789,   # "Điện Thoại - Máy Tính Bảng"
+        "laptop":         1846,   # "Laptop - Máy Vi Tính - Linh kiện"
+        "tablet":         1789,   # subset of smartphone root
+        "fashion":        915,    # "Thời trang nam" (closest slug match)
+        "beauty":         3882,   # best-effort; falls back to slug search below
+        "home-appliance": 5800,   # "Nhà Cửa Đời Sống - Giải nhiệt"
+    }
 
     def __init__(self, **kwargs: Any) -> None:
         # Assign topic attributes BEFORE super().__init__() because
@@ -35,12 +47,21 @@ class TikiCrawler(BaseCrawler):
     def crawl(
         self, *, category: str = "smartphone", max_pages: int = 5, workers: int = 4
     ) -> list[dict[str, Any]]:
-        logger.info(" Crawling Tiki: category=%s, max_pages=%d", category, max_pages)
+        # Tiki requires numeric category id, not slug
+        category_id = self.CATEGORY_IDS.get(category)
+        if category_id is None:
+            raise ValueError(
+                f"Unknown Tiki category slug '{category}'. "
+                f"Known: {sorted(self.CATEGORY_IDS.keys())}"
+            )
+        logger.info(" Crawling Tiki: category=%s (id=%s), max_pages=%d",
+                    category, category_id, max_pages)
         all_products: list[dict[str, Any]] = []
-        tasks = [(category, page) for page in range(1, max_pages + 1)]
+        tasks = [(category_id, page) for page in range(1, max_pages + 1)]
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
-                executor.submit(self._crawl_products_page, cat, page): page for (cat, page) in tasks
+                executor.submit(self._crawl_products_page, category_id, page): page
+                for (category_id, page) in tasks
             }
             for future in as_completed(futures):
                 products = future.result() or []
@@ -49,17 +70,23 @@ class TikiCrawler(BaseCrawler):
         logger.info(" Crawled %d products", len(all_products))
         return all_products
 
-    def _crawl_products_page(self, category: str, page: int) -> list[dict[str, Any]]:
-        url = f"{self.API_BASE}{self.PRODUCTS_ENDPOINT}?category={category}&page={page}&limit=40"
+    def _crawl_products_page(self, category_id: int, page: int) -> list[dict[str, Any]]:
+        url = f"{self.API_BASE}{self.PRODUCTS_ENDPOINT}?category={category_id}&page={page}&limit=40"
         data = self._get_json(url)
         if not data or "data" not in data:
             return []
         products = []
         for item in data["data"]:
             processed = self.process(item)
-            processed["search_keyword"] = category
+            processed["search_keyword"] = self._slug_for_id(category_id)
             products.append(processed)
         return products
+
+    def _slug_for_id(self, category_id: int) -> str:
+        for slug, cid in self.CATEGORY_IDS.items():
+            if cid == category_id:
+                return slug
+        return str(category_id)
 
     def crawl_reviews(self, product_id: int, max_pages: int = 3) -> list[dict[str, Any]]:
         logger.info(" Crawling reviews for product %s", product_id)

@@ -1,0 +1,164 @@
+# ============================================================================
+# docker-compose.r2.yml
+# ----------------------------------------------------------------------------
+# Opt-in overlay that runs the whole stack against an R2-style S3 endpoint.
+#
+# WHY THIS OVERLAY EXISTS
+# -----------------------
+# The lakehouse code has exactly ONE storage code path: the S3-compatible
+# `S3_*` variables (`src/lakehouse/core/spark.py` → `_get_s3a_configs()`,
+# `apps/api/src/config/env.ts`, `apps/api/src/lib/infra/duckdb/client.ts`).
+# When `S3_ENDPOINT` is set, MinIO is bypassed entirely and the layers live
+# behind an S3 endpoint instead of `localhost:9000`.
+#
+# This overlay provides such an endpoint locally, so the *identical* R2 code
+# path can be exercised on this machine. The endpoint is a self-hosted
+# S3-compatible server speaking the same API surface Cloudflare R2 exposes
+# (path-style addressing, `auto` region, no egress fees).
+#
+# Switching to the real Cloudflare R2 later is a two-line change in `.env`:
+#
+#   S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+#   S3_ACCESS_KEY=<r2 access key id>
+#   S3_SECRET_KEY=<r2 secret access key>
+#
+# ...and nothing else: no code change, no rebuild, no compose change.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose-kafka.yml \
+#                  -f docker-compose.dev-api.yml -f docker-compose.r2.yml up -d
+# ============================================================================
+
+services:
+  # ── The R2-style S3 endpoint ─────────────────────────────────────────────
+  r2:
+    image: minio/minio:latest
+    container_name: lake-r2
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      MINIO_ROOT_PASSWORD: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+    ports:
+      - "9002:9000"   # S3 API
+      - "9003:9001"   # Web console
+    volumes:
+      - r2_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # Creates the single canonical bucket and the three medallion prefixes.
+  # `lakehouse` holds every layer: s3a://lakehouse/{bronze|silver|gold}/...
+  r2-init:
+    image: bitnamilegacy/minio-client:2025.7.21-debian-12-r3
+    container_name: lake-r2-init
+    depends_on:
+      r2:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set r2local http://r2:9000 "${R2_LOCAL_ACCESS_KEY:-r2admin}" "${R2_LOCAL_SECRET_KEY:-r2adminsecret}"
+        mc mb --ignore-existing r2local/lakehouse || true
+        for layer in bronze silver gold; do
+          for ns in crm erp ecommerce clickstream; do
+            mc mb --ignore-existing "r2local/lakehouse/$${layer}/$${ns}" || true
+          done
+        done
+        echo ' R2 buckets ready:'
+        mc ls r2local/
+
+  # ── Control Plane API: DuckDB + S3 read both go to the R2 endpoint ─────
+  api:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+    volumes:
+      # Pre-seeded DuckDB extension cache.
+      #
+      # DuckDB resolves `INSTALL httpfs` against the *plain HTTP* extension
+      # URL, and on this network that URL answers `302 -> blocked.cgi`
+      # (the HTTPS variant of the same file returns 200). The API therefore
+      # aborts with
+      #
+      #     HTTP Error: Failed to download extension "httpfs" … (HTTP 302)
+      #
+      # Seeding the cache directory with the binaries that the HTTPS URL
+      # serves makes `INSTALL`/`LOAD` succeed offline and reproducibly.
+      # Layout must match DuckDB's own cache layout:
+      #   <home>/.duckdb/extensions/<duckdb-version>/<platform>/<name>.duckdb_extension
+      - ./.duckdb-extensions:/tmp/duckdb-home/.duckdb/extensions:ro
+
+  # ── BullMQ worker: runs the Spark jobs that write the layers ─────────────
+  worker:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+    volumes:
+      # Same pre-seeded DuckDB extension cache as the API — see above.
+      - ./.duckdb-extensions:/tmp/duckdb-home/.duckdb/extensions:ro
+
+  # ── Spark cluster: Delta tables land on the R2 endpoint ──────────────────
+  spark-master:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+
+  spark-worker:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+
+  # ── Airflow: the DAG tasks build their local SparkSession in here ────────
+  airflow-webserver:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+
+  airflow-scheduler:
+    environment:
+      S3_ENDPOINT: "http://r2:9000"
+      S3_ACCESS_KEY: ${R2_LOCAL_ACCESS_KEY:-r2admin}
+      S3_SECRET_KEY: ${R2_LOCAL_SECRET_KEY:-r2adminsecret}
+      S3_REGION: "auto"
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE_ACCESS: "true"
+      S3_HEALTH_BUCKET: "lakehouse"
+      LAKEHOUSE_BUCKET: "lakehouse"
+
+volumes:
+  r2_data:

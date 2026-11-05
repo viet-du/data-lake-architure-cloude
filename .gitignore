@@ -168,6 +168,15 @@ _delta_log/
 .docker/
 docker-compose.override.yml
 
+# ═══════════════════════════════════════════════════════
+# DUCKDB EXTENSION CACHE
+# ═══════════════════════════════════════════════════════
+# Pre-seeded DuckDB extension binaries (httpfs / delta). They are platform
+# specific binaries downloaded from extensions.duckdb.org — they are build
+# artifacts, not source, and they are mounted read-only into the API and
+# worker containers by `docker-compose.r2.yml`.
+.duckdb-extensions/
+
 
 # ═══════════════════════════════════════════════════════
 # JUPYTER NOTEBOOKS

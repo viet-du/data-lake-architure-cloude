@@ -26,7 +26,7 @@ DOCKER_COMPOSE      := $(DOCKER_COMPOSE_CORE)
 
 .PHONY: help
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: install
 install: ## Install package with dev dependencies into .venv
@@ -55,6 +55,36 @@ up-api: ## Start core stack + Control Plane apps (api + web)
 	$(DOCKER_COMPOSE_CORE) -f docker-compose.dev-api.yml up -d
 	@echo "Waiting 60s for services..."
 	@sleep 60
+
+# ── R2 mode ───────────────────────────────────────────────────────────────
+# The lakehouse has exactly ONE storage code path: the S3-compatible `S3_*`
+# variables. `docker-compose.r2.yml` adds an R2-style S3 endpoint and points
+# Spark, Airflow, the API and the worker at it, so the layers live behind an
+# S3 endpoint instead of `localhost:9000`.
+#
+# Switching to the real Cloudflare R2 later is a two-line change in `.env`
+# (S3_ENDPOINT / S3_ACCESS_KEY / S3_SECRET_KEY) — no code, no rebuild.
+DOCKER_COMPOSE_R2 := $(DOCKER_COMPOSE_CORE) -f docker-compose.dev-api.yml -f docker-compose.r2.yml
+
+.PHONY: up-r2
+up-r2: ## Start the whole stack against an R2-style S3 endpoint
+	$(DOCKER_COMPOSE_R2) up -d
+	@echo "Waiting 60s for services..."
+	@sleep 60
+
+.PHONY: down-r2
+down-r2: ## Stop the R2-mode stack (keeps volumes)
+	$(DOCKER_COMPOSE_R2) down
+
+.PHONY: ps-r2
+ps-r2: ## Show the R2-mode stack status
+	$(DOCKER_COMPOSE_R2) ps
+
+.PHONY: r2-ls
+r2-ls: ## List the objects stored on the R2 endpoint
+	docker run --rm --network container:lake-r2 --entrypoint /bin/sh \
+		bitnamilegacy/minio-client:2025.7.21-debian-12-r3 -c \
+		"mc alias set r2 http://127.0.0.1:9000 $${R2_LOCAL_ACCESS_KEY:-r2admin} $${R2_LOCAL_SECRET_KEY:-r2adminsecret} >/dev/null && mc ls --recursive r2/lakehouse/"
 
 .PHONY: down
 down: ## Stop all local Docker tools (keeps volumes)
